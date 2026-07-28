@@ -365,6 +365,15 @@ struct DestinationPage: View {
         }
     }
 
+    private var headerSubtitle: String {
+        let elevation = Int(destination.elevationFeet.rounded())
+        let distance = Int(destination.directNM.rounded())
+        return "\(destination.icao)  ·  "
+            + "\(countryFlag(destination.country))  ·  "
+            + "\(destination.region.uppercased())  ·  "
+            + "HÖHE \(elevation) FT  ·  LUFTLINIE \(distance) NM"
+    }
+
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 5) {
@@ -385,13 +394,7 @@ struct DestinationPage: View {
                         vertical: true
                     )
 
-                Text(
-                    "\(destination.icao)  ·  "
-                    + "\(countryFlag(destination.country))  ·  "
-                    + destination.region.uppercased()
-                    + "  ·  HÖHE "
-                    + "\(Int(destination.elevationFeet.rounded())) FT"
-                )
+                Text(headerSubtitle)
                 .font(.system(size: 16))
                 .foregroundStyle(FlybookColor.navy)
             }
@@ -454,13 +457,6 @@ struct DestinationPage: View {
                         .labelsHidden()
                         .pickerStyle(.segmented)
                         .frame(width: 160)
-
-                        Text(
-                            "Luftlinie "
-                            + "\(Int(destination.directNM.rounded())) NM"
-                        )
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(FlybookColor.muted)
                     }
                 }
 
@@ -747,6 +743,7 @@ struct DestinationPage: View {
                     {
                         HStack(spacing: 0) {
                             LiveWeatherColumn(
+                                title: "ANKUNFT \(destination.icao)",
                                 day: weather.days[0]
                             ,
                                 airportElevationFeet:
@@ -757,6 +754,7 @@ struct DestinationPage: View {
 
                             if weather.days.count > 1 {
                                 LiveWeatherColumn(
+                                    title: "ABFLUG \(destination.icao)",
                                     day: weather.days[1]
                                 ,
                                 airportElevationFeet:
@@ -764,7 +762,7 @@ struct DestinationPage: View {
                             )
                             } else {
                                 WeatherPlaceholderColumn(
-                                    title: "RÜCKFLUG"
+                                    title: "ABFLUG \(destination.icao)"
                                 )
                             }
                         }
@@ -1285,7 +1283,7 @@ private struct FlightTimePlanningRows: View {
                 },
                 trailing: {
                     CalculatedFlightTime(
-                        title: "ANKUNFT ZIEL",
+                        title: "ANKUNFT \(destination.icao)",
                         value: FlightDateTime.clock(
                             instant: outboundArrivalInstant,
                             timeZone: timeDisplayMode == .utc
@@ -1349,7 +1347,7 @@ private struct FlightTimePlanningRows: View {
                         .map { Int($0.rounded()) },
                 leading: {
                     CalculatedFlightTime(
-                        title: "START ZIEL",
+                        title: "ABFLUG \(destination.icao)",
                         value: FlightDateTime.clock(
                             instant: returnDepartureInstant,
                             timeZone: timeDisplayMode == .utc
@@ -1468,7 +1466,7 @@ private struct FlightPlanningLine<
         HStack(alignment: .top, spacing: 5) {
             VStack(spacing: 4) {
                 StopCountSelector(selection: $stopCount)
-                    .frame(width: 98, height: 82)
+                    .frame(width: 98, height: 108)
 
                 Picker(
                     "Flughöhe",
@@ -1487,7 +1485,7 @@ private struct FlightPlanningLine<
                 .frame(width: 96)
                 .help("Flughöhe für die Windberechnung")
             }
-            .frame(width: 98, height: 108)
+            .frame(width: 98, height: 138)
 
             VStack(spacing: 5) {
                 Text(directionTitle)
@@ -1529,7 +1527,9 @@ private struct FlightPlanningLine<
             }
 
             VStack(spacing: 4) {
-                Color.clear.frame(height: 15)
+                Text("REISEZEIT")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(FlybookColor.muted)
 
                 TravelDurationBadge(minutes: travelMinutes)
                     .frame(width: 70, height: 58)
@@ -1967,20 +1967,16 @@ private struct TravelDurationBadge: View {
     let minutes: Int
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 0) {
             Text(FlightMath.duration(minutes))
                 .font(
                     .system(
-                        size: 18,
+                        size: 22,
                         weight: .bold,
                         design: .monospaced
                     )
                 )
                 .foregroundStyle(FlybookColor.blue)
-
-            Text("REISEZEIT")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(FlybookColor.muted)
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 7)
@@ -2388,6 +2384,7 @@ private struct WeekendRow: View {
 }
 
 private struct LiveWeatherColumn: View {
+    let title: String
     let day: ForecastDay
     let airportElevationFeet: Double
 
@@ -2395,7 +2392,7 @@ private struct LiveWeatherColumn: View {
         VStack(spacing: 7) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(day.displayDay)
+                    Text(title)
                         .font(.system(size: 15, weight: .bold))
 
                     Text(displayDate)
@@ -2479,8 +2476,11 @@ private struct LiveWeatherColumn: View {
                     lineJoin: .round
                 )
             )
-            .frame(width: 52, height: 32)
-            .offset(y: -11)
+            .frame(width: 52, height: 52)
+            .overlay(
+                Circle()
+                    .stroke(FlybookColor.line, lineWidth: 1.5)
+            )
         }
     }
 
@@ -2700,7 +2700,11 @@ private struct WindBarbView: View {
                 wind.speedKnots == nil ? FlybookColor.muted : FlybookColor.navy,
                 style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
             )
-            .frame(width: 52, height: 42)
+            .frame(width: 52, height: 52)
+            .overlay(
+                Circle()
+                    .stroke(FlybookColor.line, lineWidth: 1.5)
+            )
 
             Text(wind.speedKnots.map { String(format: "%.0f kt", $0) } ?? "N/A")
                 .font(.system(size: 12, weight: .bold))
