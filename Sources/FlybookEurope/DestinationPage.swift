@@ -344,6 +344,7 @@ struct DestinationPage: View {
 
                 flightSection
                     .frame(width: 675)
+                    .frame(maxHeight: .infinity, alignment: .top)
                     .padding(.top, 24)
 
             }
@@ -561,6 +562,7 @@ struct DestinationPage: View {
                         cruiseGroundSpeedKnots
                 )
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -1101,7 +1103,7 @@ private struct RouteWindSummary: View {
             } else if let wind {
                 Text(
                     "WIND MITTE \(wind.altitudeFeet.formatted()) FT  ·  "
-                    + String(format: "%03.0f° / %.0f kt", wind.directionDegrees, wind.speedKnots)
+                    + String(format: "%03.0f / %.0f kt", wind.directionDegrees, wind.speedKnots)
                     + "  ·  HIN " + componentText(wind.outboundHeadwindKnots)
                     + "  ·  RÜCK " + componentText(wind.returnHeadwindKnots)
                 )
@@ -1181,10 +1183,13 @@ private struct PlanningWeather {
 
 private struct PlanningWeatherCard: View {
     let weather: PlanningWeather
+    let sunriseText: String?
+    let sunsetText: String?
 
     var body: some View {
         VStack(spacing: 5) {
             HStack(spacing: 6) {
+                Image(systemName: "wind")
                 Text(
                     AviationWindText.format(
                         direction: weather.direction,
@@ -1193,7 +1198,7 @@ private struct PlanningWeatherCard: View {
                     )
                 )
             }
-            .font(.system(size: 15, weight: .bold, design: .monospaced))
+            .font(.system(size: 14, weight: .bold, design: .rounded))
             .foregroundStyle(FlybookColor.navy)
 
             HStack(spacing: 7) {
@@ -1202,14 +1207,14 @@ private struct PlanningWeatherCard: View {
                         String(format: "%.0f°", $0)
                     } ?? "—"
                 )
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 20, weight: .bold, design: .rounded))
 
                 Image(systemName: symbol)
                     .font(.system(size: 20, weight: .medium))
                     .symbolRenderingMode(.multicolor)
 
                 Text(description)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .lineLimit(1)
             }
             .foregroundStyle(FlybookColor.navy)
@@ -1219,15 +1224,24 @@ private struct PlanningWeatherCard: View {
                     weather.category.rawValue,
                     systemImage: "circle.fill"
                 )
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(categoryColor)
 
                 if let categoryReason {
                     Text(categoryReason)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(categoryColor)
                         .lineLimit(1)
                 }
+            }
+
+            if let sunriseText, let sunsetText {
+                HStack(spacing: 8) {
+                    Label(sunriseText, systemImage: "sunrise.fill")
+                    Label(sunsetText, systemImage: "sunset.fill")
+                }
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(FlybookColor.muted)
             }
         }
         .frame(maxWidth: .infinity)
@@ -1662,8 +1676,6 @@ private struct FlightTimePlanningRows: View {
 
 
 private struct TimeContextInfo: View {
-    let sunriseText: String?
-    let sunsetText: String?
     let weather: PlanningWeather
 
     @AppStorage(PressureSettingsKey.displayUnit)
@@ -1698,15 +1710,6 @@ private struct TimeContextInfo: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            if let sunriseText, let sunsetText {
-                HStack(spacing: 8) {
-                    Label(sunriseText, systemImage: "sunrise.fill")
-                    Label(sunsetText, systemImage: "sunset.fill")
-                }
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(FlybookColor.muted)
-            }
-
             HStack(spacing: 10) {
                 Label(
                     pressureText,
@@ -1717,7 +1720,7 @@ private struct TimeContextInfo: View {
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(FlybookColor.navy)
         }
-        .frame(height: 42)
+        .frame(height: 22)
     }
 }
 
@@ -1801,8 +1804,6 @@ private struct FlightPlanningLine<
                 HStack(alignment: .top, spacing: 4) {
                     VStack(spacing: 5) {
                         TimeContextInfo(
-                            sunriseText: leadingSunriseText,
-                            sunsetText: leadingSunsetText,
                             weather: leadingWeather
                         )
                         leading
@@ -1813,12 +1814,10 @@ private struct FlightPlanningLine<
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
                         .frame(width: 18, height: 43)
-                        .padding(.top, 47)
+                        .padding(.top, 27)
 
                     VStack(spacing: 5) {
                         TimeContextInfo(
-                            sunriseText: trailingSunriseText,
-                            sunsetText: trailingSunsetText,
                             weather: trailingWeather
                         )
                         trailing
@@ -1849,12 +1848,22 @@ private struct FlightPlanningLine<
                     }
                 }
 
-                HStack(spacing: 4) {
+                HStack(spacing: 0) {
                     PlanningWindBarb(weather: leadingWeather)
-                    PlanningWeatherCard(weather: leadingWeather)
-                        .frame(width: 145)
-                    PlanningWeatherCard(weather: trailingWeather)
-                        .frame(width: 145)
+                    Spacer(minLength: 8)
+                    PlanningWeatherCard(
+                        weather: leadingWeather,
+                        sunriseText: leadingSunriseText,
+                        sunsetText: leadingSunsetText
+                    )
+                    .frame(width: 142)
+                    PlanningWeatherCard(
+                        weather: trailingWeather,
+                        sunriseText: trailingSunriseText,
+                        sunsetText: trailingSunsetText
+                    )
+                    .frame(width: 142)
+                    Spacer(minLength: 8)
                     PlanningWindBarb(weather: trailingWeather)
                 }
             }
@@ -1867,7 +1876,7 @@ private struct FlightPlanningLine<
                 TravelDurationBadge(minutes: travelMinutes)
                     .frame(width: 70, height: 58)
             }
-            .padding(.top, 55)
+            .padding(.top, 35)
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
@@ -2554,7 +2563,7 @@ private enum AviationWindText {
         gust: Double?
     ) -> String {
         guard let direction, let speed else {
-            return "---°/--G--"
+            return "---/-- G--"
         }
         var roundedDirection = Int(direction.rounded()) % 360
         if roundedDirection == 0 && direction > 0 {
@@ -2563,7 +2572,7 @@ private enum AviationWindText {
         let roundedSpeed = max(0, Int(speed.rounded()))
         let roundedGust = max(0, Int((gust ?? 0).rounded()))
         return String(
-            format: "%03d°/%02d G%02d",
+            format: "%03d/%02d G%02d",
             roundedDirection,
             roundedSpeed,
             roundedGust
@@ -2604,7 +2613,7 @@ private struct EDFZRunwayPressureRow: View {
                 .font(.system(size: 16, weight: .bold))
             }
 
-            Text(wind)
+            Label(wind, systemImage: "wind")
                 .font(
                     .system(
                         size: 16,
@@ -3061,26 +3070,38 @@ private struct WindBarbShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY + 9)
-        let length = min(rect.width, rect.height) * 0.72
+        let tip = CGPoint(x: rect.midX, y: rect.midY)
+        let length = min(rect.width, rect.height) * 0.34
         let radians = (directionDegrees - 90.0) * .pi / 180.0
-        let tip = CGPoint(
-            x: center.x + cos(radians) * length,
-            y: center.y + sin(radians) * length
+        let tail = CGPoint(
+            x: tip.x - cos(radians) * length,
+            y: tip.y - sin(radians) * length
         )
 
-        path.move(to: center)
+        path.move(to: tail)
         path.addLine(to: tip)
 
         let roundedSpeed = max(0, Int((speedKnots / 5.0).rounded()) * 5)
         var remaining = roundedSpeed
-        var position = tip
-        let backwards = CGVector(dx: -cos(radians) * 6, dy: -sin(radians) * 6)
+        var position = tail
+        let spacing = min(rect.width, rect.height) * 0.11
+        let forwards = CGVector(
+            dx: cos(radians) * spacing,
+            dy: sin(radians) * spacing
+        )
         let barbAngle = radians + 60.0 * .pi / 180.0
+        let fullBarbLength = min(rect.width, rect.height) * 0.25
+        let halfBarbLength = fullBarbLength * 0.58
 
         while remaining >= 50 {
-            let next = CGPoint(x: position.x + backwards.dx * 2, y: position.y + backwards.dy * 2)
-            let flag = CGPoint(x: position.x + cos(barbAngle) * 15, y: position.y + sin(barbAngle) * 15)
+            let next = CGPoint(
+                x: position.x + forwards.dx * 2,
+                y: position.y + forwards.dy * 2
+            )
+            let flag = CGPoint(
+                x: position.x + cos(barbAngle) * fullBarbLength,
+                y: position.y + sin(barbAngle) * fullBarbLength
+            )
             path.move(to: position)
             path.addLine(to: flag)
             path.addLine(to: next)
@@ -3089,15 +3110,24 @@ private struct WindBarbShape: Shape {
         }
 
         while remaining >= 10 {
-            let end = CGPoint(x: position.x + cos(barbAngle) * 14, y: position.y + sin(barbAngle) * 14)
+            let end = CGPoint(
+                x: position.x + cos(barbAngle) * fullBarbLength,
+                y: position.y + sin(barbAngle) * fullBarbLength
+            )
             path.move(to: position)
             path.addLine(to: end)
-            position = CGPoint(x: position.x + backwards.dx, y: position.y + backwards.dy)
+            position = CGPoint(
+                x: position.x + forwards.dx,
+                y: position.y + forwards.dy
+            )
             remaining -= 10
         }
 
         if remaining >= 5 {
-            let end = CGPoint(x: position.x + cos(barbAngle) * 8, y: position.y + sin(barbAngle) * 8)
+            let end = CGPoint(
+                x: position.x + cos(barbAngle) * halfBarbLength,
+                y: position.y + sin(barbAngle) * halfBarbLength
+            )
             path.move(to: position)
             path.addLine(to: end)
         }
