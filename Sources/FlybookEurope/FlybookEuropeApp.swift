@@ -85,10 +85,17 @@ struct FlybookEuropeApp: App {
 
     private var navigationBar: some View {
         HStack {
-            Button(action: previous) {
-                Image(systemName: "chevron.left")
+            HStack(spacing: 6) {
+                Button(action: previous) {
+                    Image(systemName: "chevron.left")
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [])
+
+                Button(action: next) {
+                    Image(systemName: "chevron.right")
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [])
             }
-            .keyboardShortcut(.leftArrow, modifiers: [])
 
             Picker("", selection: $selectedIndex) {
                 ForEach(
@@ -128,11 +135,6 @@ struct FlybookEuropeApp: App {
                 AircraftSetupView()
             }
 
-
-            Button(action: next) {
-                Image(systemName: "chevron.right")
-            }
-            .keyboardShortcut(.rightArrow, modifiers: [])
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)

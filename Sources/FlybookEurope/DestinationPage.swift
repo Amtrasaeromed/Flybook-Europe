@@ -307,29 +307,35 @@ struct DestinationPage: View {
         ZStack(alignment: .topLeading) {
             FlybookColor.background
 
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 0) {
                 header
                     .frame(
                         width: 675,
                         alignment: .leading
                     )
                     .frame(
-                        minHeight: 118,
+                        minHeight: 181,
                         alignment: .topLeading
                     )
 
                 airportSection
                     .frame(width: 675)
+                    .padding(.top, 24)
 
                 flightSection
                     .frame(width: 675)
+                    .padding(.top, 24)
+
+                Spacer(minLength: 0)
 
                 weatherSection
                     .frame(width: 675)
+                    .padding(.top, 24)
             }
-            .fixedSize(
-                horizontal: false,
-                vertical: true
+            .frame(
+                width: 675,
+                height: 1144,
+                alignment: .top
             )
             .offset(x: 34, y: 28)
 
@@ -643,7 +649,7 @@ struct DestinationPage: View {
 
             }
         }
-        .frame(height: 360)
+        .frame(height: 379)
     }
 
     private var timeModeBinding: Binding<TimeDisplayMode> {
@@ -967,7 +973,7 @@ private struct DailyForecastTile: View {
                 )
                 .foregroundStyle(.red)
             }
-            .font(.system(size: 14, weight: .bold))
+            .font(.system(size: 20, weight: .bold))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
