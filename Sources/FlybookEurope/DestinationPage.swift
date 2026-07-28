@@ -485,7 +485,7 @@ struct DestinationPage: View {
                     VStack(alignment: .trailing, spacing: 5) {
                         Picker("Zeitbasis", selection: timeModeBinding) {
                             Text("Lokal").tag(TimeDisplayMode.local)
-                            Text("UTC Zeit").tag(TimeDisplayMode.utc)
+                            Text("UTC").tag(TimeDisplayMode.utc)
                         }
                         .labelsHidden()
                         .pickerStyle(.segmented)
@@ -1742,8 +1742,8 @@ private struct PlanningWindBarb: View {
                 lineJoin: .round
             )
         )
-        .padding(4)
-        .frame(width: 40, height: 40)
+        .padding(3)
+        .frame(width: 48, height: 48)
         .overlay(
             Circle()
                 .stroke(FlybookColor.line, lineWidth: 1.5)
@@ -1795,11 +1795,43 @@ private struct FlightPlanningLine<
         HStack(alignment: .top, spacing: 5) {
             StopCountSelector(selection: $stopCount)
                 .frame(width: 98, height: 108)
+                .padding(.top, 135)
 
             VStack(spacing: 10) {
                 Text(directionTitle)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
+
+                HStack(spacing: 4) {
+                    ZStack {
+                        PlanningWeatherCard(
+                            weather: leadingWeather,
+                            sunriseText: leadingSunriseText,
+                            sunsetText: leadingSunsetText
+                        )
+                        .frame(width: 142, height: 112)
+
+                        PlanningWindBarb(weather: leadingWeather)
+                            .offset(x: -87)
+                    }
+                    .frame(width: 174)
+
+                    Color.clear
+                        .frame(width: 18)
+
+                    ZStack {
+                        PlanningWeatherCard(
+                            weather: trailingWeather,
+                            sunriseText: trailingSunriseText,
+                            sunsetText: trailingSunsetText
+                        )
+                        .frame(width: 142, height: 112)
+
+                        PlanningWindBarb(weather: trailingWeather)
+                            .offset(x: 87)
+                    }
+                    .frame(width: 174)
+                }
 
                 HStack(alignment: .top, spacing: 4) {
                     VStack(spacing: 5) {
@@ -1848,26 +1880,8 @@ private struct FlightPlanningLine<
                     }
                 }
 
-                HStack(spacing: 0) {
-                    PlanningWindBarb(weather: leadingWeather)
-                    Spacer(minLength: 8)
-                    PlanningWeatherCard(
-                        weather: leadingWeather,
-                        sunriseText: leadingSunriseText,
-                        sunsetText: leadingSunsetText
-                    )
-                    .frame(width: 142)
-                    PlanningWeatherCard(
-                        weather: trailingWeather,
-                        sunriseText: trailingSunriseText,
-                        sunsetText: trailingSunsetText
-                    )
-                    .frame(width: 142)
-                    Spacer(minLength: 8)
-                    PlanningWindBarb(weather: trailingWeather)
-                }
             }
-            .frame(width: 390)
+            .frame(width: 402)
 
             VStack(spacing: 4) {
                 Text("REISEZEIT")
@@ -1876,7 +1890,7 @@ private struct FlightPlanningLine<
                 TravelDurationBadge(minutes: travelMinutes)
                     .frame(width: 70, height: 58)
             }
-            .padding(.top, 35)
+            .padding(.top, 156)
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
@@ -2019,7 +2033,7 @@ private struct CalculationTotalRow: View {
                 )
 
                 totalBox(
-                    title: "KOSTEN GESAMT",
+                    title: "CHARTERKOSTEN GESAMT",
                     value: totalCost.formatted(
                         .currency(code: "EUR")
                             .locale(Locale(identifier: "de_DE"))
@@ -2237,7 +2251,7 @@ private struct CalculationRow: View {
                 )
 
                 valueBox(
-                    title: "KOSTEN",
+                    title: "CHARTERKOSTEN",
                     value: costText
                 )
             }
@@ -3071,7 +3085,7 @@ private struct WindBarbShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let tip = CGPoint(x: rect.midX, y: rect.midY)
-        let length = min(rect.width, rect.height) * 0.34
+        let length = min(rect.width, rect.height) * 0.43
         let radians = (directionDegrees - 90.0) * .pi / 180.0
         let tail = CGPoint(
             x: tip.x - cos(radians) * length,
@@ -3090,7 +3104,7 @@ private struct WindBarbShape: Shape {
             dy: sin(radians) * spacing
         )
         let barbAngle = radians + 60.0 * .pi / 180.0
-        let fullBarbLength = min(rect.width, rect.height) * 0.25
+        let fullBarbLength = min(rect.width, rect.height) * 0.28
         let halfBarbLength = fullBarbLength * 0.58
 
         while remaining >= 50 {

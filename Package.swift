@@ -10,10 +10,6 @@ let package = Package(
         .executable(
             name: "Flybook Europe",
             targets: ["FlybookEurope"]
-        ),
-        .executable(
-            name: "Flybook Image Studio",
-            targets: ["FlybookImageStudio"]
         )
     ],
     targets: [
@@ -21,13 +17,6 @@ let package = Package(
             name: "FlybookEurope",
             resources: [
                 .process("Resources")
-            ]
-        ),
-        .executableTarget(
-            name: "FlybookImageStudio",
-            linkerSettings: [
-                .linkedFramework("AppKit"),
-                .linkedFramework("Security")
             ]
         )
     ]

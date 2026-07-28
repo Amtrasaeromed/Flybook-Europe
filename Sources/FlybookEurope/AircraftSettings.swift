@@ -117,7 +117,7 @@ struct AircraftSetupView: View {
                         .font(.title2.bold())
 
                     Text(
-                        "Leistungs-, Kraftstoff- und Kostendaten je Flugzeug"
+                        "Leistungs-, Kraftstoff- und Charterkostendaten je Flugzeug"
                     )
                     .foregroundStyle(.secondary)
                 }

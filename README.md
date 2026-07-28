@@ -25,6 +25,8 @@ Geprüft mit der eingebetteten Masterdatei:
 - Automatisches Kopieren der 35 freigegebenen Bilder in die Swift-Package-Ressourcen.
 - API-Schlüssel wird ausschließlich aus `OPENAI_API_KEY` gelesen und nie gespeichert.
 
-## Flybook Image Studio (v1.38.9)
+## Flybook Image Studio
 
-Für die grafische KI-Bildproduktion liegt im Projektstamm **Flybook Image Studio.command**. Das native SwiftUI-Hilfstool speichert den OpenAI-API-Schlüssel im macOS-Schlüsselbund, startet den Batchgenerator, zeigt alle Kandidaten und übernimmt die 35 gewählten Favoriten in die App-Ressourcen. Details: `IMAGE_STUDIO_README.md`.
+Das Flybook Image Studio ist derzeit als Produkt und Build-Target deaktiviert.
+Seine Quelldateien bleiben für eine mögliche spätere Reaktivierung im Projekt
+erhalten.
