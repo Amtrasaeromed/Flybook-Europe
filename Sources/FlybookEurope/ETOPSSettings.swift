@@ -119,7 +119,8 @@ struct ETOPSSetupView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("ETOPS-PIPI Setup")
@@ -128,10 +129,10 @@ struct ETOPSSetupView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Fertig") {
+                Button("Schließen") {
                     dismiss()
                 }
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(.cancelAction)
             }
 
             thresholdRow(
@@ -393,9 +394,10 @@ HStack {
                 }
                 Spacer()
             }
+            }
+            .padding(28)
         }
-        .padding(28)
-        .frame(width: 780, height: 1040)
+        .frame(width: 780, height: 720)
         .onChange(of: greenYellowMinutes) { newValue in
             if newValue >= orangeRedMinutes {
                 orangeRedMinutes = newValue + 10

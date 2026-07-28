@@ -124,10 +124,10 @@ struct AircraftSetupView: View {
 
                 Spacer()
 
-                Button("Fertig") {
+                Button("Schließen") {
                     dismiss()
                 }
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(.cancelAction)
             }
 
             HStack {

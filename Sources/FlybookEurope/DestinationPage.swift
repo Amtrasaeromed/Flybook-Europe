@@ -1467,6 +1467,9 @@ private struct FlightPlanningLine<
     var body: some View {
         HStack(alignment: .top, spacing: 5) {
             VStack(spacing: 4) {
+                StopCountSelector(selection: $stopCount)
+                    .frame(width: 98, height: 82)
+
                 Picker(
                     "Flughöhe",
                     selection: $flightAltitudeFeet
@@ -1483,9 +1486,6 @@ private struct FlightPlanningLine<
                 .controlSize(.small)
                 .frame(width: 96)
                 .help("Flughöhe für die Windberechnung")
-
-                StopCountSelector(selection: $stopCount)
-                    .frame(width: 98, height: 82)
             }
             .frame(width: 98, height: 108)
 
