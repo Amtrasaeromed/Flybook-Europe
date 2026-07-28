@@ -346,11 +346,6 @@ struct DestinationPage: View {
                     .frame(width: 675)
                     .padding(.top, 24)
 
-                Spacer(minLength: 0)
-
-                weatherSection
-                    .frame(width: 675)
-                    .padding(.top, 24)
             }
             .frame(
                 width: 675,
@@ -544,6 +539,10 @@ struct DestinationPage: View {
                         weatherModel.weather?.days.dropFirst().first?
                             .pressureMSLHPA
                             .map { Int($0.rounded()) },
+                    outboundDestinationWeather:
+                        weatherModel.weather?.days.first,
+                    returnDestinationWeather:
+                        weatherModel.weather?.days.dropFirst().first,
                     destination: destination,
                     origin: selectedOrigin,
                     directNM: routeDirectNM,
@@ -934,7 +933,7 @@ struct DestinationPage: View {
         FlybookCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("WETTERVORHERSAGE 5 TAGE")
+                    Text("5-TAGES-WETTER FÜR \(destination.name.uppercased())")
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
 
@@ -975,7 +974,7 @@ private struct DailyForecastTile: View {
 
     var body: some View {
         VStack(spacing: 7) {
-            Text(weekday)
+            Text("\(weekday) · \(shortDate)")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
 
@@ -1033,6 +1032,19 @@ private struct DailyForecastTile: View {
                 .symbolRenderingMode(.multicolor)
                 .frame(width: 30, height: 28)
         }
+    }
+
+    private var shortDate: String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: day.localDate) else {
+            return day.localDate
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "dd.MM."
+        return formatter.string(from: date)
     }
 
     private var weekday: String {
@@ -1106,6 +1118,119 @@ private struct RouteWindSummary: View {
     }
 }
 
+private struct PlanningWeather {
+    let direction: Double?
+    let speed: Double?
+    let gust: Double?
+    let temperature: Double?
+    let weatherCode: Int?
+    let runway: String?
+
+    init(sample: EDFZWeatherSample?, showsRunway: Bool) {
+        direction = sample?.windDirectionDegrees
+        speed = sample?.windSpeedKnots
+        gust = sample?.windGustKnots
+        temperature = sample?.temperatureCelsius
+        weatherCode = sample?.weatherCode
+        if showsRunway,
+           let direction,
+           let speed,
+           speed >= 0.5
+        {
+            runway = EDFZRunway.activeRunway(
+                windFromDegrees: direction,
+                speedKnots: speed
+            )
+        } else {
+            runway = nil
+        }
+    }
+
+    init(day: ForecastDay?) {
+        direction = day?.surfaceWind.directionDegrees
+        speed = day?.surfaceWind.speedKnots
+        gust = day?.windGustKnots
+        temperature = day?.temperatureCelsius
+        weatherCode = day?.weatherCode
+        runway = nil
+    }
+}
+
+private struct PlanningWeatherCard: View {
+    let weather: PlanningWeather
+
+    var body: some View {
+        VStack(spacing: 5) {
+            HStack(spacing: 6) {
+                if let runway = weather.runway {
+                    Label(runway, systemImage: "road.lanes")
+                }
+                Text(
+                    AviationWindText.format(
+                        direction: weather.direction,
+                        speed: weather.speed,
+                        gust: weather.gust
+                    )
+                )
+            }
+            .font(.system(size: 15, weight: .bold, design: .monospaced))
+            .foregroundStyle(FlybookColor.navy)
+
+            HStack(spacing: 7) {
+                Text(
+                    weather.temperature.map {
+                        String(format: "%.0f°", $0)
+                    } ?? "—"
+                )
+                .font(.system(size: 20, weight: .bold))
+
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .medium))
+                    .symbolRenderingMode(.multicolor)
+
+                Text(description)
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(FlybookColor.navy)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.08))
+        )
+    }
+
+    private var symbol: String {
+        switch weather.weatherCode ?? -1 {
+        case 0: return "sun.max.fill"
+        case 1, 2: return "cloud.sun.fill"
+        case 3: return "cloud.fill"
+        case 45, 48: return "cloud.fog.fill"
+        case 51...57: return "cloud.drizzle.fill"
+        case 61...67, 80...82: return "cloud.rain.fill"
+        case 71...77: return "cloud.snow.fill"
+        case 95...99: return "cloud.bolt.rain.fill"
+        default: return "questionmark.circle"
+        }
+    }
+
+    private var description: String {
+        switch weather.weatherCode ?? -1 {
+        case 0: return "Klar"
+        case 1, 2: return "Heiter"
+        case 3: return "Bedeckt"
+        case 45, 48: return "Nebel"
+        case 51...57: return "Niesel"
+        case 61...67, 80...82: return "Regen"
+        case 71...77: return "Schnee"
+        case 95...99: return "Gewitter"
+        default: return "N/A"
+        }
+    }
+}
+
 private struct FlightTimePlanningRows: View {
     let outboundFlightDate: Date
     let returnFlightDate: Date
@@ -1124,6 +1249,8 @@ private struct FlightTimePlanningRows: View {
     let returnEDFZForecast: EDFZForecast?
     let outboundDestinationPressureMbar: Int?
     let returnDestinationPressureMbar: Int?
+    let outboundDestinationWeather: ForecastDay?
+    let returnDestinationWeather: ForecastDay?
     let destination: Destination
     let origin: AirportReference
     let directNM: Double
@@ -1278,6 +1405,13 @@ private struct FlightTimePlanningRows: View {
                 tankStopMinutes: tankStopMinutes,
                 cruiseGroundSpeedKnots:
                     cruiseGroundSpeedKnots,
+                leadingWeather: PlanningWeather(
+                    sample: outboundAirportSample,
+                    showsRunway: origin.icao == "EDFZ"
+                ),
+                trailingWeather: PlanningWeather(
+                    day: outboundDestinationWeather
+                ),
                 leadingSunriseText:
                     sunTexts(
                         at: outboundStartInstant,
@@ -1317,9 +1451,7 @@ private struct FlightTimePlanningRows: View {
                         text: $outboundStartText,
                         symbol: "airplane.departure",
                         lightCondition:
-                            outboundStartCondition,
-                        airportWeather: outboundAirportSample,
-                        showsRunway: origin.icao == "EDFZ"
+                            outboundStartCondition
                     )
                 },
                 trailing: {
@@ -1353,6 +1485,13 @@ private struct FlightTimePlanningRows: View {
                 tankStopMinutes: tankStopMinutes,
                 cruiseGroundSpeedKnots:
                     cruiseGroundSpeedKnots,
+                leadingWeather: PlanningWeather(
+                    day: returnDestinationWeather
+                ),
+                trailingWeather: PlanningWeather(
+                    sample: homeArrivalAirportSample,
+                    showsRunway: origin.icao == "EDFZ"
+                ),
                 leadingSunriseText:
                     sunTexts(
                         at: returnDepartureInstant,
@@ -1406,9 +1545,7 @@ private struct FlightTimePlanningRows: View {
                         text: $desiredHomeArrivalText,
                         symbol: "airplane.arrival",
                         lightCondition:
-                            homeArrivalCondition,
-                        airportWeather: homeArrivalAirportSample,
-                        showsRunway: origin.icao == "EDFZ"
+                            homeArrivalCondition
                     )
                 }
             )
@@ -1477,6 +1614,8 @@ private struct FlightPlanningLine<
     let headwindKnots: Double?
     let tankStopMinutes: Int
     let cruiseGroundSpeedKnots: Double
+    let leadingWeather: PlanningWeather
+    let trailingWeather: PlanningWeather
     let leadingSunriseText: String?
     let leadingSunsetText: String?
     let leadingPressureMbar: Int?
@@ -1566,6 +1705,14 @@ private struct FlightPlanningLine<
 
                 if let headwindKnots {
                     WindInfluenceLabel(headwindKnots: headwindKnots)
+                }
+
+                HStack(spacing: 22) {
+                    PlanningWeatherCard(weather: leadingWeather)
+                        .frame(width: 174)
+
+                    PlanningWeatherCard(weather: trailingWeather)
+                        .frame(width: 174)
                 }
             }
 
@@ -2153,8 +2300,6 @@ private struct EditableFlightTimeField: View {
     @Binding var text: String
     let symbol: String
     let lightCondition: LightCondition
-    let airportWeather: EDFZWeatherSample?
-    let showsRunway: Bool
 
     @State private var isTimeEditorPresented = false
     @State private var selectedHour = 9
@@ -2250,10 +2395,6 @@ private struct EditableFlightTimeField: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
 
-            EDFZRunwayPressureRow(
-                sample: airportWeather,
-                showsRunway: showsRunway
-            )
         }
         .foregroundStyle(FlybookColor.navy)
     }
@@ -2276,7 +2417,7 @@ private enum AviationWindText {
         let roundedSpeed = max(0, Int(speed.rounded()))
         let roundedGust = max(0, Int((gust ?? 0).rounded()))
         return String(
-            format: "%03d°/%02dG%02d",
+            format: "%03d°/%02d G%02d",
             roundedDirection,
             roundedSpeed,
             roundedGust

@@ -5,6 +5,8 @@ struct EDFZWeatherSample: Hashable {
     let windDirectionDegrees: Double?
     let windSpeedKnots: Double?
     let windGustKnots: Double?
+    let temperatureCelsius: Double?
+    let weatherCode: Int?
     let pressureMSLHPA: Double?
 }
 
@@ -84,7 +86,7 @@ actor EDFZWeatherService {
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
-                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl"
+                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,weather_code,pressure_msl"
             )
         ]
         guard let url = components?.url else {
@@ -110,6 +112,12 @@ actor EDFZWeatherService {
                 windDirectionDegrees: value(decoded.hourly.windDirection10m, index),
                 windSpeedKnots: value(decoded.hourly.windSpeed10m, index),
                 windGustKnots: value(decoded.hourly.windGusts10m, index),
+                temperatureCelsius: value(
+                    decoded.hourly.temperature2m, index
+                ),
+                weatherCode: decoded.hourly.weatherCode.indices.contains(index)
+                    ? decoded.hourly.weatherCode[index]
+                    : nil,
                 pressureMSLHPA: value(decoded.hourly.pressureMSL, index)
             )
         }
@@ -131,6 +139,8 @@ private struct Hourly: Decodable {
     let windSpeed10m: [Double?]
     let windDirection10m: [Double?]
     let windGusts10m: [Double?]
+    let temperature2m: [Double?]
+    let weatherCode: [Int?]
     let pressureMSL: [Double?]
 
     enum CodingKeys: String, CodingKey {
@@ -138,6 +148,8 @@ private struct Hourly: Decodable {
         case windSpeed10m = "wind_speed_10m"
         case windDirection10m = "wind_direction_10m"
         case windGusts10m = "wind_gusts_10m"
+        case temperature2m = "temperature_2m"
+        case weatherCode = "weather_code"
         case pressureMSL = "pressure_msl"
     }
 }
