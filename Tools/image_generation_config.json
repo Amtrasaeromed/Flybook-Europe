@@ -1,0 +1,12 @@
+{
+  "model": "gpt-image-2",
+  "size": "1536x1024",
+  "quality": "medium",
+  "output_format": "webp",
+  "candidates_per_destination": 3,
+  "request_timeout_seconds": 300,
+  "maximum_retries": 4,
+  "retry_base_seconds": 4,
+  "prompt_version": "flybook-destination-v1",
+  "final_resource_directory": "Sources/FlybookEurope/Resources/regions"
+}

@@ -1,0 +1,31 @@
+Create a premium, realistic editorial travel photograph for the macOS application “Flybook Europe”.
+
+The image must feel like authentic European weekend travel: calm, distinctive, natural and inviting rather than luxurious or commercial. Use realistic geography, architecture, vegetation, weather and scale. Prefer natural daylight, restrained color grading, crisp detail and a believable documentary-travel-photography aesthetic.
+
+Composition requirements:
+- wide horizontal 3:2 composition for a destination header
+- keep the central subject readable when mildly cropped
+- include foreground, middle ground and atmospheric depth
+- no essential object directly at the extreme edges
+- no close-up portrait and no dominant person
+
+Do not include:
+- text, captions, logos, flags, maps or watermarks
+- fantasy landmarks or invented architecture
+- crowds, shopping scenes, luxury resorts or staged influencer imagery
+- distorted bicycles, buildings, boats, animals or aircraft
+- a prominent aircraft or visible aircraft registration
+- oversaturated postcard colors, HDR halos or artificial-looking skies
+
+Destination assignment:
+- Destination: Langeoog
+- Airport reference: EDWL
+- Country code: DE
+- Travel region: Nordsee/Ostsee
+- Best season: Sommer/Herbst
+- Characteristic motifs: Autofreie Insel · Dünen · Watt · Strand · Fisch
+- Typical activities and atmosphere: Rad · Strand · Tiere · Wandern
+
+Show a coherent scene that represents the destination area, not the airport infrastructure itself. Select two or three characteristic motifs and combine them naturally; do not attempt to show every listed item. The result must remain geographically plausible and recognizably tied to the named destination.
+
+Candidate direction 1: Use an establishing landscape view with a strong sense of place.

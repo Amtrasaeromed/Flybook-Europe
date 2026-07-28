@@ -1,0 +1,44 @@
+{
+  "EHTX": {
+    "display_name": "Texel",
+    "region_label": "Nordsee",
+    "latitude": 53.1153,
+    "longitude": 4.8336,
+    "region_image": "/mnt/data/flybook_v3_assets/EHTX_region.jpg"
+  },
+  "EHMZ": {
+    "display_name": "Midden-Zeeland",
+    "region_label": "Zeeland",
+    "latitude": 51.5122,
+    "longitude": 3.7311,
+    "region_image": ""
+  },
+  "EDHL": {
+    "display_name": "Lübeck",
+    "region_label": "Lübeck / Ostsee",
+    "latitude": 53.8053667,
+    "longitude": 10.7192222,
+    "region_image": ""
+  },
+  "EDDV": {
+    "display_name": "Hannover",
+    "region_label": "Niedersachsen",
+    "latitude": 52.4616667,
+    "longitude": 9.6836111,
+    "region_image": ""
+  },
+  "EDGE": {
+    "display_name": "Eisenach",
+    "region_label": "Wartburg / Thüringen",
+    "latitude": 50.9921667,
+    "longitude": 10.476,
+    "region_image": ""
+  },
+  "EDKA": {
+    "display_name": "Aachen",
+    "region_label": "Aachen / Dreiländereck",
+    "latitude": 50.8216667,
+    "longitude": 6.1841667,
+    "region_image": ""
+  }
+}
