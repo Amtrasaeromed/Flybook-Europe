@@ -1189,7 +1189,6 @@ private struct PlanningWeatherCard: View {
     var body: some View {
         VStack(spacing: 5) {
             HStack(spacing: 6) {
-                Image(systemName: "wind")
                 Text(
                     AviationWindText.format(
                         direction: weather.direction,
@@ -1755,80 +1754,19 @@ private struct TimeContextInfo: View {
     }
 }
 
-private struct PlanningWindsock: View {
+private struct WindFlowIndicator: View {
     let weather: PlanningWeather
 
     var body: some View {
-        Canvas { context, size in
-            let centerY = size.height / 2
-            let boundaries: [CGFloat] = [3, 11, 19, 27, 35, 43]
-
-            for index in 0..<5 {
-                let startX = boundaries[index]
-                let endX = boundaries[index + 1]
-                let startHalfHeight = 11 - CGFloat(index) * 1.55
-                let endHalfHeight = 11 - CGFloat(index + 1) * 1.55
-                var stripe = Path()
-                stripe.move(
-                    to: CGPoint(
-                        x: startX,
-                        y: centerY - startHalfHeight
-                    )
-                )
-                stripe.addLine(
-                    to: CGPoint(
-                        x: endX,
-                        y: centerY - endHalfHeight
-                    )
-                )
-                stripe.addLine(
-                    to: CGPoint(
-                        x: endX,
-                        y: centerY + endHalfHeight
-                    )
-                )
-                stripe.addLine(
-                    to: CGPoint(
-                        x: startX,
-                        y: centerY + startHalfHeight
-                    )
-                )
-                stripe.closeSubpath()
-                context.fill(
-                    stripe,
-                    with: .color(index.isMultiple(of: 2) ? .red : .white)
-                )
-            }
-
-            var outline = Path()
-            outline.move(to: CGPoint(x: 3, y: centerY - 11))
-            outline.addLine(to: CGPoint(x: 43, y: centerY - 3.25))
-            outline.addLine(to: CGPoint(x: 43, y: centerY + 3.25))
-            outline.addLine(to: CGPoint(x: 3, y: centerY + 11))
-            outline.closeSubpath()
-            context.stroke(
-                outline,
-                with: .color(FlybookColor.navy.opacity(0.7)),
-                lineWidth: 1
-            )
-
-            let mouth = CGRect(
-                x: 1,
-                y: centerY - 12,
-                width: 5,
-                height: 24
-            )
-            context.fill(
-                Path(ellipseIn: mouth),
-                with: .color(.red)
-            )
-        }
+        Image(systemName: "arrow.up")
+            .font(.system(size: 34, weight: .bold))
+            .foregroundStyle(FlybookColor.navy)
         .frame(width: 48, height: 48)
         .rotationEffect(
-            .degrees((weather.direction ?? 270) - 270)
+            .degrees((weather.direction ?? 180) + 180)
         )
         .opacity(weather.direction == nil ? 0.35 : 1)
-        .help("Die große Öffnung zeigt in die Richtung, aus der der Wind kommt")
+        .help("Die Pfeilspitze zeigt in die Richtung, in die der Wind weht")
     }
 }
 
@@ -1892,7 +1830,7 @@ private struct FlightPlanningLine<
                         )
                         .frame(width: 142, height: 112)
 
-                        PlanningWindsock(weather: leadingWeather)
+                        WindFlowIndicator(weather: leadingWeather)
                             .offset(x: -87)
                     }
                     .frame(width: 174)
@@ -1908,7 +1846,7 @@ private struct FlightPlanningLine<
                         )
                         .frame(width: 142, height: 112)
 
-                        PlanningWindsock(weather: trailingWeather)
+                        WindFlowIndicator(weather: trailingWeather)
                             .offset(x: 87)
                     }
                     .frame(width: 174)
