@@ -1210,14 +1210,19 @@ private struct PlanningWeatherCard: View {
                 )
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(categoryColor)
-
-                if let categoryReason {
-                    Text(categoryReason)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(categoryColor)
-                        .lineLimit(1)
-                }
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(categoryReason ?? " ")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(categoryColor)
+                .lineLimit(1)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 15,
+                    alignment: .leading
+                )
 
             if let sunriseText, let sunsetText {
                 HStack(spacing: 8) {
@@ -1484,6 +1489,47 @@ private struct FlightTimePlanningRows: View {
         )
     }
 
+    private func pickerDate(
+        for instant: Date,
+        in timeZone: TimeZone
+    ) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        var components = calendar.dateComponents(
+            [.year, .month, .day],
+            from: instant
+        )
+        components.hour = 12
+        return calendar.date(from: components) ?? instant
+    }
+
+    private func setOutboundToNow() {
+        let now = Date()
+        outboundFlightDate = pickerDate(
+            for: now,
+            in: origin.timeZone
+        )
+        outboundStartText = FlightDateTime.clock(
+            instant: now,
+            timeZone: origin.timeZone
+        )
+    }
+
+    private func setReturnToNow() {
+        let departureNow = Date()
+        let arrivalInstant = departureNow.addingTimeInterval(
+            TimeInterval(returnTravelMinutes * 60)
+        )
+        returnFlightDate = pickerDate(
+            for: arrivalInstant,
+            in: origin.timeZone
+        )
+        desiredHomeArrivalText = FlightDateTime.clock(
+            instant: arrivalInstant,
+            timeZone: origin.timeZone
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             FlightPlanningLine(
@@ -1491,6 +1537,7 @@ private struct FlightTimePlanningRows: View {
                 flightDate: $outboundFlightDate,
                 showsRefreshButton: true,
                 refreshWeather: refreshWeather,
+                setNow: setOutboundToNow,
                 showsETOPSHeader: true,
                 stopCount: $outboundStops,
                 flightAltitudeFeet:
@@ -1573,6 +1620,7 @@ private struct FlightTimePlanningRows: View {
                 flightDate: $returnFlightDate,
                 showsRefreshButton: false,
                 refreshWeather: refreshWeather,
+                setNow: setReturnToNow,
                 showsETOPSHeader: true,
                 stopCount: $returnStops,
                 flightAltitudeFeet:
@@ -1769,6 +1817,7 @@ private struct FlightPlanningLine<
     @Binding var flightDate: Date
     let showsRefreshButton: Bool
     let refreshWeather: () -> Void
+    let setNow: () -> Void
     let showsETOPSHeader: Bool
     @Binding var stopCount: Int
     @Binding var flightAltitudeFeet: Int
@@ -1808,7 +1857,7 @@ private struct FlightPlanningLine<
         HStack(alignment: .top, spacing: 5) {
             StopCountSelector(selection: $stopCount)
                 .frame(width: 98, height: 108)
-                .padding(.top, 145)
+                .padding(.top, 165)
 
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
@@ -1839,6 +1888,10 @@ private struct FlightPlanningLine<
                     .buttonStyle(.bordered)
                     .controlSize(.small)
 
+                    Button("Jetzt", action: setNow)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+
                     Spacer(minLength: 0)
                 }
 
@@ -1849,7 +1902,7 @@ private struct FlightPlanningLine<
                             sunriseText: leadingSunriseText,
                             sunsetText: leadingSunsetText
                         )
-                        .frame(width: 142, height: 112)
+                        .frame(width: 142, height: 132)
 
                         WindFlowIndicator(weather: leadingWeather)
                             .offset(x: -96)
@@ -1865,7 +1918,7 @@ private struct FlightPlanningLine<
                             sunriseText: trailingSunriseText,
                             sunsetText: trailingSunsetText
                         )
-                        .frame(width: 142, height: 112)
+                        .frame(width: 142, height: 132)
 
                         WindFlowIndicator(weather: trailingWeather)
                             .offset(x: 96)
@@ -1930,7 +1983,7 @@ private struct FlightPlanningLine<
                 TravelDurationBadge(minutes: travelMinutes)
                     .frame(width: 70, height: 58)
             }
-            .padding(.top, 166)
+            .padding(.top, 186)
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
