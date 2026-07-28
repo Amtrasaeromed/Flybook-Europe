@@ -1695,17 +1695,40 @@ private struct TimeContextInfo: View {
         }
     }
 
-    private var densityAltitudeText: String {
+    private var densityAltitude: Double? {
         guard let temperature = weather.temperature,
               let pressure = weather.pressureMbar
-        else { return "DA —" }
+        else { return nil }
         let pressureAltitude = weather.elevationFeet
             + (1013.25 - pressure) * 30
         let isaTemperature = 15
             - 1.98 * (pressureAltitude / 1000)
-        let densityAltitude = pressureAltitude
+        return pressureAltitude
             + 120 * (temperature - isaTemperature)
-        return String(format: "DA %.0f ft", densityAltitude)
+    }
+
+    private var densityAltitudeText: String {
+        densityAltitude.map {
+            String(format: "DA %.0f ft", $0)
+        } ?? "DA —"
+    }
+
+    private var densityAltitudeBackground: Color {
+        guard let densityAltitude else { return .clear }
+        if densityAltitude >= 5000 {
+            return Color.red.opacity(0.82)
+        }
+        if densityAltitude >= 2000 {
+            return Color.yellow.opacity(0.62)
+        }
+        return .clear
+    }
+
+    private var densityAltitudeForeground: Color {
+        guard let densityAltitude, densityAltitude >= 5000 else {
+            return FlybookColor.navy
+        }
+        return .white
     }
 
     var body: some View {
@@ -1716,6 +1739,14 @@ private struct TimeContextInfo: View {
                     systemImage: "gauge.with.dots.needle.33percent"
                 )
                 Text(densityAltitudeText)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(densityAltitudeForeground)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(densityAltitudeBackground)
+                    )
             }
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(FlybookColor.navy)
@@ -1724,30 +1755,80 @@ private struct TimeContextInfo: View {
     }
 }
 
-private struct PlanningWindBarb: View {
+private struct PlanningWindsock: View {
     let weather: PlanningWeather
 
     var body: some View {
-        WindBarbShape(
-            directionDegrees: weather.direction ?? 0,
-            speedKnots: weather.speed ?? 0
-        )
-        .stroke(
-            weather.speed == nil
-                ? FlybookColor.muted
-                : FlybookColor.navy,
-            style: StrokeStyle(
-                lineWidth: 2,
-                lineCap: .round,
-                lineJoin: .round
+        Canvas { context, size in
+            let centerY = size.height / 2
+            let boundaries: [CGFloat] = [3, 11, 19, 27, 35, 43]
+
+            for index in 0..<5 {
+                let startX = boundaries[index]
+                let endX = boundaries[index + 1]
+                let startHalfHeight = 11 - CGFloat(index) * 1.55
+                let endHalfHeight = 11 - CGFloat(index + 1) * 1.55
+                var stripe = Path()
+                stripe.move(
+                    to: CGPoint(
+                        x: startX,
+                        y: centerY - startHalfHeight
+                    )
+                )
+                stripe.addLine(
+                    to: CGPoint(
+                        x: endX,
+                        y: centerY - endHalfHeight
+                    )
+                )
+                stripe.addLine(
+                    to: CGPoint(
+                        x: endX,
+                        y: centerY + endHalfHeight
+                    )
+                )
+                stripe.addLine(
+                    to: CGPoint(
+                        x: startX,
+                        y: centerY + startHalfHeight
+                    )
+                )
+                stripe.closeSubpath()
+                context.fill(
+                    stripe,
+                    with: .color(index.isMultiple(of: 2) ? .red : .white)
+                )
+            }
+
+            var outline = Path()
+            outline.move(to: CGPoint(x: 3, y: centerY - 11))
+            outline.addLine(to: CGPoint(x: 43, y: centerY - 3.25))
+            outline.addLine(to: CGPoint(x: 43, y: centerY + 3.25))
+            outline.addLine(to: CGPoint(x: 3, y: centerY + 11))
+            outline.closeSubpath()
+            context.stroke(
+                outline,
+                with: .color(FlybookColor.navy.opacity(0.7)),
+                lineWidth: 1
             )
-        )
-        .padding(3)
+
+            let mouth = CGRect(
+                x: 1,
+                y: centerY - 12,
+                width: 5,
+                height: 24
+            )
+            context.fill(
+                Path(ellipseIn: mouth),
+                with: .color(.red)
+            )
+        }
         .frame(width: 48, height: 48)
-        .overlay(
-            Circle()
-                .stroke(FlybookColor.line, lineWidth: 1.5)
+        .rotationEffect(
+            .degrees((weather.direction ?? 270) - 270)
         )
+        .opacity(weather.direction == nil ? 0.35 : 1)
+        .help("Die große Öffnung zeigt in die Richtung, aus der der Wind kommt")
     }
 }
 
@@ -1811,7 +1892,7 @@ private struct FlightPlanningLine<
                         )
                         .frame(width: 142, height: 112)
 
-                        PlanningWindBarb(weather: leadingWeather)
+                        PlanningWindsock(weather: leadingWeather)
                             .offset(x: -87)
                     }
                     .frame(width: 174)
@@ -1827,7 +1908,7 @@ private struct FlightPlanningLine<
                         )
                         .frame(width: 142, height: 112)
 
-                        PlanningWindBarb(weather: trailingWeather)
+                        PlanningWindsock(weather: trailingWeather)
                             .offset(x: 87)
                     }
                     .frame(width: 174)
