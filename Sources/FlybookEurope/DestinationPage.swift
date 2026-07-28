@@ -31,6 +31,8 @@ struct DestinationPage: View {
     @State private var desiredHomeArrivalText = "17:00"
     @State private var outboundStops = 0
     @State private var returnStops = 0
+    @State private var outboundFlightAltitudeFeet = 5000
+    @State private var returnFlightAltitudeFeet = 5000
     @State private var timeDisplayMode: TimeDisplayMode = .local
 
     @AppStorage(CalculationSettingsKey.tankStopMinutes)
@@ -135,14 +137,18 @@ struct DestinationPage: View {
             await outboundRouteWindModel.load(
                 destination: destination,
                 plannedInstant:
-                    outboundWindForecastInstant
+                    outboundWindForecastInstant,
+                altitudeFeet:
+                    outboundFlightAltitudeFeet
             )
         }
         .task(id: returnWindTaskID) {
             await returnRouteWindModel.load(
                 destination: destination,
                 plannedInstant:
-                    returnWindForecastInstant
+                    returnWindForecastInstant,
+                altitudeFeet:
+                    returnFlightAltitudeFeet
             )
         }
         .task(id: outboundEDFZWeatherTaskID) {
@@ -197,10 +203,15 @@ struct DestinationPage: View {
         let fiveMinuteBucket =
             Int(instant.timeIntervalSince1970 / 300)
 
+        let altitudeFeet = prefix.hasPrefix("out")
+            ? outboundFlightAltitudeFeet
+            : returnFlightAltitudeFeet
+
         return
             "\(prefix)-\(destination.icao)-"
             + "\(fiveMinuteBucket)-"
             + selectedAircraftRaw
+            + "-\(altitudeFeet)"
     }
 
     private var displayTimeZone: TimeZone {
@@ -323,9 +334,9 @@ struct DestinationPage: View {
             .offset(x: 34, y: 28)
 
             VStack(spacing: 20) {
-                mapAndImageSection
-
                 fiveDayForecastSection
+
+                mapAndImageSection
 
                 FlybookCard {
                     TravelDurationBar(
@@ -335,11 +346,15 @@ struct DestinationPage: View {
                             maxTravelMinutesUntilOvernight
                     )
                 }
-                .frame(height: 115)
+                .frame(height: 90)
 
                 calculationSection
             }
-            .frame(width: 1010)
+            .frame(
+                width: 1010,
+                height: 1144,
+                alignment: .top
+            )
             .position(x: 1260, y: 600)
         }
     }
@@ -477,6 +492,10 @@ struct DestinationPage: View {
                     desiredHomeArrivalText: $desiredHomeArrivalText,
                     outboundStops: $outboundStops,
                     returnStops: $returnStops,
+                    outboundFlightAltitudeFeet:
+                        $outboundFlightAltitudeFeet,
+                    returnFlightAltitudeFeet:
+                        $returnFlightAltitudeFeet,
                     flightTimes: destination.flightTimes,
                     outboundRouteWind: outboundRouteWindModel.wind,
                     returnRouteWind: returnRouteWindModel.wind,
@@ -564,7 +583,7 @@ struct DestinationPage: View {
                 Divider()
 
                 CalculationRow(
-                    title: "START RÜCKFLUG",
+                    title: "RÜCKFLUG",
                     stopCount: returnStops,
                     directNM: destination.directNM,
                     headwindKnots:
@@ -920,15 +939,15 @@ private struct DailyForecastTile: View {
 
             HStack(spacing: 8) {
                 periodSymbol(
-                    title: "MOR",
+                    title: "08:00",
                     code: day.morningWeatherCode
                 )
                 periodSymbol(
-                    title: "MIT",
+                    title: "14:00",
                     code: day.middayWeatherCode
                 )
                 periodSymbol(
-                    title: "AB",
+                    title: "20:00",
                     code: day.eveningWeatherCode
                 )
             }
@@ -1020,10 +1039,10 @@ private struct RouteWindSummary: View {
                 .foregroundStyle(FlybookColor.blue)
 
             if isLoading {
-                Text("5.000-ft-Wind an der Streckenmitte wird geladen …")
+                Text("Wind an der Streckenmitte wird geladen …")
             } else if let wind {
                 Text(
-                    "WIND MITTE 5.000 FT  ·  "
+                    "WIND MITTE \(wind.altitudeFeet.formatted()) FT  ·  "
                     + String(format: "%03.0f° / %.0f kt", wind.directionDegrees, wind.speedKnots)
                     + "  ·  HIN " + componentText(wind.outboundHeadwindKnots)
                     + "  ·  RÜCK " + componentText(wind.returnHeadwindKnots)
@@ -1053,6 +1072,8 @@ private struct FlightTimePlanningRows: View {
     @Binding var desiredHomeArrivalText: String
     @Binding var outboundStops: Int
     @Binding var returnStops: Int
+    @Binding var outboundFlightAltitudeFeet: Int
+    @Binding var returnFlightAltitudeFeet: Int
 
     let flightTimes: FlightTimes
     let outboundRouteWind: RouteWind?
@@ -1205,6 +1226,8 @@ private struct FlightTimePlanningRows: View {
                 directionTitle: "HINFLUG",
                 showsETOPSHeader: true,
                 stopCount: $outboundStops,
+                flightAltitudeFeet:
+                    $outboundFlightAltitudeFeet,
                 travelMinutes: outboundTravelMinutes,
                 directNM: destination.directNM,
                 headwindKnots: outboundRouteWind?.outboundHeadwindKnots,
@@ -1277,6 +1300,8 @@ private struct FlightTimePlanningRows: View {
                 directionTitle: "RÜCKFLUG",
                 showsETOPSHeader: true,
                 stopCount: $returnStops,
+                flightAltitudeFeet:
+                    $returnFlightAltitudeFeet,
                 travelMinutes: returnTravelMinutes,
                 directNM: destination.directNM,
                 headwindKnots: returnRouteWind?.returnHeadwindKnots,
@@ -1400,6 +1425,7 @@ private struct FlightPlanningLine<
     let directionTitle: String
     let showsETOPSHeader: Bool
     @Binding var stopCount: Int
+    @Binding var flightAltitudeFeet: Int
     let travelMinutes: Int
     let directNM: Double
     let headwindKnots: Double?
@@ -1434,8 +1460,28 @@ private struct FlightPlanningLine<
 
     var body: some View {
         HStack(alignment: .top, spacing: 5) {
-            StopCountSelector(selection: $stopCount)
-                .frame(width: 98, height: 108)
+            VStack(spacing: 4) {
+                Picker(
+                    "Flughöhe",
+                    selection: $flightAltitudeFeet
+                ) {
+                    ForEach(
+                        [3000, 5000, 7000, 9000],
+                        id: \.self
+                    ) { altitude in
+                        Text("\(altitude) ft")
+                            .tag(altitude)
+                    }
+                }
+                .labelsHidden()
+                .controlSize(.small)
+                .frame(width: 96)
+                .help("Flughöhe für die Windberechnung")
+
+                StopCountSelector(selection: $stopCount)
+                    .frame(width: 98, height: 82)
+            }
+            .frame(width: 98, height: 108)
 
             VStack(spacing: 5) {
                 Text(directionTitle)

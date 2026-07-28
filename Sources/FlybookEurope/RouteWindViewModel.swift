@@ -6,13 +6,18 @@ final class RouteWindViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
 
-    func load(destination: Destination, plannedInstant: Date) async {
+    func load(
+        destination: Destination,
+        plannedInstant: Date,
+        altitudeFeet: Int
+    ) async {
         isLoading = true
         errorMessage = nil
         do {
             wind = try await RouteWindService.shared.wind(
                 for: destination,
-                plannedInstant: plannedInstant
+                plannedInstant: plannedInstant,
+                altitudeFeet: altitudeFeet
             )
         } catch {
             wind = nil

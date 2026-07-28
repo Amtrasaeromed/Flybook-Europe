@@ -98,13 +98,13 @@ struct TravelDurationBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
+        VStack(alignment: .leading, spacing: 7) {
             Text("EMPFOHLENE REISEDAUER")
                 .font(.headline)
                 .foregroundStyle(FlybookColor.navy)
 
             GeometryReader { geometry in
-                let barHeight: CGFloat = 17
+                let barHeight: CGFloat = 13
                 let barCenterY: CGFloat =
                     barHeight / 2.0
 
@@ -142,7 +142,7 @@ struct TravelDurationBar: View {
                             .fill(FlybookColor.line)
                             .frame(
                                 width: 1,
-                                height: 42
+                                height: 28
                             )
                             .offset(
                                 x: geometry.size.width
@@ -163,14 +163,14 @@ struct TravelDurationBar: View {
                                 lineWidth: 2
                             )
                         )
-                        .frame(width: 18, height: 35)
+                        .frame(width: 18, height: 29)
                         .position(
                             x: markerX,
                             y: barCenterY
                         )
                 }
             }
-            .frame(height: 60)
+            .frame(height: 42)
 
             HStack(spacing: 0) {
                 Text("Tagestrip")

@@ -5,7 +5,8 @@ actor RouteWindService {
 
     func wind(
         for destination: Destination,
-        plannedInstant: Date
+        plannedInstant: Date,
+        altitudeFeet: Int
     ) async throws -> RouteWind {
         guard
             let destinationLatitude = destination.latitude,
@@ -36,6 +37,7 @@ actor RouteWindService {
                     midpoint: midpoint,
                     course: course,
                     plannedInstant: plannedInstant,
+                    altitudeFeet: altitudeFeet,
                     model: "icon_d2"
                 )
             } catch {
@@ -43,6 +45,7 @@ actor RouteWindService {
                     midpoint: midpoint,
                     course: course,
                     plannedInstant: plannedInstant,
+                    altitudeFeet: altitudeFeet,
                     model: "icon_eu"
                 )
             }
@@ -52,6 +55,7 @@ actor RouteWindService {
             midpoint: midpoint,
             course: course,
             plannedInstant: plannedInstant,
+            altitudeFeet: altitudeFeet,
             model: "icon_eu"
         )
     }
@@ -60,6 +64,7 @@ actor RouteWindService {
         midpoint: (latitude: Double, longitude: Double),
         course: Double,
         plannedInstant: Date,
+        altitudeFeet: Int,
         model: String
     ) async throws -> RouteWind {
         let utc = TimeZone(secondsFromGMT: 0)!
@@ -143,13 +148,13 @@ actor RouteWindService {
 
         let lower = interpolateAltitude(
             index: bracket.lowerIndex,
-            targetHeightMeters: 1524.0,
+            targetHeightMeters: Double(altitudeFeet) * 0.3048,
             hourly: api.hourly
         )
 
         let upper = interpolateAltitude(
             index: bracket.upperIndex,
-            targetHeightMeters: 1524.0,
+            targetHeightMeters: Double(altitudeFeet) * 0.3048,
             hourly: api.hourly
         )
 
@@ -171,7 +176,7 @@ actor RouteWindService {
             validTime: plannedInstant,
             midpointLatitude: midpoint.latitude,
             midpointLongitude: midpoint.longitude,
-            altitudeFeet: 5000,
+            altitudeFeet: altitudeFeet,
             directionDegrees: direction,
             speedKnots: speed,
             outboundCourseDegrees: course
@@ -463,7 +468,7 @@ enum RouteWindError: LocalizedError {
         case .serverError:
             return "Der Winddienst ist derzeit nicht erreichbar."
         case .noForecast:
-            return "Für diesen Zeitpunkt liegt keine 5.000-ft-Windprognose vor."
+            return "Für diesen Zeitpunkt liegt keine Windprognose in der gewählten Flughöhe vor."
         }
     }
 }
