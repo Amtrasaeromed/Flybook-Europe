@@ -37,8 +37,124 @@
   "EDKA": {
     "display_name": "Aachen",
     "region_label": "Aachen / Dreiländereck",
-    "latitude": 50.8216667,
-    "longitude": 6.1841667,
+    "latitude": 50.823055,
+    "longitude": 6.186389,
     "region_image": ""
+  },
+  "EKVJ": {
+    "latitude": 55.990101,
+    "longitude": 8.35391
+  },
+  "EKSS": {
+    "latitude": 55.889073,
+    "longitude": 10.613766
+  },
+  "EKRN": {
+    "latitude": 55.063301,
+    "longitude": 14.7596
+  },
+  "EKSB": {
+    "latitude": 54.96440124511719,
+    "longitude": 9.791729927062988
+  },
+  "EKAE": {
+    "latitude": 54.852798,
+    "longitude": 10.4564
+  },
+  "EDWL": {
+    "latitude": 53.742379,
+    "longitude": 7.496345
+  },
+  "EHAL": {
+    "latitude": 53.453612,
+    "longitude": 5.678396
+  },
+  "LKKV": {
+    "latitude": 50.202999,
+    "longitude": 12.915
+  },
+  "LKCS": {
+    "latitude": 48.948171,
+    "longitude": 14.42832
+  },
+  "LFRF": {
+    "latitude": 48.883099,
+    "longitude": -1.56417
+  },
+  "LFGA": {
+    "latitude": 48.109901,
+    "longitude": 7.35901
+  },
+  "LOWS": {
+    "latitude": 47.793301,
+    "longitude": 13.0043
+  },
+  "LOIJ": {
+    "latitude": 47.5201,
+    "longitude": 12.4497
+  },
+  "LSZR": {
+    "latitude": 47.485001,
+    "longitude": 9.56077
+  },
+  "LOIH": {
+    "latitude": 47.384477,
+    "longitude": 9.699776
+  },
+  "LOWZ": {
+    "latitude": 47.291468,
+    "longitude": 12.790632
+  },
+  "LOWI": {
+    "latitude": 47.260201,
+    "longitude": 11.344
+  },
+  "LJMB": {
+    "latitude": 46.4799,
+    "longitude": 15.6861
+  },
+  "LIPB": {
+    "latitude": 46.459245,
+    "longitude": 11.326125
+  },
+  "LJBL": {
+    "latitude": 46.357201,
+    "longitude": 14.1739
+  },
+  "LSGS": {
+    "latitude": 46.219166,
+    "longitude": 7.326944
+  },
+  "LSZL": {
+    "latitude": 46.162535,
+    "longitude": 8.878908
+  },
+  "LIDT": {
+    "latitude": 46.023333,
+    "longitude": 11.125
+  },
+  "LSZA": {
+    "latitude": 46.004299,
+    "longitude": 8.91058
+  },
+  "LFLP": {
+    "latitude": 45.928947,
+    "longitude": 6.0987
+  },
+  "LIMW": {
+    "latitude": 45.738552,
+    "longitude": 7.3683
+  },
+  "LJPZ": {
+    "latitude": 45.47201,
+    "longitude": 13.615951
+  },
+  "LDRI": {
+    "latitude": 45.216376,
+    "longitude": 14.57085
+  },
+  "LDLO": {
+    "latitude": 44.566985,
+    "longitude": 14.393883
   }
 }

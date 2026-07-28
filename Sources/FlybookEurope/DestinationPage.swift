@@ -852,12 +852,18 @@ struct DestinationPage: View {
 
                 Divider()
 
-                ResourceImage(
-                    name: destination.regionalImageName,
-                    extensionName: "jpg",
-                    subdirectory: "regions",
-                    fallbackText: "REGIONALBILD FEHLT"
-                )
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("LUFTBILD FLUGPLATZ")
+                        .font(.title3.bold())
+                        .foregroundStyle(FlybookColor.navy)
+
+                    DestinationMapView(
+                        latitude: destination.latitude,
+                        longitude: destination.longitude,
+                        title: destination.icao,
+                        presentation: .airportAerial
+                    )
+                }
                 .frame(maxWidth: .infinity)
             }
         }

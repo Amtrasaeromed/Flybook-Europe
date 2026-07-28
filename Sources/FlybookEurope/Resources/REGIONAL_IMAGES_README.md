@@ -1,40 +1,20 @@
-# Regionalbilder
+# Karten und Flughafen-Luftbilder
 
-Die App lädt Regionalbilder aus:
+Die Zielseite erzeugt beide Darstellungen nativ mit Apple MapKit:
 
-`Sources/FlybookEurope/Resources/regions/`
+- links eine Europakarte mit markiertem Ziel
+- rechts ein eng gezoomtes Satellitenbild des jeweiligen Flugplatzes
 
-## Standardbenennung
+Die Luftbilder werden nicht im Projekt gespeichert. MapKit lädt sie bei Bedarf
+über Apple Maps; deshalb ist für die Satellitenansicht eine Internetverbindung
+erforderlich. Ein API-Schlüssel ist nicht notwendig.
 
-Für jedes Ziel reicht eine JPG-Datei mit dem ICAO-Code als Dateiname:
+Die Koordinaten aller 35 ICAO-Ziele stehen in `destination_data.json`. Die
+ergänzten Flughafenkoordinaten stammen aus dem Public-Domain-Datensatz von
+OurAirports:
 
-- `EHTX.jpg`
-- `EHMZ.jpg`
-- `LOWZ.jpg`
+`https://ourairports.com/data/`
 
-Empfohlen:
-
-- Querformat
-- Seitenverhältnis ungefähr 4:3 oder 3:2
-- mindestens 1600 × 1000 Pixel
-- keine eingeblendeten Logos oder Texte
-- Motiv soll Region und Reiseziel zeigen, nicht nur das Flughafengebäude
-
-## Abweichender Dateiname
-
-In `destination_data.json` kann über `region_image` ein anderer Dateiname
-hinterlegt werden.
-
-Beispiel:
-
-```json
-"EHMZ": {
-  "region_image": "regions/midden-zeeland.jpg"
-}
-```
-
-`MISSING_REGIONAL_IMAGES.txt` enthält alle ICAO-Codes, für die aktuell noch
-kein Bild im Ressourcenordner vorhanden ist.
-
-Die Europakarte wird nicht mehr als Bilddatei benötigt. Sie wird automatisch
-mit MapKit aus den Zielkoordinaten erzeugt.
+Der bisherige Ordner `Resources/regions/` bleibt aus Gründen der
+Rückwärtskompatibilität bestehen, wird in der aktuellen Zielansicht aber nicht
+mehr für das rechte Bildfeld verwendet.

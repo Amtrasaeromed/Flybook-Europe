@@ -1,14 +1,23 @@
 import SwiftUI
 import MapKit
 
+enum DestinationMapPresentation {
+    case europe
+    case airportAerial
+}
+
 struct DestinationMapView: NSViewRepresentable {
     let latitude: Double?
     let longitude: Double?
     let title: String
+    var presentation: DestinationMapPresentation = .europe
 
     func makeNSView(context: Context) -> MKMapView {
         let map = MKMapView()
-        map.mapType = .mutedStandard
+        map.mapType =
+            presentation == .airportAerial
+                ? .satellite
+                : .mutedStandard
         map.showsCompass = false
         map.showsScale = false
         map.isZoomEnabled = true
@@ -49,17 +58,25 @@ struct DestinationMapView: NSViewRepresentable {
             longitude: longitude
         )
 
-        let annotation = MKPointAnnotation()
-        annotation.coordinate = coordinate
-        annotation.title = title
-        map.addAnnotation(annotation)
+        if presentation == .europe {
+            let annotation = MKPointAnnotation()
+            annotation.coordinate = coordinate
+            annotation.title = title
+            map.addAnnotation(annotation)
+        }
 
         map.setRegion(
             MKCoordinateRegion(
                 center: coordinate,
                 span: MKCoordinateSpan(
-                    latitudeDelta: 8,
-                    longitudeDelta: 12
+                    latitudeDelta:
+                        presentation == .airportAerial
+                            ? 0.025
+                            : 8,
+                    longitudeDelta:
+                        presentation == .airportAerial
+                            ? 0.04
+                            : 12
                 )
             ),
             animated: false
