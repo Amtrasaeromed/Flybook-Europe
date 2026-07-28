@@ -10,6 +10,8 @@ enum TimeDisplayMode: String, CaseIterable, Identifiable {
 
 struct DestinationPage: View {
     let destination: Destination
+    let availableOrigins: [AirportReference]
+    @State private var selectedOriginICAO = "EDFZ"
     @StateObject private var weatherModel = WeatherViewModel()
     @StateObject private var outboundRouteWindModel = RouteWindViewModel()
     @StateObject private var returnRouteWindModel = RouteWindViewModel()
@@ -46,6 +48,20 @@ struct DestinationPage: View {
     @AppStorage(AircraftSettingsKey.selectedAircraft)
     private var selectedAircraftRaw =
         AircraftType.a211.rawValue
+
+    private var selectedOrigin: AirportReference {
+        availableOrigins.first {
+            $0.icao.caseInsensitiveCompare(selectedOriginICAO)
+                == .orderedSame
+        } ?? .edfz
+    }
+
+    private var routeDirectNM: Double {
+        AirportDistance.nauticalMiles(
+            from: selectedOrigin,
+            to: destination
+        )
+    }
 
     private var selectedAircraft: AircraftType {
         AircraftType(rawValue: selectedAircraftRaw)
@@ -136,6 +152,7 @@ struct DestinationPage: View {
         .task(id: outboundWindTaskID) {
             await outboundRouteWindModel.load(
                 destination: destination,
+                origin: selectedOrigin,
                 plannedInstant:
                     outboundWindForecastInstant,
                 altitudeFeet:
@@ -145,6 +162,7 @@ struct DestinationPage: View {
         .task(id: returnWindTaskID) {
             await returnRouteWindModel.load(
                 destination: destination,
+                origin: selectedOrigin,
                 plannedInstant:
                     returnWindForecastInstant,
                 altitudeFeet:
@@ -153,12 +171,14 @@ struct DestinationPage: View {
         }
         .task(id: outboundEDFZWeatherTaskID) {
             await outboundEDFZWeatherModel.load(
-                plannedDate: outboundFlightDate
+                plannedDate: outboundFlightDate,
+                airport: selectedOrigin
             )
         }
         .task(id: returnEDFZWeatherTaskID) {
             await returnEDFZWeatherModel.load(
-                plannedDate: returnFlightDate
+                plannedDate: returnFlightDate,
+                airport: selectedOrigin
             )
         }
     }
@@ -178,11 +198,11 @@ struct DestinationPage: View {
     }
 
     private var outboundEDFZWeatherTaskID: String {
-        dateTaskID(prefix: "out-edfz", date: outboundFlightDate)
+        dateTaskID(prefix: "out-\(selectedOrigin.icao)", date: outboundFlightDate)
     }
 
     private var returnEDFZWeatherTaskID: String {
-        dateTaskID(prefix: "ret-edfz", date: returnFlightDate)
+        dateTaskID(prefix: "ret-\(selectedOrigin.icao)", date: returnFlightDate)
     }
 
     private var weatherTaskID: String {
@@ -211,18 +231,18 @@ struct DestinationPage: View {
             "\(prefix)-\(destination.icao)-"
             + "\(fiveMinuteBucket)-"
             + selectedAircraftRaw
-            + "-\(altitudeFeet)"
+            + "-\(selectedOrigin.icao)-\(altitudeFeet)"
     }
 
     private var displayTimeZone: TimeZone {
         timeDisplayMode == .utc
             ? TimeZone(secondsFromGMT: 0)!
-            : DestinationTimeZone.edfz
+            : selectedOrigin.timeZone
     }
 
     private var outboundTravelMinutesForWeather: Int {
         FlightMath.adjustedMinutes(
-            directNM: destination.directNM,
+            directNM: routeDirectNM,
             stopCount: outboundStops,
             headwindKnots: outboundRouteWindModel.wind?.outboundHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
@@ -233,7 +253,7 @@ struct DestinationPage: View {
 
     private var returnTravelMinutesForWeather: Int {
         FlightMath.adjustedMinutes(
-            directNM: destination.directNM,
+            directNM: routeDirectNM,
             stopCount: returnStops,
             headwindKnots:
                 returnRouteWindModel.wind?
@@ -367,7 +387,7 @@ struct DestinationPage: View {
 
     private var headerSubtitle: String {
         let elevation = Int(destination.elevationFeet.rounded())
-        let distance = Int(destination.directNM.rounded())
+        let distance = Int(routeDirectNM.rounded())
         return "\(destination.icao)  ·  "
             + "\(countryFlag(destination.country))  ·  "
             + "\(destination.region.uppercased())  ·  "
@@ -447,6 +467,19 @@ struct DestinationPage: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
 
+                    Picker(
+                        "Abflugort",
+                        selection: $selectedOriginICAO
+                    ) {
+                        ForEach(availableOrigins) { airport in
+                            Text("\(airport.icao) · \(airport.name)")
+                                .tag(airport.icao)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 215)
+                    .help("Abflugort für alle Berechnungen")
+
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 5) {
@@ -512,6 +545,8 @@ struct DestinationPage: View {
                             .pressureMSLHPA
                             .map { Int($0.rounded()) },
                     destination: destination,
+                    origin: selectedOrigin,
+                    directNM: routeDirectNM,
                     destinationTimeZone:
                         DestinationTimeZone.value(
                             for: destination,
@@ -533,7 +568,7 @@ struct DestinationPage: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
                 .foregroundStyle(FlybookColor.navy)
 
             DatePicker(
@@ -558,7 +593,7 @@ struct DestinationPage: View {
                 CalculationRow(
                     title: "HINFLUG",
                     stopCount: outboundStops,
-                    directNM: destination.directNM,
+                    directNM: routeDirectNM,
                     headwindKnots:
                         outboundRouteWindModel.wind?
                             .outboundHeadwindKnots,
@@ -587,7 +622,7 @@ struct DestinationPage: View {
                 CalculationRow(
                     title: "RÜCKFLUG",
                     stopCount: returnStops,
-                    directNM: destination.directNM,
+                    directNM: routeDirectNM,
                     headwindKnots:
                         returnRouteWindModel.wind?
                             .returnHeadwindKnots,
@@ -616,7 +651,7 @@ struct DestinationPage: View {
                 CalculationTotalRow(
                     outboundStopCount: outboundStops,
                     returnStopCount: returnStops,
-                    directNM: destination.directNM,
+                    directNM: routeDirectNM,
                     outboundHeadwindKnots:
                         outboundRouteWindModel.wind?
                             .outboundHeadwindKnots,
@@ -656,10 +691,10 @@ struct DestinationPage: View {
 
                 let oldZone = timeDisplayMode == .utc
                     ? TimeZone(secondsFromGMT: 0)!
-                    : DestinationTimeZone.edfz
+                    : selectedOrigin.timeZone
                 let newZone = newMode == .utc
                     ? TimeZone(secondsFromGMT: 0)!
-                    : DestinationTimeZone.edfz
+                    : selectedOrigin.timeZone
 
                 outboundStartText = convertedClock(
                     outboundStartText,
@@ -855,7 +890,10 @@ struct DestinationPage: View {
                     DestinationMapView(
                         latitude: destination.latitude,
                         longitude: destination.longitude,
-                        title: destination.name
+                        title: destination.name,
+                        originLatitude: selectedOrigin.latitude,
+                        originLongitude: selectedOrigin.longitude,
+                        originTitle: selectedOrigin.icao
                     )
                 }
                 .frame(maxWidth: .infinity)
@@ -1087,6 +1125,8 @@ private struct FlightTimePlanningRows: View {
     let outboundDestinationPressureMbar: Int?
     let returnDestinationPressureMbar: Int?
     let destination: Destination
+    let origin: AirportReference
+    let directNM: Double
     let destinationTimeZone: TimeZone
     let timeDisplayMode: TimeDisplayMode
     let tankStopMinutes: Int
@@ -1095,12 +1135,12 @@ private struct FlightTimePlanningRows: View {
     private var displayTimeZone: TimeZone {
         timeDisplayMode == .utc
             ? TimeZone(secondsFromGMT: 0)!
-            : DestinationTimeZone.edfz
+            : origin.timeZone
     }
 
     private var outboundTravelMinutes: Int {
         FlightMath.adjustedMinutes(
-            directNM: destination.directNM,
+            directNM: directNM,
             stopCount: outboundStops,
             headwindKnots: outboundRouteWind?.outboundHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
@@ -1111,7 +1151,7 @@ private struct FlightTimePlanningRows: View {
 
     private var returnTravelMinutes: Int {
         FlightMath.adjustedMinutes(
-            directNM: destination.directNM,
+            directNM: directNM,
             stopCount: returnStops,
             headwindKnots: returnRouteWind?.returnHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
@@ -1159,9 +1199,9 @@ private struct FlightTimePlanningRows: View {
     private var outboundStartCondition: LightCondition {
         SolarCalculator.lightCondition(
             at: outboundStartInstant,
-            latitude: FlightDateTime.edfzLatitude,
-            longitude: FlightDateTime.edfzLongitude,
-            timeZone: DestinationTimeZone.edfz
+            latitude: origin.latitude,
+            longitude: origin.longitude,
+            timeZone: origin.timeZone
         )
     }
 
@@ -1186,9 +1226,9 @@ private struct FlightTimePlanningRows: View {
     private var homeArrivalCondition: LightCondition {
         SolarCalculator.lightCondition(
             at: homeArrivalInstant,
-            latitude: FlightDateTime.edfzLatitude,
-            longitude: FlightDateTime.edfzLongitude,
-            timeZone: DestinationTimeZone.edfz
+            latitude: origin.latitude,
+            longitude: origin.longitude,
+            timeZone: origin.timeZone
         )
     }
 
@@ -1233,7 +1273,7 @@ private struct FlightTimePlanningRows: View {
                 flightAltitudeFeet:
                     $outboundFlightAltitudeFeet,
                 travelMinutes: outboundTravelMinutes,
-                directNM: destination.directNM,
+                directNM: directNM,
                 headwindKnots: outboundRouteWind?.outboundHeadwindKnots,
                 tankStopMinutes: tankStopMinutes,
                 cruiseGroundSpeedKnots:
@@ -1241,16 +1281,16 @@ private struct FlightTimePlanningRows: View {
                 leadingSunriseText:
                     sunTexts(
                         at: outboundStartInstant,
-                        latitude: FlightDateTime.edfzLatitude,
-                        longitude: FlightDateTime.edfzLongitude,
-                        timeZone: DestinationTimeZone.edfz
+                        latitude: origin.latitude,
+                        longitude: origin.longitude,
+                        timeZone: origin.timeZone
                     ).0,
                 leadingSunsetText:
                     sunTexts(
                         at: outboundStartInstant,
-                        latitude: FlightDateTime.edfzLatitude,
-                        longitude: FlightDateTime.edfzLongitude,
-                        timeZone: DestinationTimeZone.edfz
+                        latitude: origin.latitude,
+                        longitude: origin.longitude,
+                        timeZone: origin.timeZone
                     ).1,
                 leadingPressureMbar:
                     outboundAirportSample?.pressureMSLHPA
@@ -1273,12 +1313,13 @@ private struct FlightTimePlanningRows: View {
                     outboundDestinationPressureMbar,
                 leading: {
                     EditableFlightTimeField(
-                        title: "START EDFZ",
+                        title: "ABFLUG \(origin.icao)",
                         text: $outboundStartText,
                         symbol: "airplane.departure",
                         lightCondition:
                             outboundStartCondition,
-                        airportWeather: outboundAirportSample
+                        airportWeather: outboundAirportSample,
+                        showsRunway: origin.icao == "EDFZ"
                     )
                 },
                 trailing: {
@@ -1307,7 +1348,7 @@ private struct FlightTimePlanningRows: View {
                 flightAltitudeFeet:
                     $returnFlightAltitudeFeet,
                 travelMinutes: returnTravelMinutes,
-                directNM: destination.directNM,
+                directNM: directNM,
                 headwindKnots: returnRouteWind?.returnHeadwindKnots,
                 tankStopMinutes: tankStopMinutes,
                 cruiseGroundSpeedKnots:
@@ -1331,16 +1372,16 @@ private struct FlightTimePlanningRows: View {
                 trailingSunriseText:
                     sunTexts(
                         at: homeArrivalInstant,
-                        latitude: FlightDateTime.edfzLatitude,
-                        longitude: FlightDateTime.edfzLongitude,
-                        timeZone: DestinationTimeZone.edfz
+                        latitude: origin.latitude,
+                        longitude: origin.longitude,
+                        timeZone: origin.timeZone
                     ).0,
                 trailingSunsetText:
                     sunTexts(
                         at: homeArrivalInstant,
-                        latitude: FlightDateTime.edfzLatitude,
-                        longitude: FlightDateTime.edfzLongitude,
-                        timeZone: DestinationTimeZone.edfz
+                        latitude: origin.latitude,
+                        longitude: origin.longitude,
+                        timeZone: origin.timeZone
                     ).1,
                 trailingPressureMbar:
                     homeArrivalAirportSample?.pressureMSLHPA
@@ -1361,12 +1402,13 @@ private struct FlightTimePlanningRows: View {
                 },
                 trailing: {
                     EditableFlightTimeField(
-                        title: "LANDUNG EDFZ",
+                        title: "ANKUNFT \(origin.icao)",
                         text: $desiredHomeArrivalText,
                         symbol: "airplane.arrival",
                         lightCondition:
                             homeArrivalCondition,
-                        airportWeather: homeArrivalAirportSample
+                        airportWeather: homeArrivalAirportSample,
+                        showsRunway: origin.icao == "EDFZ"
                     )
                 }
             )
@@ -1484,6 +1526,7 @@ private struct FlightPlanningLine<
                 .controlSize(.small)
                 .frame(width: 96)
                 .help("Flughöhe für die Windberechnung")
+                .padding(.top, 8)
             }
             .frame(width: 98, height: 138)
 
@@ -2111,6 +2154,7 @@ private struct EditableFlightTimeField: View {
     let symbol: String
     let lightCondition: LightCondition
     let airportWeather: EDFZWeatherSample?
+    let showsRunway: Bool
 
     @State private var isTimeEditorPresented = false
     @State private var selectedHour = 9
@@ -2206,24 +2250,49 @@ private struct EditableFlightTimeField: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
 
-            EDFZRunwayPressureRow(sample: airportWeather)
+            EDFZRunwayPressureRow(
+                sample: airportWeather,
+                showsRunway: showsRunway
+            )
         }
         .foregroundStyle(FlybookColor.navy)
     }
 }
 
 
+private enum AviationWindText {
+    static func format(
+        direction: Double?,
+        speed: Double?,
+        gust: Double?
+    ) -> String {
+        guard let direction, let speed else {
+            return "---°/--G--"
+        }
+        var roundedDirection = Int(direction.rounded()) % 360
+        if roundedDirection == 0 && direction > 0 {
+            roundedDirection = 360
+        }
+        let roundedSpeed = max(0, Int(speed.rounded()))
+        let roundedGust = max(0, Int((gust ?? 0).rounded()))
+        return String(
+            format: "%03d°/%02dG%02d",
+            roundedDirection,
+            roundedSpeed,
+            roundedGust
+        )
+    }
+}
+
 private struct EDFZRunwayPressureRow: View {
     let sample: EDFZWeatherSample?
+    let showsRunway: Bool
 
     private var runway: String {
-        guard
-            let direction = sample?.windDirectionDegrees,
-            let speed = sample?.windSpeedKnots,
-            speed >= 0.5
-        else {
-            return "—"
-        }
+        guard let direction = sample?.windDirectionDegrees,
+              let speed = sample?.windSpeedKnots,
+              speed >= 0.5
+        else { return "—" }
         return EDFZRunway.activeRunway(
             windFromDegrees: direction,
             speedKnots: speed
@@ -2231,38 +2300,36 @@ private struct EDFZRunwayPressureRow: View {
     }
 
     private var wind: String {
-        guard
-            let rawDirection = sample?.windDirectionDegrees,
-            let rawSpeed = sample?.windSpeedKnots
-        else {
-            return "—/—"
-        }
-
-        var direction = Int(rawDirection.rounded()) % 360
-        if direction == 0 && rawDirection > 0 {
-            direction = 360
-        }
-        let speed = max(0, Int(rawSpeed.rounded()))
-        return "\(direction)/\(speed)"
+        AviationWindText.format(
+            direction: sample?.windDirectionDegrees,
+            speed: sample?.windSpeedKnots,
+            gust: sample?.windGustKnots
+        )
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 5) {
-                Image(systemName: "road.lanes")
-                    .font(.system(size: 16, weight: .bold))
-                Text(runway)
-                    .font(.system(size: 15, weight: .bold))
+        HStack(spacing: 10) {
+            if showsRunway {
+                HStack(spacing: 4) {
+                    Image(systemName: "road.lanes")
+                    Text(runway)
+                }
+                .font(.system(size: 16, weight: .bold))
             }
-            .foregroundStyle(FlybookColor.navy)
 
             Text(wind)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundStyle(FlybookColor.muted)
+                .font(
+                    .system(
+                        size: 16,
+                        weight: .bold,
+                        design: .monospaced
+                    )
+                )
                 .lineLimit(1)
         }
-        .frame(width: 174, height: 22, alignment: .center)
-        .help("Aktive Piste und prognostizierter Wind in Grad/Knoten")
+        .foregroundStyle(FlybookColor.navy)
+        .frame(width: 174, height: 24, alignment: .center)
+        .help("Wind: Richtung, Stärke und Böen in Knoten")
     }
 }
 
@@ -2485,32 +2552,12 @@ private struct LiveWeatherColumn: View {
     }
 
     private var classicWindText: String {
-        let direction = Int(
-            day.surfaceWind.directionDegrees ?? 0
-                .rounded()
+        AviationWindText.format(
+            direction: day.surfaceWind.directionDegrees,
+            speed: day.surfaceWind.speedKnots,
+            gust: day.windGustKnots
         )
-        let speed = Int(
-            day.surfaceWind.speedKnots ?? 0
-                .rounded()
-        )
-        let gust = Int(
-            day.windGustKnots ?? 0
-                .rounded()
-        )
-
-        let directionText = String(
-            format: "%03d",
-            direction
-        )
-
-        if gust > speed {
-            return "\(directionText)/\(speed) gust \(gust)"
-        }
-
-        return "\(directionText)/\(speed)"
     }
-
-
 
     private var densityAltitudeSummary: some View {
         HStack {

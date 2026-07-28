@@ -8,6 +8,7 @@ final class RouteWindViewModel: ObservableObject {
 
     func load(
         destination: Destination,
+        origin: AirportReference,
         plannedInstant: Date,
         altitudeFeet: Int
     ) async {
@@ -16,6 +17,7 @@ final class RouteWindViewModel: ObservableObject {
         do {
             wind = try await RouteWindService.shared.wind(
                 for: destination,
+                origin: origin,
                 plannedInstant: plannedInstant,
                 altitudeFeet: altitudeFeet
             )

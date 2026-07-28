@@ -5,6 +5,7 @@ actor RouteWindService {
 
     func wind(
         for destination: Destination,
+        origin: AirportReference,
         plannedInstant: Date,
         altitudeFeet: Int
     ) async throws -> RouteWind {
@@ -16,15 +17,15 @@ actor RouteWindService {
         }
 
         let midpoint = WindMath.midpoint(
-            latitude1: FlightDateTime.edfzLatitude,
-            longitude1: FlightDateTime.edfzLongitude,
+            latitude1: origin.latitude,
+            longitude1: origin.longitude,
             latitude2: destinationLatitude,
             longitude2: destinationLongitude
         )
 
         let course = WindMath.initialBearing(
-            latitude1: FlightDateTime.edfzLatitude,
-            longitude1: FlightDateTime.edfzLongitude,
+            latitude1: origin.latitude,
+            longitude1: origin.longitude,
             latitude2: destinationLatitude,
             longitude2: destinationLongitude
         )

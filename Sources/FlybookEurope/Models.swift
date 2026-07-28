@@ -1,6 +1,45 @@
 import Foundation
 import CoreGraphics
 
+struct AirportReference: Identifiable, Hashable {
+    var id: String { icao }
+    let icao: String
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    let elevationFeet: Double
+    let timeZone: TimeZone
+
+    static let edfz = AirportReference(
+        icao: "EDFZ",
+        name: "Mainz-Finthen",
+        latitude: FlightDateTime.edfzLatitude,
+        longitude: FlightDateTime.edfzLongitude,
+        elevationFeet: 760,
+        timeZone: DestinationTimeZone.edfz
+    )
+}
+
+enum AirportDistance {
+    static func nauticalMiles(
+        from origin: AirportReference,
+        to destination: Destination
+    ) -> Double {
+        guard let latitude = destination.latitude,
+              let longitude = destination.longitude
+        else { return destination.directNM }
+        let radiusNM = 3440.065
+        let lat1 = origin.latitude * .pi / 180
+        let lat2 = latitude * .pi / 180
+        let deltaLat = (latitude - origin.latitude) * .pi / 180
+        let deltaLon = (longitude - origin.longitude) * .pi / 180
+        let value = sin(deltaLat / 2) * sin(deltaLat / 2)
+            + cos(lat1) * cos(lat2)
+            * sin(deltaLon / 2) * sin(deltaLon / 2)
+        return radiusNM * 2 * atan2(sqrt(value), sqrt(1 - value))
+    }
+}
+
 struct FlightTimes: Hashable {
     let nonstopMinutes: Int
     let oneStopMinutes: Int

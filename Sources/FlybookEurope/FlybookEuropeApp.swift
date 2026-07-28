@@ -52,7 +52,24 @@ struct FlybookEuropeApp: App {
                 {
                     DestinationPage(
                         destination:
-                            store.destinations[selectedIndex]
+                            store.destinations[selectedIndex],
+                        availableOrigins: [.edfz]
+                            + store.destinations.compactMap { airport in
+                                guard let latitude = airport.latitude,
+                                      let longitude = airport.longitude
+                                else { return nil }
+                                return AirportReference(
+                                    icao: airport.icao,
+                                    name: airport.name,
+                                    latitude: latitude,
+                                    longitude: longitude,
+                                    elevationFeet: airport.elevationFeet,
+                                    timeZone: DestinationTimeZone.value(
+                                        for: airport,
+                                        weatherTimeZone: nil
+                                    )
+                                )
+                            }
                     )
                 } else {
                     VStack(spacing: 14) {

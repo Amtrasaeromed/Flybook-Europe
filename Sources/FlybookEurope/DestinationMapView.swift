@@ -92,22 +92,35 @@ struct DestinationMapView: NSViewRepresentable {
     let latitude: Double?
     let longitude: Double?
     let title: String
+    var originLatitude: Double? = nil
+    var originLongitude: Double? = nil
+    var originTitle: String? = nil
     var presentation: DestinationMapPresentation = .europe
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var displayedLocationKey: String?
+        var routeOverlay: MKPolyline?
 
         func mapView(
             _ mapView: MKMapView,
             rendererFor overlay: MKOverlay
         ) -> MKOverlayRenderer {
+            if let route = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: route)
+                renderer.strokeColor = NSColor(
+                    red: 0.02,
+                    green: 0.20,
+                    blue: 0.38,
+                    alpha: 0.9
+                )
+                renderer.lineWidth = 3
+                return renderer
+            }
+
             guard let tileOverlay = overlay as? MKTileOverlay else {
                 return MKOverlayRenderer(overlay: overlay)
             }
-
-            return MKTileOverlayRenderer(
-                tileOverlay: tileOverlay
-            )
+            return MKTileOverlayRenderer(tileOverlay: tileOverlay)
         }
     }
 
@@ -135,7 +148,9 @@ struct DestinationMapView: NSViewRepresentable {
         let locationKey =
             "\(presentation)-"
             + "\(latitude ?? 999)-"
-            + "\(longitude ?? 999)"
+            + "\(longitude ?? 999)-"
+            + "\(originLatitude ?? 999)-"
+            + "\(originLongitude ?? 999)"
 
         guard
             context.coordinator.displayedLocationKey
@@ -147,6 +162,10 @@ struct DestinationMapView: NSViewRepresentable {
         context.coordinator.displayedLocationKey =
             locationKey
         map.removeAnnotations(map.annotations)
+        if let route = context.coordinator.routeOverlay {
+            map.removeOverlay(route)
+            context.coordinator.routeOverlay = nil
+        }
 
         guard
             let latitude,
@@ -174,10 +193,29 @@ struct DestinationMapView: NSViewRepresentable {
         )
 
         if presentation == .europe {
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = coordinate
-            annotation.title = title
-            map.addAnnotation(annotation)
+            let destinationAnnotation = MKPointAnnotation()
+            destinationAnnotation.coordinate = coordinate
+            destinationAnnotation.title = title
+            map.addAnnotation(destinationAnnotation)
+
+            if let originLatitude, let originLongitude {
+                let originCoordinate = CLLocationCoordinate2D(
+                    latitude: originLatitude,
+                    longitude: originLongitude
+                )
+                let originAnnotation = MKPointAnnotation()
+                originAnnotation.coordinate = originCoordinate
+                originAnnotation.title = originTitle
+                map.addAnnotation(originAnnotation)
+
+                var coordinates = [originCoordinate, coordinate]
+                let route = MKPolyline(
+                    coordinates: &coordinates,
+                    count: coordinates.count
+                )
+                context.coordinator.routeOverlay = route
+                map.addOverlay(route, level: .aboveRoads)
+            }
         }
 
         map.setRegion(
@@ -196,6 +234,19 @@ struct DestinationMapView: NSViewRepresentable {
             ),
             animated: false
         )
+
+        if let route = context.coordinator.routeOverlay {
+            map.setVisibleMapRect(
+                route.boundingMapRect,
+                edgePadding: NSEdgeInsets(
+                    top: 55,
+                    left: 55,
+                    bottom: 55,
+                    right: 55
+                ),
+                animated: false
+            )
+        }
     }
 
     private func configureAppearance(

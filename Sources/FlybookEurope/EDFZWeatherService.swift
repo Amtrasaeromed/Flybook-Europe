@@ -4,6 +4,7 @@ struct EDFZWeatherSample: Hashable {
     let validTime: Date
     let windDirectionDegrees: Double?
     let windSpeedKnots: Double?
+    let windGustKnots: Double?
     let pressureMSLHPA: Double?
 }
 
@@ -54,12 +55,12 @@ enum EDFZRunway {
 actor EDFZWeatherService {
     static let shared = EDFZWeatherService()
 
-    private let latitude = 49.9675
-    private let longitude = 8.1472
-
-    func forecast(plannedDate: Date) async throws -> EDFZForecast {
+    func forecast(
+        plannedDate: Date,
+        airport: AirportReference
+    ) async throws -> EDFZForecast {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "Europe/Berlin")!
+        calendar.timeZone = airport.timeZone
         let formatter = DateFormatter()
         formatter.calendar = calendar
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -71,16 +72,19 @@ actor EDFZWeatherService {
             string: "https://api.open-meteo.com/v1/dwd-icon"
         )
         components?.queryItems = [
-            URLQueryItem(name: "latitude", value: String(latitude)),
-            URLQueryItem(name: "longitude", value: String(longitude)),
-            URLQueryItem(name: "timezone", value: "Europe/Berlin"),
+            URLQueryItem(name: "latitude", value: String(airport.latitude)),
+            URLQueryItem(name: "longitude", value: String(airport.longitude)),
+            URLQueryItem(
+                name: "timezone",
+                value: airport.timeZone.identifier
+            ),
             URLQueryItem(name: "start_date", value: day),
             URLQueryItem(name: "end_date", value: day),
-            URLQueryItem(name: "models", value: "icon_d2"),
+            URLQueryItem(name: "models", value: "icon_seamless"),
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
-                value: "wind_speed_10m,wind_direction_10m,pressure_msl"
+                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl"
             )
         ]
         guard let url = components?.url else {
@@ -105,6 +109,7 @@ actor EDFZWeatherService {
                 validTime: time,
                 windDirectionDegrees: value(decoded.hourly.windDirection10m, index),
                 windSpeedKnots: value(decoded.hourly.windSpeed10m, index),
+                windGustKnots: value(decoded.hourly.windGusts10m, index),
                 pressureMSLHPA: value(decoded.hourly.pressureMSL, index)
             )
         }
@@ -125,12 +130,14 @@ private struct Hourly: Decodable {
     let time: [String]
     let windSpeed10m: [Double?]
     let windDirection10m: [Double?]
+    let windGusts10m: [Double?]
     let pressureMSL: [Double?]
 
     enum CodingKeys: String, CodingKey {
         case time
         case windSpeed10m = "wind_speed_10m"
         case windDirection10m = "wind_direction_10m"
+        case windGusts10m = "wind_gusts_10m"
         case pressureMSL = "pressure_msl"
     }
 }
