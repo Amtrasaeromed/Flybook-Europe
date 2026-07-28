@@ -146,7 +146,8 @@ struct DestinationPage: View {
         .task(id: weatherTaskID) {
             await weatherModel.load(
                 destination: destination,
-                targetInstants: weatherTargetInstants
+                targetInstants: weatherTargetInstants,
+                forceRefresh: true
             )
         }
         .task(id: outboundWindTaskID) {
@@ -455,6 +456,35 @@ struct DestinationPage: View {
         return String(String.UnicodeScalarView(scalars))
     }
 
+    private func refreshWeather() {
+        Task {
+            await weatherModel.load(
+                destination: destination,
+                targetInstants: weatherTargetInstants
+            )
+            await outboundRouteWindModel.load(
+                destination: destination,
+                origin: selectedOrigin,
+                plannedInstant: outboundWindForecastInstant,
+                altitudeFeet: outboundFlightAltitudeFeet
+            )
+            await returnRouteWindModel.load(
+                destination: destination,
+                origin: selectedOrigin,
+                plannedInstant: returnWindForecastInstant,
+                altitudeFeet: returnFlightAltitudeFeet
+            )
+            await outboundEDFZWeatherModel.load(
+                plannedDate: outboundFlightDate,
+                airport: selectedOrigin
+            )
+            await returnEDFZWeatherModel.load(
+                plannedDate: returnFlightDate,
+                airport: selectedOrigin
+            )
+        }
+    }
+
     private var flightSection: some View {
         FlybookCard {
             VStack(spacing: 18) {
@@ -495,34 +525,9 @@ struct DestinationPage: View {
 
                 Divider()
 
-                HStack(spacing: 14) {
-                    compactDatePicker(
-                        title: "HINFLUG",
-                        selection: $outboundFlightDate
-                    )
-
-                    compactDatePicker(
-                        title: "RÜCKFLUG",
-                        selection: $returnFlightDate
-                    )
-
-                    Button("Heute") {
-                        let today =
-                            Calendar.current.startOfDay(
-                                for: Date()
-                            )
-                        outboundFlightDate = today
-                        returnFlightDate = today
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-
-                Divider()
-
                 FlightTimePlanningRows(
-                    outboundFlightDate: outboundFlightDate,
-                    returnFlightDate: returnFlightDate,
+                    outboundFlightDate: $outboundFlightDate,
+                    returnFlightDate: $returnFlightDate,
                     outboundStartText: $outboundStartText,
                     desiredHomeArrivalText: $desiredHomeArrivalText,
                     outboundStops: $outboundStops,
@@ -559,34 +564,14 @@ struct DestinationPage: View {
                     timeDisplayMode: timeDisplayMode,
                     tankStopMinutes: tankStopMinutes,
                     cruiseGroundSpeedKnots:
-                        cruiseGroundSpeedKnots
+                        cruiseGroundSpeedKnots,
+                    refreshWeather: refreshWeather
                 )
             }
             .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
-
-    private func compactDatePicker(
-        title: String,
-        selection: Binding<Date>
-    ) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 16, weight: .bold, design: .monospaced))
-                .foregroundStyle(FlybookColor.navy)
-
-            DatePicker(
-                "",
-                selection: selection,
-                displayedComponents: .date
-            )
-            .labelsHidden()
-            .datePickerStyle(.field)
-            .controlSize(.regular)
-            .frame(width: 126)
-        }
-    }
 
     private var calculationSection: some View {
         FlybookCard {
@@ -1326,9 +1311,8 @@ private struct PlanningWeatherCard: View {
 }
 
 private struct FlightTimePlanningRows: View {
-    let outboundFlightDate: Date
-    let returnFlightDate: Date
-
+    @Binding var outboundFlightDate: Date
+    @Binding var returnFlightDate: Date
     @Binding var outboundStartText: String
     @Binding var desiredHomeArrivalText: String
     @Binding var outboundStops: Int
@@ -1352,6 +1336,7 @@ private struct FlightTimePlanningRows: View {
     let timeDisplayMode: TimeDisplayMode
     let tankStopMinutes: Int
     let cruiseGroundSpeedKnots: Double
+    let refreshWeather: () -> Void
 
     private var displayTimeZone: TimeZone {
         timeDisplayMode == .utc
@@ -1503,6 +1488,9 @@ private struct FlightTimePlanningRows: View {
         VStack(spacing: 0) {
             FlightPlanningLine(
                 directionTitle: "HINFLUG",
+                flightDate: $outboundFlightDate,
+                showsRefreshButton: true,
+                refreshWeather: refreshWeather,
                 showsETOPSHeader: true,
                 stopCount: $outboundStops,
                 flightAltitudeFeet:
@@ -1582,6 +1570,9 @@ private struct FlightTimePlanningRows: View {
 
             FlightPlanningLine(
                 directionTitle: "RÜCKFLUG",
+                flightDate: $returnFlightDate,
+                showsRefreshButton: false,
+                refreshWeather: refreshWeather,
                 showsETOPSHeader: true,
                 stopCount: $returnStops,
                 flightAltitudeFeet:
@@ -1759,7 +1750,7 @@ private struct WindFlowIndicator: View {
 
     var body: some View {
         Image(systemName: "arrow.up")
-            .font(.system(size: 34, weight: .bold))
+            .font(.system(size: 30, weight: .semibold))
             .foregroundStyle(FlybookColor.navy)
         .frame(width: 48, height: 48)
         .rotationEffect(
@@ -1775,6 +1766,9 @@ private struct FlightPlanningLine<
     Trailing: View
 >: View {
     let directionTitle: String
+    @Binding var flightDate: Date
+    let showsRefreshButton: Bool
+    let refreshWeather: () -> Void
     let showsETOPSHeader: Bool
     @Binding var stopCount: Int
     @Binding var flightAltitudeFeet: Int
@@ -1814,12 +1808,39 @@ private struct FlightPlanningLine<
         HStack(alignment: .top, spacing: 5) {
             StopCountSelector(selection: $stopCount)
                 .frame(width: 98, height: 108)
-                .padding(.top, 135)
+                .padding(.top, 145)
 
             VStack(spacing: 10) {
-                Text(directionTitle)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(FlybookColor.muted)
+                HStack(spacing: 8) {
+                    Text(directionTitle)
+                        .font(
+                            .system(
+                                size: 14,
+                                weight: .bold,
+                                design: .monospaced
+                            )
+                        )
+                        .foregroundStyle(FlybookColor.navy)
+
+                    DatePicker(
+                        "",
+                        selection: $flightDate,
+                        displayedComponents: .date
+                    )
+                    .labelsHidden()
+                    .datePickerStyle(.field)
+                    .controlSize(.small)
+                    .frame(width: 116)
+
+                    Button("Heute") {
+                        flightDate =
+                            Calendar.current.startOfDay(for: Date())
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Spacer(minLength: 0)
+                }
 
                 HStack(spacing: 4) {
                     ZStack {
@@ -1831,7 +1852,7 @@ private struct FlightPlanningLine<
                         .frame(width: 142, height: 112)
 
                         WindFlowIndicator(weather: leadingWeather)
-                            .offset(x: -87)
+                            .offset(x: -96)
                     }
                     .frame(width: 174)
 
@@ -1847,7 +1868,7 @@ private struct FlightPlanningLine<
                         .frame(width: 142, height: 112)
 
                         WindFlowIndicator(weather: trailingWeather)
-                            .offset(x: 87)
+                            .offset(x: 96)
                     }
                     .frame(width: 174)
                 }
@@ -1909,7 +1930,7 @@ private struct FlightPlanningLine<
                 TravelDurationBadge(minutes: travelMinutes)
                     .frame(width: 70, height: 58)
             }
-            .padding(.top, 156)
+            .padding(.top, 166)
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
@@ -1936,6 +1957,16 @@ private struct FlightPlanningLine<
             }
             .frame(width: 54)
             .help("Farbe aus der Dauer des einzelnen Fluglegs")
+        }
+        .overlay(alignment: .topLeading) {
+            if showsRefreshButton {
+                Button(action: refreshWeather) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Wetterdaten jetzt aktualisieren")
+            }
         }
     }
 }
