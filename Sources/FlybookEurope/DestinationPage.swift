@@ -1210,18 +1210,18 @@ private struct PlanningWeatherCard: View {
                 )
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(categoryColor)
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
 
             Text(categoryReason ?? " ")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(categoryColor)
                 .lineLimit(1)
+                .multilineTextAlignment(.center)
                 .frame(
                     maxWidth: .infinity,
                     minHeight: 15,
-                    alignment: .leading
+                    alignment: .center
                 )
 
             if let sunriseText, let sunsetText {
@@ -1991,7 +1991,10 @@ private struct FlightPlanningLine<
                     .foregroundStyle(FlybookColor.muted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(-1)
-                    .frame(height: 24)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 54, height: 28)
                 Circle()
                     .fill(
                         ETOPSBand.color(
