@@ -367,7 +367,7 @@ struct DestinationPage: View {
                             maxTravelMinutesUntilOvernight
                     )
                 }
-                .frame(height: 90)
+                .frame(height: 85)
 
                 calculationSection
             }
@@ -462,6 +462,10 @@ struct DestinationPage: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
 
+                    Text("ABFLUG")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+
                     Picker(
                         "Abflugort",
                         selection: $selectedOriginICAO
@@ -479,7 +483,7 @@ struct DestinationPage: View {
 
                     VStack(alignment: .trailing, spacing: 5) {
                         Picker("Zeitbasis", selection: timeModeBinding) {
-                            Text("Local Zeit").tag(TimeDisplayMode.local)
+                            Text("Lokal").tag(TimeDisplayMode.local)
                             Text("UTC Zeit").tag(TimeDisplayMode.utc)
                         }
                         .labelsHidden()
@@ -586,7 +590,7 @@ struct DestinationPage: View {
         FlybookCard {
             VStack(alignment: .leading, spacing: 14) {
                 Text("KALKULATION")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(FlybookColor.navy)
 
                 CalculationRow(
@@ -679,7 +683,7 @@ struct DestinationPage: View {
 
             }
         }
-        .frame(height: 379)
+        .frame(height: 404)
     }
 
     private var timeModeBinding: Binding<TimeDisplayMode> {
@@ -926,7 +930,7 @@ struct DestinationPage: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .frame(height: 430)
+        .frame(height: 410)
     }
 
     private var fiveDayForecastSection: some View {
@@ -1703,18 +1707,44 @@ private struct TimeContextInfo: View {
                 .foregroundStyle(FlybookColor.muted)
             }
 
-            HStack {
+            HStack(spacing: 10) {
                 Label(
                     pressureText,
                     systemImage: "gauge.with.dots.needle.33percent"
                 )
-                Spacer()
                 Text(densityAltitudeText)
             }
             .font(.system(size: 12, weight: .bold))
             .foregroundStyle(FlybookColor.navy)
         }
         .frame(height: 42)
+    }
+}
+
+private struct PlanningWindBarb: View {
+    let weather: PlanningWeather
+
+    var body: some View {
+        WindBarbShape(
+            directionDegrees: weather.direction ?? 0,
+            speedKnots: weather.speed ?? 0
+        )
+        .stroke(
+            weather.speed == nil
+                ? FlybookColor.muted
+                : FlybookColor.navy,
+            style: StrokeStyle(
+                lineWidth: 2,
+                lineCap: .round,
+                lineJoin: .round
+            )
+        )
+        .padding(4)
+        .frame(width: 40, height: 40)
+        .overlay(
+            Circle()
+                .stroke(FlybookColor.line, lineWidth: 1.5)
+        )
     }
 }
 
@@ -1760,29 +1790,8 @@ private struct FlightPlanningLine<
 
     var body: some View {
         HStack(alignment: .top, spacing: 5) {
-            VStack(spacing: 4) {
-                StopCountSelector(selection: $stopCount)
-                    .frame(width: 98, height: 108)
-
-                Picker(
-                    "Flughöhe",
-                    selection: $flightAltitudeFeet
-                ) {
-                    ForEach(
-                        [3000, 5000, 7000, 9000],
-                        id: \.self
-                    ) { altitude in
-                        Text("\(altitude) ft")
-                            .tag(altitude)
-                    }
-                }
-                .labelsHidden()
-                .controlSize(.small)
-                .frame(width: 96)
-                .help("Flughöhe für die Windberechnung")
-                .padding(.top, 8)
-            }
-            .frame(width: 98, height: 138)
+            StopCountSelector(selection: $stopCount)
+                .frame(width: 98, height: 108)
 
             VStack(spacing: 10) {
                 Text(directionTitle)
@@ -1790,13 +1799,12 @@ private struct FlightPlanningLine<
                     .foregroundStyle(FlybookColor.muted)
 
                 HStack(alignment: .top, spacing: 4) {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 5) {
                         TimeContextInfo(
                             sunriseText: leadingSunriseText,
                             sunsetText: leadingSunsetText,
                             weather: leadingWeather
                         )
-
                         leading
                     }
                     .frame(width: 174, alignment: .top)
@@ -1804,41 +1812,62 @@ private struct FlightPlanningLine<
                     Image(systemName: "arrow.right")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
-                        .frame(width: 18, height: 87)
+                        .frame(width: 18, height: 43)
+                        .padding(.top, 47)
 
-                    VStack(spacing: 3) {
+                    VStack(spacing: 5) {
                         TimeContextInfo(
                             sunriseText: trailingSunriseText,
                             sunsetText: trailingSunsetText,
                             weather: trailingWeather
                         )
-
                         trailing
                     }
                     .frame(width: 174, alignment: .top)
                 }
 
-                if let headwindKnots {
-                    WindInfluenceLabel(headwindKnots: headwindKnots)
+                HStack(spacing: 10) {
+                    Picker(
+                        "Flughöhe",
+                        selection: $flightAltitudeFeet
+                    ) {
+                        ForEach(
+                            [3000, 5000, 7000, 9000],
+                            id: \.self
+                        ) { altitude in
+                            Text("\(altitude) ft").tag(altitude)
+                        }
+                    }
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .frame(width: 96)
+
+                    if let headwindKnots {
+                        WindInfluenceLabel(
+                            headwindKnots: headwindKnots
+                        )
+                    }
                 }
 
-                HStack(spacing: 22) {
+                HStack(spacing: 4) {
+                    PlanningWindBarb(weather: leadingWeather)
                     PlanningWeatherCard(weather: leadingWeather)
-                        .frame(width: 174)
-
+                        .frame(width: 145)
                     PlanningWeatherCard(weather: trailingWeather)
-                        .frame(width: 174)
+                        .frame(width: 145)
+                    PlanningWindBarb(weather: trailingWeather)
                 }
             }
+            .frame(width: 390)
 
             VStack(spacing: 4) {
                 Text("REISEZEIT")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(FlybookColor.muted)
-
                 TravelDurationBadge(minutes: travelMinutes)
                     .frame(width: 70, height: 58)
             }
+            .padding(.top, 55)
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
@@ -1847,7 +1876,6 @@ private struct FlightPlanningLine<
                     .multilineTextAlignment(.center)
                     .lineSpacing(-1)
                     .frame(height: 24)
-
                 Circle()
                     .fill(
                         ETOPSBand.color(
@@ -1857,24 +1885,18 @@ private struct FlightPlanningLine<
                         )
                     )
                     .overlay(
-                        Circle()
-                            .stroke(
-                                FlybookColor.navy.opacity(0.35),
-                                lineWidth: 1
-                            )
+                        Circle().stroke(
+                            FlybookColor.navy.opacity(0.35),
+                            lineWidth: 1
+                        )
                     )
                     .frame(width: 16, height: 16)
             }
             .frame(width: 54)
-            .help(
-                "Farbe aus der berechneten Dauer des einzelnen Fluglegs"
-            )
+            .help("Farbe aus der Dauer des einzelnen Fluglegs")
         }
     }
 }
-
-
-
 
 private struct CalculationTotalRow: View {
     let outboundStopCount: Int
@@ -1966,7 +1988,7 @@ private struct CalculationTotalRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text("GESAMT")
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
 
             HStack(spacing: 10) {
@@ -2002,12 +2024,12 @@ private struct CalculationTotalRow: View {
     private func totalBox(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
             Text(value)
                 .font(
                     .system(
-                        size: 22,
+                        size: 24,
                         weight: .bold,
                         design: .monospaced
                     )
@@ -2165,29 +2187,29 @@ private struct CalculationRow: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack {
                 Text(title)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(FlybookColor.navy)
 
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(stopLabel)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
 
                     if prepaymentDiscount15To29Enabled {
                         Text("25 % Vorauszahlungsrabatt")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Color.green)
                     } else if prepaymentDiscount30PlusEnabled {
                         Text("15 % Vorauszahlungsrabatt")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Color.green)
                     }
 
                     if discountApplies {
                         Text("5 % Wochentagsrabatt")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Color.green)
                     }
                 }
@@ -2220,13 +2242,13 @@ private struct CalculationRow: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
 
             Text(value)
                 .font(
                     .system(
-                        size: 22,
+                        size: 24,
                         weight: .bold,
                         design: .monospaced
                     )
@@ -2514,7 +2536,7 @@ private struct EditableFlightTimeField: View {
             if let runway {
                 Divider()
                     .frame(width: 160)
-                Label("PISTE \(runway)", systemImage: "road.lanes")
+                Label(runway, systemImage: "road.lanes")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(FlybookColor.navy)
             }
@@ -2621,7 +2643,7 @@ private struct CalculatedFlightTime: View {
             if let runway {
                 Divider()
                     .frame(width: 160)
-                Label("PISTE \(runway)", systemImage: "road.lanes")
+                Label(runway, systemImage: "road.lanes")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(FlybookColor.navy)
             }
