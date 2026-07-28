@@ -249,7 +249,8 @@ actor WeatherService {
                     "sunrise",
                     "sunset",
                     "weather_code",
-                    "temperature_2m_max"
+                    "temperature_2m_max",
+                    "temperature_2m_min"
                 ].joined(separator: ",")
             )
         ]
@@ -411,12 +412,46 @@ actor WeatherService {
         let dailyForecast = Array(
             api.daily.time.indices.prefix(5)
         ).map { index in
-            DailyForecast(
-                localDate: api.daily.time[index],
+            let localDate = api.daily.time[index]
+
+            func weatherCode(at hour: Int) -> Int? {
+                let timestamp = String(
+                    format: "%@T%02d:00",
+                    localDate,
+                    hour
+                )
+                guard
+                    let hourlyIndex =
+                        api.hourly.time.firstIndex(
+                            of: timestamp
+                        )
+                else {
+                    return nil
+                }
+
+                return optionalValue(
+                    api.hourly.weatherCode,
+                    at: hourlyIndex
+                )
+            }
+
+            return DailyForecast(
+                localDate: localDate,
                 weatherCode: optionalValue(
                     api.daily.weatherCode,
                     at: index
                 ),
+                morningWeatherCode:
+                    weatherCode(at: 8),
+                middayWeatherCode:
+                    weatherCode(at: 14),
+                eveningWeatherCode:
+                    weatherCode(at: 20),
+                minimumTemperatureCelsius:
+                    optionalValue(
+                        api.daily.temperature2mMin,
+                        at: index
+                    ),
                 maximumTemperatureCelsius:
                     optionalValue(
                         api.daily.temperature2mMax,
@@ -772,6 +807,7 @@ private struct Daily: Decodable {
     let sunset: [String?]
     let weatherCode: [Int?]
     let temperature2mMax: [Double?]
+    let temperature2mMin: [Double?]
 
     enum CodingKeys: String, CodingKey {
         case time
@@ -779,6 +815,7 @@ private struct Daily: Decodable {
         case sunset
         case weatherCode = "weather_code"
         case temperature2mMax = "temperature_2m_max"
+        case temperature2mMin = "temperature_2m_min"
     }
 }
 

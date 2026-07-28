@@ -175,6 +175,10 @@ struct DailyForecast: Codable, Hashable, Identifiable {
     var id: String { localDate }
     let localDate: String
     let weatherCode: Int?
+    let morningWeatherCode: Int?
+    let middayWeatherCode: Int?
+    let eveningWeatherCode: Int?
+    let minimumTemperatureCelsius: Double?
     let maximumTemperatureCelsius: Double?
     let model: String
 }

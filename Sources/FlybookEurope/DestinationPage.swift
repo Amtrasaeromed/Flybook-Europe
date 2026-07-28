@@ -379,7 +379,7 @@ struct DestinationPage: View {
 
             VStack(alignment: .trailing, spacing: 5) {
                 Text("FLUGZEUG")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
 
                 Picker(
@@ -438,7 +438,7 @@ struct DestinationPage: View {
                             "Luftlinie "
                             + "\(Int(destination.directNM.rounded())) NM"
                         )
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
                     }
                 }
@@ -512,7 +512,7 @@ struct DestinationPage: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
 
             DatePicker(
@@ -785,7 +785,7 @@ struct DestinationPage: View {
                 }
 
                 Text("Modellprognose · kein offizielles Flugwetterbriefing")
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundStyle(FlybookColor.muted)
             }
         }
@@ -844,12 +844,24 @@ struct DestinationPage: View {
                         .font(.title3.bold())
                         .foregroundStyle(FlybookColor.navy)
 
-                    DestinationMapView(
-                        latitude: destination.latitude,
-                        longitude: destination.longitude,
-                        title: destination.icao,
-                        presentation: .airportAerial
-                    )
+                    ZStack(alignment: .bottomTrailing) {
+                        DestinationMapView(
+                            latitude: destination.latitude,
+                            longitude: destination.longitude,
+                            title: destination.icao,
+                            presentation: .airportAerial
+                        )
+
+                        Text(
+                            "© Esri · Maxar · Earthstar "
+                            + "Geographics · GIS Community"
+                        )
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.62))
+                    }
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -868,7 +880,7 @@ struct DestinationPage: View {
                     Spacer()
 
                     Text("ICON Seamless · DWD")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
                 }
 
@@ -894,31 +906,49 @@ struct DestinationPage: View {
                 }
             }
         }
-        .frame(height: 150)
+        .frame(height: 185)
     }
 }
 private struct DailyForecastTile: View {
     let day: DailyForecast
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 7) {
             Text(weekday)
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
 
-            Image(systemName: weatherSymbol)
-                .font(.system(size: 27, weight: .medium))
-                .symbolRenderingMode(.multicolor)
-                .frame(height: 32)
+            HStack(spacing: 8) {
+                periodSymbol(
+                    title: "MOR",
+                    code: day.morningWeatherCode
+                )
+                periodSymbol(
+                    title: "MIT",
+                    code: day.middayWeatherCode
+                )
+                periodSymbol(
+                    title: "AB",
+                    code: day.eveningWeatherCode
+                )
+            }
 
-            Text(
-                day.maximumTemperatureCelsius.map {
-                    String(format: "%.0f°", $0)
-                } ?? "—"
-            )
-            .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(FlybookColor.navy)
+            HStack(spacing: 10) {
+                Text(
+                    day.minimumTemperatureCelsius.map {
+                        String(format: "↓ %.0f°", $0)
+                    } ?? "↓ —"
+                )
+                .foregroundStyle(FlybookColor.blue)
 
+                Text(
+                    day.maximumTemperatureCelsius.map {
+                        String(format: "↑ %.0f°", $0)
+                    } ?? "↑ —"
+                )
+                .foregroundStyle(.red)
+            }
+            .font(.system(size: 14, weight: .bold))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -926,6 +956,22 @@ private struct DailyForecastTile: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.gray.opacity(0.08))
         )
+    }
+
+    private func periodSymbol(
+        title: String,
+        code: Int?
+    ) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+
+            Image(systemName: weatherSymbol(for: code))
+                .font(.system(size: 22, weight: .medium))
+                .symbolRenderingMode(.multicolor)
+                .frame(width: 30, height: 28)
+        }
     }
 
     private var weekday: String {
@@ -943,8 +989,8 @@ private struct DailyForecastTile: View {
         return formatter.string(from: date).uppercased()
     }
 
-    private var weatherSymbol: String {
-        guard let code = day.weatherCode else {
+    private func weatherSymbol(for code: Int?) -> String {
+        guard let code else {
             return "questionmark.circle"
         }
 
@@ -986,7 +1032,7 @@ private struct RouteWindSummary: View {
                 Text(errorMessage ?? "Windkompensation derzeit nicht verfügbar")
             }
         }
-        .font(.system(size: 10, weight: .semibold))
+        .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(FlybookColor.navy)
         .lineLimit(1)
     }
@@ -1333,13 +1379,13 @@ private struct TimeContextInfo: View {
                         systemImage: "sunset.fill"
                     )
                 }
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
             }
 
             if let pressureMbar {
                 Text("\(pressureMbar) mbar")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
             }
         }
@@ -1393,7 +1439,7 @@ private struct FlightPlanningLine<
 
             VStack(spacing: 5) {
                 Text(directionTitle)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
 
                 HStack(alignment: .top, spacing: 4) {
@@ -1439,7 +1485,7 @@ private struct FlightPlanningLine<
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(-1)
@@ -1599,7 +1645,7 @@ private struct CalculationTotalRow: View {
     private func totalBox(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
             Text(value)
                 .font(
@@ -1769,22 +1815,22 @@ private struct CalculationRow: View {
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(stopLabel)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
 
                     if prepaymentDiscount15To29Enabled {
                         Text("25 % Vorauszahlungsrabatt")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.green)
                     } else if prepaymentDiscount30PlusEnabled {
                         Text("15 % Vorauszahlungsrabatt")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.green)
                     }
 
                     if discountApplies {
                         Text("5 % Wochentagsrabatt")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.green)
                     }
                 }
@@ -1817,7 +1863,7 @@ private struct CalculationRow: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
 
             Text(value)
@@ -1881,7 +1927,7 @@ private struct TravelDurationBadge: View {
                 .foregroundStyle(FlybookColor.blue)
 
             Text("REISEZEIT")
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
         }
         .padding(.horizontal, 7)
@@ -1928,7 +1974,7 @@ private struct StopCountSelector: View {
                             .frame(width: 16, height: 16)
 
                         Text(option.label)
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(FlybookColor.navy)
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
@@ -1992,7 +2038,7 @@ private struct FlightTimeBox: View {
 
             if editable {
                 Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
                     .frame(width: 10)
             } else {
@@ -2109,7 +2155,7 @@ private struct EditableFlightTimeField: View {
             }
 
             Text(title)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
 
             EDFZRunwayPressureRow(sample: airportWeather)
@@ -2163,7 +2209,7 @@ private struct EDFZRunwayPressureRow: View {
             .foregroundStyle(FlybookColor.navy)
 
             Text(wind)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
                 .foregroundStyle(FlybookColor.muted)
                 .lineLimit(1)
         }
@@ -2188,7 +2234,7 @@ private struct CalculatedFlightTime: View {
             .frame(width: 174, height: 43)
 
             Text(title)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
         }
         .foregroundStyle(FlybookColor.navy)
@@ -2229,7 +2275,7 @@ private struct WeatherPlaceholderColumn: View {
                     Text("N/A")
                 }
             }
-            .font(.system(size: 12, weight: .semibold))
+            .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(FlybookColor.navy)
 
             Text("Sunrise —  ·  Sunset —")
@@ -2301,11 +2347,11 @@ private struct LiveWeatherColumn: View {
                         .font(.system(size: 15, weight: .bold))
 
                     Text(displayDate)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(FlybookColor.navy)
 
                     Text(day.localTime)
-                        .font(.system(size: 10))
+                        .font(.system(size: 12))
                         .foregroundStyle(FlybookColor.muted)
                 }
 
@@ -2347,7 +2393,7 @@ private struct LiveWeatherColumn: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(weatherDescription(day.weatherCode))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
 
             }
         }
@@ -2417,7 +2463,7 @@ private struct LiveWeatherColumn: View {
     private var densityAltitudeSummary: some View {
         HStack {
             Text("DENSITY ALTITUDE")
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
 
             Spacer()
@@ -2524,7 +2570,7 @@ private struct FlightCategoryBadge: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 3) {
             Text(day.category.rawValue)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -2532,7 +2578,7 @@ private struct FlightCategoryBadge: View {
 
             if let categoryReason {
                 Text(categoryReason)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(color)
                     .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: false, vertical: true)
@@ -2592,7 +2638,7 @@ private struct WindBarbView: View {
     var body: some View {
         VStack(spacing: 3) {
             Text(title)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
 
             WindBarbShape(
                 directionDegrees: wind.directionDegrees ?? 0,
@@ -2605,7 +2651,7 @@ private struct WindBarbView: View {
             .frame(width: 52, height: 42)
 
             Text(wind.speedKnots.map { String(format: "%.0f kt", $0) } ?? "N/A")
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: 12, weight: .bold))
         }
     }
 }

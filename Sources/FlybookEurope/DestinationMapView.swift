@@ -12,8 +12,21 @@ struct DestinationMapView: NSViewRepresentable {
     let title: String
     var presentation: DestinationMapPresentation = .europe
 
-    final class Coordinator {
+    final class Coordinator: NSObject, MKMapViewDelegate {
         var displayedLocationKey: String?
+
+        func mapView(
+            _ mapView: MKMapView,
+            rendererFor overlay: MKOverlay
+        ) -> MKOverlayRenderer {
+            guard let tileOverlay = overlay as? MKTileOverlay else {
+                return MKOverlayRenderer(overlay: overlay)
+            }
+
+            return MKTileOverlayRenderer(
+                tileOverlay: tileOverlay
+            )
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -22,6 +35,7 @@ struct DestinationMapView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> MKMapView {
         let map = MKMapView()
+        map.delegate = context.coordinator
         configureAppearance(of: map)
         map.showsCompass = false
         map.showsScale = false
@@ -50,7 +64,6 @@ struct DestinationMapView: NSViewRepresentable {
 
         context.coordinator.displayedLocationKey =
             locationKey
-        configureAppearance(of: map)
         map.removeAnnotations(map.annotations)
 
         guard
@@ -106,13 +119,21 @@ struct DestinationMapView: NSViewRepresentable {
     private func configureAppearance(
         of map: MKMapView
     ) {
-        if presentation == .airportAerial {
-            map.preferredConfiguration =
-                MKImageryMapConfiguration(
-                    elevationStyle: .flat
-                )
-        } else {
+        guard presentation == .airportAerial else {
             map.mapType = .mutedStandard
+            return
         }
+
+        map.mapType = .standard
+        let imagery = MKTileOverlay(
+            urlTemplate:
+                "https://server.arcgisonline.com/ArcGIS/"
+                + "rest/services/World_Imagery/MapServer/"
+                + "tile/{z}/{y}/{x}"
+        )
+        imagery.canReplaceMapContent = true
+        imagery.minimumZ = 3
+        imagery.maximumZ = 19
+        map.addOverlay(imagery, level: .aboveLabels)
     }
 }
