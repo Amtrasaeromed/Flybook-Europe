@@ -456,7 +456,7 @@ struct DestinationPage: View {
 
     private var flightSection: some View {
         FlybookCard {
-            VStack(spacing: 12) {
+            VStack(spacing: 18) {
                 HStack(alignment: .top, spacing: 18) {
                     Text("FLUGPLANUNG")
                         .font(.system(size: 17, weight: .bold))
@@ -1124,14 +1124,28 @@ private struct PlanningWeather {
     let gust: Double?
     let temperature: Double?
     let weatherCode: Int?
+    let pressureMbar: Double?
+    let elevationFeet: Double
+    let visibilityMeters: Double?
+    let ceilingFeet: Double?
+    let category: FlightCategory
     let runway: String?
 
-    init(sample: EDFZWeatherSample?, showsRunway: Bool) {
+    init(
+        sample: EDFZWeatherSample?,
+        elevationFeet: Double,
+        showsRunway: Bool
+    ) {
         direction = sample?.windDirectionDegrees
         speed = sample?.windSpeedKnots
         gust = sample?.windGustKnots
         temperature = sample?.temperatureCelsius
         weatherCode = sample?.weatherCode
+        pressureMbar = sample?.pressureMSLHPA
+        self.elevationFeet = elevationFeet
+        visibilityMeters = sample?.visibilityMeters
+        ceilingFeet = sample?.ceilingFeetAGL
+        category = sample?.category ?? .unavailable
         if showsRunway,
            let direction,
            let speed,
@@ -1146,12 +1160,17 @@ private struct PlanningWeather {
         }
     }
 
-    init(day: ForecastDay?) {
+    init(day: ForecastDay?, elevationFeet: Double) {
         direction = day?.surfaceWind.directionDegrees
         speed = day?.surfaceWind.speedKnots
         gust = day?.windGustKnots
         temperature = day?.temperatureCelsius
         weatherCode = day?.weatherCode
+        pressureMbar = day?.pressureMSLHPA
+        self.elevationFeet = elevationFeet
+        visibilityMeters = day?.visibilityMeters
+        ceilingFeet = day?.ceilingFeetAGL
+        category = day?.category ?? .unavailable
         runway = nil
     }
 }
@@ -1162,9 +1181,6 @@ private struct PlanningWeatherCard: View {
     var body: some View {
         VStack(spacing: 5) {
             HStack(spacing: 6) {
-                if let runway = weather.runway {
-                    Label(runway, systemImage: "road.lanes")
-                }
                 Text(
                     AviationWindText.format(
                         direction: weather.direction,
@@ -1193,9 +1209,25 @@ private struct PlanningWeatherCard: View {
                     .lineLimit(1)
             }
             .foregroundStyle(FlybookColor.navy)
+
+            HStack(spacing: 7) {
+                Label(
+                    weather.category.rawValue,
+                    systemImage: "circle.fill"
+                )
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(categoryColor)
+
+                if let categoryReason {
+                    Text(categoryReason)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(categoryColor)
+                        .lineLimit(1)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 6)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.gray.opacity(0.08))
@@ -1228,6 +1260,51 @@ private struct PlanningWeatherCard: View {
         case 95...99: return "Gewitter"
         default: return "N/A"
         }
+    }
+
+    private var categoryColor: Color {
+        switch weather.category {
+        case .vfr: return .green
+        case .mvfr: return .blue
+        case .ifr: return .red
+        case .lifr: return .purple
+        case .unavailable: return .gray
+        }
+    }
+
+    private var categoryReason: String? {
+        guard weather.category != .vfr,
+              weather.category != .unavailable
+        else { return nil }
+        let visibilitySM = weather.visibilityMeters.map {
+            $0 / 1609.344
+        }
+        switch weather.category {
+        case .lifr:
+            if let ceiling = weather.ceilingFeet, ceiling < 500 {
+                return String(format: "Ceiling %.0f ft", ceiling)
+            }
+            if let visibilitySM, visibilitySM < 1 {
+                return String(format: "Sicht %.1f SM", visibilitySM)
+            }
+        case .ifr:
+            if let ceiling = weather.ceilingFeet, ceiling < 1000 {
+                return String(format: "Ceiling %.0f ft", ceiling)
+            }
+            if let visibilitySM, visibilitySM < 3 {
+                return String(format: "Sicht %.1f SM", visibilitySM)
+            }
+        case .mvfr:
+            if let ceiling = weather.ceilingFeet, ceiling <= 3000 {
+                return String(format: "Ceiling %.0f ft", ceiling)
+            }
+            if let visibilitySM, visibilitySM <= 5 {
+                return String(format: "Sicht %.1f SM", visibilitySM)
+            }
+        default:
+            break
+        }
+        return nil
     }
 }
 
@@ -1323,6 +1400,20 @@ private struct FlightTimePlanningRows: View {
         returnEDFZForecast?.sample(nearestTo: homeArrivalInstant)
     }
 
+    private func runway(
+        for sample: EDFZWeatherSample?
+    ) -> String? {
+        guard origin.icao == "EDFZ" else { return nil }
+        guard let direction = sample?.windDirectionDegrees,
+              let speed = sample?.windSpeedKnots,
+              speed >= 0.5
+        else { return "—" }
+        return EDFZRunway.activeRunway(
+            windFromDegrees: direction,
+            speedKnots: speed
+        )
+    }
+
     private var outboundStartCondition: LightCondition {
         SolarCalculator.lightCondition(
             at: outboundStartInstant,
@@ -1407,10 +1498,12 @@ private struct FlightTimePlanningRows: View {
                     cruiseGroundSpeedKnots,
                 leadingWeather: PlanningWeather(
                     sample: outboundAirportSample,
+                    elevationFeet: origin.elevationFeet,
                     showsRunway: origin.icao == "EDFZ"
                 ),
                 trailingWeather: PlanningWeather(
-                    day: outboundDestinationWeather
+                    day: outboundDestinationWeather,
+                    elevationFeet: destination.elevationFeet
                 ),
                 leadingSunriseText:
                     sunTexts(
@@ -1426,9 +1519,6 @@ private struct FlightTimePlanningRows: View {
                         longitude: origin.longitude,
                         timeZone: origin.timeZone
                     ).1,
-                leadingPressureMbar:
-                    outboundAirportSample?.pressureMSLHPA
-                        .map { Int($0.rounded()) },
                 trailingSunriseText:
                     sunTexts(
                         at: outboundArrivalInstant,
@@ -1443,15 +1533,14 @@ private struct FlightTimePlanningRows: View {
                         longitude: destination.longitude,
                         timeZone: destinationTimeZone
                     ).1,
-                trailingPressureMbar:
-                    outboundDestinationPressureMbar,
                 leading: {
                     EditableFlightTimeField(
                         title: "ABFLUG \(origin.icao)",
                         text: $outboundStartText,
                         symbol: "airplane.departure",
                         lightCondition:
-                            outboundStartCondition
+                            outboundStartCondition,
+                        runway: runway(for: outboundAirportSample)
                     )
                 },
                 trailing: {
@@ -1465,13 +1554,14 @@ private struct FlightTimePlanningRows: View {
                         ),
                         symbol: "airplane.arrival",
                         lightCondition:
-                            outboundArrivalCondition
+                            outboundArrivalCondition,
+                        runway: nil
                     )
                 }
             )
 
             Divider()
-                .padding(.vertical, 8)
+                .padding(.vertical, 14)
 
             FlightPlanningLine(
                 directionTitle: "RÜCKFLUG",
@@ -1486,10 +1576,12 @@ private struct FlightTimePlanningRows: View {
                 cruiseGroundSpeedKnots:
                     cruiseGroundSpeedKnots,
                 leadingWeather: PlanningWeather(
-                    day: returnDestinationWeather
+                    day: returnDestinationWeather,
+                    elevationFeet: destination.elevationFeet
                 ),
                 trailingWeather: PlanningWeather(
                     sample: homeArrivalAirportSample,
+                    elevationFeet: origin.elevationFeet,
                     showsRunway: origin.icao == "EDFZ"
                 ),
                 leadingSunriseText:
@@ -1506,8 +1598,6 @@ private struct FlightTimePlanningRows: View {
                         longitude: destination.longitude,
                         timeZone: destinationTimeZone
                     ).1,
-                leadingPressureMbar:
-                    returnDestinationPressureMbar,
                 trailingSunriseText:
                     sunTexts(
                         at: homeArrivalInstant,
@@ -1522,9 +1612,6 @@ private struct FlightTimePlanningRows: View {
                         longitude: origin.longitude,
                         timeZone: origin.timeZone
                     ).1,
-                trailingPressureMbar:
-                    homeArrivalAirportSample?.pressureMSLHPA
-                        .map { Int($0.rounded()) },
                 leading: {
                     CalculatedFlightTime(
                         title: "ABFLUG \(destination.icao)",
@@ -1536,7 +1623,8 @@ private struct FlightTimePlanningRows: View {
                         ),
                         symbol: "airplane.departure",
                         lightCondition:
-                            returnDepartureCondition
+                            returnDepartureCondition,
+                        runway: nil
                     )
                 },
                 trailing: {
@@ -1545,7 +1633,8 @@ private struct FlightTimePlanningRows: View {
                         text: $desiredHomeArrivalText,
                         symbol: "airplane.arrival",
                         lightCondition:
-                            homeArrivalCondition
+                            homeArrivalCondition,
+                        runway: runway(for: homeArrivalAirportSample)
                     )
                 }
             )
@@ -1571,33 +1660,61 @@ private struct FlightTimePlanningRows: View {
 private struct TimeContextInfo: View {
     let sunriseText: String?
     let sunsetText: String?
-    let pressureMbar: Int?
+    let weather: PlanningWeather
+
+    @AppStorage(PressureSettingsKey.displayUnit)
+    private var pressureDisplayUnitRaw =
+        PressureDisplayUnit.mbar.rawValue
+
+    private var pressureText: String {
+        guard let pressure = weather.pressureMbar else { return "—" }
+        let unit = PressureDisplayUnit(
+            rawValue: pressureDisplayUnitRaw
+        ) ?? .mbar
+        switch unit {
+        case .mbar:
+            return String(format: "%.0f", pressure)
+        case .inHg:
+            return String(format: "%.2f", pressure * 0.0295299830714)
+        }
+    }
+
+    private var densityAltitudeText: String {
+        guard let temperature = weather.temperature,
+              let pressure = weather.pressureMbar
+        else { return "DA —" }
+        let pressureAltitude = weather.elevationFeet
+            + (1013.25 - pressure) * 30
+        let isaTemperature = 15
+            - 1.98 * (pressureAltitude / 1000)
+        let densityAltitude = pressureAltitude
+            + 120 * (temperature - isaTemperature)
+        return String(format: "DA %.0f ft", densityAltitude)
+    }
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 4) {
             if let sunriseText, let sunsetText {
                 HStack(spacing: 8) {
-                    Label(
-                        sunriseText,
-                        systemImage: "sunrise.fill"
-                    )
-
-                    Label(
-                        sunsetText,
-                        systemImage: "sunset.fill"
-                    )
+                    Label(sunriseText, systemImage: "sunrise.fill")
+                    Label(sunsetText, systemImage: "sunset.fill")
                 }
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
             }
 
-            if let pressureMbar {
-                Text("\(pressureMbar) mbar")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(FlybookColor.muted)
+            HStack {
+                Label(
+                    pressureText,
+                    systemImage: "gauge.with.dots.needle.33percent"
+                )
+                Spacer()
+                Text(densityAltitudeText)
             }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(FlybookColor.navy)
         }
-        .frame(height: 28)
+        .frame(height: 42)
     }
 }
 
@@ -1618,10 +1735,8 @@ private struct FlightPlanningLine<
     let trailingWeather: PlanningWeather
     let leadingSunriseText: String?
     let leadingSunsetText: String?
-    let leadingPressureMbar: Int?
     let trailingSunriseText: String?
     let trailingSunsetText: String?
-    let trailingPressureMbar: Int?
 
     @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
     private var greenYellowMinutes =
@@ -1669,7 +1784,7 @@ private struct FlightPlanningLine<
             }
             .frame(width: 98, height: 138)
 
-            VStack(spacing: 5) {
+            VStack(spacing: 10) {
                 Text(directionTitle)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
@@ -1679,7 +1794,7 @@ private struct FlightPlanningLine<
                         TimeContextInfo(
                             sunriseText: leadingSunriseText,
                             sunsetText: leadingSunsetText,
-                            pressureMbar: leadingPressureMbar
+                            weather: leadingWeather
                         )
 
                         leading
@@ -1695,7 +1810,7 @@ private struct FlightPlanningLine<
                         TimeContextInfo(
                             sunriseText: trailingSunriseText,
                             sunsetText: trailingSunsetText,
-                            pressureMbar: trailingPressureMbar
+                            weather: trailingWeather
                         )
 
                         trailing
@@ -2300,6 +2415,7 @@ private struct EditableFlightTimeField: View {
     @Binding var text: String
     let symbol: String
     let lightCondition: LightCondition
+    let runway: String?
 
     @State private var isTimeEditorPresented = false
     @State private var selectedHour = 9
@@ -2395,6 +2511,14 @@ private struct EditableFlightTimeField: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
 
+            if let runway {
+                Divider()
+                    .frame(width: 160)
+                Label("PISTE \(runway)", systemImage: "road.lanes")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+            }
+
         }
         .foregroundStyle(FlybookColor.navy)
     }
@@ -2479,6 +2603,7 @@ private struct CalculatedFlightTime: View {
     let value: String
     let symbol: String
     let lightCondition: LightCondition
+    let runway: String?
 
     var body: some View {
         VStack(spacing: 4) {
@@ -2492,6 +2617,14 @@ private struct CalculatedFlightTime: View {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
+
+            if let runway {
+                Divider()
+                    .frame(width: 160)
+                Label("PISTE \(runway)", systemImage: "road.lanes")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+            }
         }
         .foregroundStyle(FlybookColor.navy)
     }

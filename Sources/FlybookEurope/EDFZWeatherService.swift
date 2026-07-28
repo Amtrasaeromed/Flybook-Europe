@@ -7,6 +7,9 @@ struct EDFZWeatherSample: Hashable {
     let windGustKnots: Double?
     let temperatureCelsius: Double?
     let weatherCode: Int?
+    let visibilityMeters: Double?
+    let ceilingFeetAGL: Double?
+    let category: FlightCategory
     let pressureMSLHPA: Double?
 }
 
@@ -86,7 +89,7 @@ actor EDFZWeatherService {
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
-                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,weather_code,pressure_msl"
+                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,weather_code,visibility,cloud_cover_low,pressure_msl"
             )
         ]
         guard let url = components?.url else {
@@ -107,6 +110,12 @@ actor EDFZWeatherService {
             guard let time = parser.date(from: decoded.hourly.time[index]) else {
                 return nil
             }
+            let visibility = value(decoded.hourly.visibility, index)
+            let ceiling = estimateCeiling(
+                lowCloudPercent: value(
+                    decoded.hourly.cloudCoverLow, index
+                )
+            )
             return EDFZWeatherSample(
                 validTime: time,
                 windDirectionDegrees: value(decoded.hourly.windDirection10m, index),
@@ -118,10 +127,41 @@ actor EDFZWeatherService {
                 weatherCode: decoded.hourly.weatherCode.indices.contains(index)
                     ? decoded.hourly.weatherCode[index]
                     : nil,
+                visibilityMeters: visibility,
+                ceilingFeetAGL: ceiling,
+                category: flightCategory(
+                    visibilityMeters: visibility,
+                    ceilingFeet: ceiling
+                ),
                 pressureMSLHPA: value(decoded.hourly.pressureMSL, index)
             )
         }
         return EDFZForecast(retrievedAt: Date(), samples: samples)
+    }
+
+    private func estimateCeiling(
+        lowCloudPercent: Double?
+    ) -> Double? {
+        guard let lowCloudPercent else { return nil }
+        if lowCloudPercent >= 90 { return 800 }
+        if lowCloudPercent >= 75 { return 1800 }
+        if lowCloudPercent >= 50 { return 3000 }
+        return nil
+    }
+
+    private func flightCategory(
+        visibilityMeters: Double?,
+        ceilingFeet: Double?
+    ) -> FlightCategory {
+        let visibilitySM = visibilityMeters.map { $0 / 1609.344 }
+        if ceilingFeet.map({ $0 < 500 }) == true
+            || visibilitySM.map({ $0 < 1 }) == true { return .lifr }
+        if ceilingFeet.map({ $0 < 1000 }) == true
+            || visibilitySM.map({ $0 < 3 }) == true { return .ifr }
+        if ceilingFeet.map({ $0 <= 3000 }) == true
+            || visibilitySM.map({ $0 <= 5 }) == true { return .mvfr }
+        if ceilingFeet != nil || visibilitySM != nil { return .vfr }
+        return .unavailable
     }
 
     private func value(_ values: [Double?], _ index: Int) -> Double? {
@@ -141,6 +181,8 @@ private struct Hourly: Decodable {
     let windGusts10m: [Double?]
     let temperature2m: [Double?]
     let weatherCode: [Int?]
+    let visibility: [Double?]
+    let cloudCoverLow: [Double?]
     let pressureMSL: [Double?]
 
     enum CodingKeys: String, CodingKey {
@@ -150,6 +192,8 @@ private struct Hourly: Decodable {
         case windGusts10m = "wind_gusts_10m"
         case temperature2m = "temperature_2m"
         case weatherCode = "weather_code"
+        case visibility
+        case cloudCoverLow = "cloud_cover_low"
         case pressureMSL = "pressure_msl"
     }
 }

@@ -1,5 +1,17 @@
 import SwiftUI
 
+enum PressureDisplayUnit: String, CaseIterable, Identifiable {
+    case mbar
+    case inHg
+
+    var id: String { rawValue }
+    var label: String { self == .mbar ? "mbar" : "inHg" }
+}
+
+enum PressureSettingsKey {
+    static let displayUnit = "flybookPressureDisplayUnit"
+}
+
 enum CalculationSettingsKey {
     static let tankStopMinutes =
         "flybookTankStopMinutes"
@@ -116,6 +128,10 @@ struct ETOPSSetupView: View {
         CalculationSettings
             .defaultPrepaymentDiscount30PlusEnabled
 
+    @AppStorage(PressureSettingsKey.displayUnit)
+    private var pressureDisplayUnitRaw =
+        PressureDisplayUnit.mbar.rawValue
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -133,6 +149,23 @@ struct ETOPSSetupView: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+            }
+
+            HStack {
+                Text("Luftdruckanzeige")
+                    .font(.headline)
+                Spacer()
+                Picker(
+                    "Luftdruckanzeige",
+                    selection: $pressureDisplayUnitRaw
+                ) {
+                    ForEach(PressureDisplayUnit.allCases) { unit in
+                        Text(unit.label).tag(unit.rawValue)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 160)
             }
 
             thresholdRow(
