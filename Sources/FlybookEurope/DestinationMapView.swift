@@ -12,12 +12,17 @@ struct DestinationMapView: NSViewRepresentable {
     let title: String
     var presentation: DestinationMapPresentation = .europe
 
+    final class Coordinator {
+        var displayedLocationKey: String?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> MKMapView {
         let map = MKMapView()
-        map.mapType =
-            presentation == .airportAerial
-                ? .satellite
-                : .mutedStandard
+        configureAppearance(of: map)
         map.showsCompass = false
         map.showsScale = false
         map.isZoomEnabled = true
@@ -31,6 +36,21 @@ struct DestinationMapView: NSViewRepresentable {
         _ map: MKMapView,
         context: Context
     ) {
+        let locationKey =
+            "\(presentation)-"
+            + "\(latitude ?? 999)-"
+            + "\(longitude ?? 999)"
+
+        guard
+            context.coordinator.displayedLocationKey
+                != locationKey
+        else {
+            return
+        }
+
+        context.coordinator.displayedLocationKey =
+            locationKey
+        configureAppearance(of: map)
         map.removeAnnotations(map.annotations)
 
         guard
@@ -81,5 +101,18 @@ struct DestinationMapView: NSViewRepresentable {
             ),
             animated: false
         )
+    }
+
+    private func configureAppearance(
+        of map: MKMapView
+    ) {
+        if presentation == .airportAerial {
+            map.preferredConfiguration =
+                MKImageryMapConfiguration(
+                    elevationStyle: .flat
+                )
+        } else {
+            map.mapType = .mutedStandard
+        }
     }
 }

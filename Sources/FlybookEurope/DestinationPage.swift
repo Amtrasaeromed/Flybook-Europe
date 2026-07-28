@@ -445,8 +445,16 @@ struct DestinationPage: View {
 
                 Divider()
 
-                HStack {
-                    Spacer()
+                HStack(spacing: 14) {
+                    compactDatePicker(
+                        title: "HINFLUG",
+                        selection: $outboundFlightDate
+                    )
+
+                    compactDatePicker(
+                        title: "RÜCKFLUG",
+                        selection: $returnFlightDate
+                    )
 
                     Button("Heute") {
                         let today =
@@ -459,48 +467,6 @@ struct DestinationPage: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                 }
-                .padding(.horizontal, 30)
-
-                VStack(spacing: 2) {
-                    HStack(spacing: 12) {
-                        Text("HINFLUG")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(FlybookColor.navy)
-                            .frame(width: 104, alignment: .leading)
-
-                        DatePicker(
-                            "",
-                            selection: $outboundFlightDate,
-                            displayedComponents: .date
-                        )
-                        .labelsHidden()
-                        .datePickerStyle(.field)
-                        .controlSize(.large)
-                        .frame(width: 174, height: 44)
-
-                        Spacer()
-                    }
-
-                    HStack(spacing: 12) {
-                        Text("RÜCKFLUG")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(FlybookColor.navy)
-                            .frame(width: 104, alignment: .leading)
-
-                        DatePicker(
-                            "",
-                            selection: $returnFlightDate,
-                            displayedComponents: .date
-                        )
-                        .labelsHidden()
-                        .datePickerStyle(.field)
-                        .controlSize(.large)
-                        .frame(width: 174, height: 44)
-
-                        Spacer()
-                    }
-                }
-                .padding(.horizontal, 30)
 
                 Divider()
 
@@ -539,6 +505,27 @@ struct DestinationPage: View {
         }
     }
 
+
+    private func compactDatePicker(
+        title: String,
+        selection: Binding<Date>
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+
+            DatePicker(
+                "",
+                selection: selection,
+                displayedComponents: .date
+            )
+            .labelsHidden()
+            .datePickerStyle(.field)
+            .controlSize(.regular)
+            .frame(width: 126)
+        }
+    }
 
     private var calculationSection: some View {
         FlybookCard {
