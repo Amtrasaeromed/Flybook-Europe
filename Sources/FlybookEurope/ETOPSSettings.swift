@@ -66,6 +66,88 @@ enum CalculationSettings {
     static let defaultPostLandingGroundMinutes = 3
 }
 
+enum FlybookBase: String, CaseIterable, Identifiable {
+    case lsvMainz = "LSV Mainz"
+    var id: String { rawValue }
+}
+
+enum BaseSettingsKey { static let activeBase = "flybookActiveBase" }
+
+struct BaseProfile {
+    var homeAirportICAO: String
+    var vatPercent: Double
+    var weekdayDiscountEnabled: Bool
+    var prepaymentDiscount15To29Enabled: Bool
+    var prepaymentDiscount30PlusEnabled: Bool
+}
+
+enum BaseProfileStore {
+    private static func key(_ base: FlybookBase, _ item: String) -> String {
+        "baseProfile.\(base.rawValue).\(item)"
+    }
+    static func profile(for base: FlybookBase) -> BaseProfile {
+        let d = UserDefaults.standard
+        func number(_ name: String, _ fallback: Double) -> Double {
+            d.object(forKey: key(base, name)) == nil ? fallback : d.double(forKey: key(base, name))
+        }
+        func flag(_ name: String, _ fallback: Bool) -> Bool {
+            d.object(forKey: key(base, name)) == nil ? fallback : d.bool(forKey: key(base, name))
+        }
+        return BaseProfile(
+            homeAirportICAO: d.string(forKey: key(base, "homeAirportICAO")) ?? "EDFZ",
+            vatPercent: number("vatPercent", CalculationSettings.defaultVATPercent),
+            weekdayDiscountEnabled: flag("weekdayDiscountEnabled", CalculationSettings.defaultWeekdayDiscountEnabled),
+            prepaymentDiscount15To29Enabled: flag("prepaymentDiscount15To29Enabled", CalculationSettings.defaultPrepaymentDiscount15To29Enabled),
+            prepaymentDiscount30PlusEnabled: flag("prepaymentDiscount30PlusEnabled", CalculationSettings.defaultPrepaymentDiscount30PlusEnabled)
+        )
+    }
+    static func save(_ profile: BaseProfile, for base: FlybookBase) {
+        let d = UserDefaults.standard
+        d.set(profile.homeAirportICAO, forKey: key(base, "homeAirportICAO"))
+        d.set(profile.vatPercent, forKey: key(base, "vatPercent"))
+        d.set(profile.weekdayDiscountEnabled, forKey: key(base, "weekdayDiscountEnabled"))
+        d.set(profile.prepaymentDiscount15To29Enabled, forKey: key(base, "prepaymentDiscount15To29Enabled"))
+        d.set(profile.prepaymentDiscount30PlusEnabled, forKey: key(base, "prepaymentDiscount30PlusEnabled"))
+    }
+    static func activate(_ base: FlybookBase) {
+        let d = UserDefaults.standard
+        let p = profile(for: base)
+        d.set(base.rawValue, forKey: BaseSettingsKey.activeBase)
+        d.set(p.vatPercent, forKey: CalculationSettingsKey.vatPercent)
+        d.set(p.weekdayDiscountEnabled, forKey: CalculationSettingsKey.weekdayDiscountEnabled)
+        d.set(p.prepaymentDiscount15To29Enabled, forKey: CalculationSettingsKey.prepaymentDiscount15To29Enabled)
+        d.set(p.prepaymentDiscount30PlusEnabled, forKey: CalculationSettingsKey.prepaymentDiscount30PlusEnabled)
+    }
+}
+
+struct BaseSetupView: View {
+    let destinations: [Destination]
+    @AppStorage(BaseSettingsKey.activeBase) private var activeBaseRaw = FlybookBase.lsvMainz.rawValue
+    @State private var base = FlybookBase.lsvMainz
+    @State private var profile = BaseProfileStore.profile(for: .lsvMainz)
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack { Text("Basiskonfiguration").font(.title2.bold()); Spacer(); Button("Schließen") { dismiss() } }
+            Form {
+                Picker("Basis", selection: $base) { ForEach(FlybookBase.allCases) { Text($0.rawValue).tag($0) } }
+                Picker("Heimatflugplatz", selection: $profile.homeAirportICAO) {
+                    Text("EDFZ · Mainz-Finthen").tag("EDFZ")
+                    ForEach(destinations.filter { $0.icao != "EDFZ" }) { Text("\($0.icao) · \($0.name)").tag($0.icao) }
+                }
+                HStack { Text("Mehrwertsteuer"); Spacer(); TextField("%", value: $profile.vatPercent, format: .number.precision(.fractionLength(1))).frame(width: 90); Text("%") }
+                Toggle("Werktagsrabatt", isOn: $profile.weekdayDiscountEnabled)
+                Toggle("Vorauszahlungsrabatt 15–29 h", isOn: $profile.prepaymentDiscount15To29Enabled)
+                Toggle("Vorauszahlungsrabatt ab 30 h", isOn: $profile.prepaymentDiscount30PlusEnabled)
+            }
+            HStack { Spacer(); Button("Speichern und aktivieren") { BaseProfileStore.save(profile, for: base); BaseProfileStore.activate(base); activeBaseRaw = base.rawValue }.buttonStyle(.borderedProminent) }
+        }
+        .padding(28).frame(width: 620, height: 480)
+        .onChange(of: base) { profile = BaseProfileStore.profile(for: $0) }
+    }
+}
+
 enum ETOPSSettingsKey {
     static let greenYellowMinutes = "etopsGreenYellowMinutes"
     static let orangeRedMinutes = "etopsOrangeRedMinutes"
@@ -423,43 +505,6 @@ struct ETOPSSetupView: View {
                     )
 
 HStack {
-                        Text("Mehrwertsteuer")
-                            .font(.headline)
-                            .frame(
-                                width: 190,
-                                alignment: .leading
-                            )
-
-                        Stepper(
-                            value: $vatPercent,
-                            in: 0...25,
-                            step: 1
-                        ) {
-                            Text(
-                                String(
-                                    format: "%.0f %%",
-                                    vatPercent
-                                )
-                            )
-                            .font(
-                                .system(
-                                    size: 15,
-                                    weight: .bold,
-                                    design: .monospaced
-                                )
-                            )
-                            .frame(
-                                width: 120,
-                                alignment: .trailing
-                            )
-                        }
-                        .frame(width: 190)
-
-                        Text("%")
-                            .foregroundStyle(.secondary)
-                    }
-
-HStack {
                         Text("Reserve")
                             .font(.headline)
                             .frame(
@@ -545,31 +590,6 @@ HStack {
                     }
 
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Discount Vorauszahlung")
-                            .font(.headline)
-
-                        Toggle(
-                            "15–29 Tage: 25 %",
-                            isOn:
-                                prepaymentDiscount15To29Binding
-                        )
-                        .toggleStyle(.checkbox)
-
-                        Toggle(
-                            "ab 30 Tagen: 15 %",
-                            isOn:
-                                prepaymentDiscount30PlusBinding
-                        )
-                        .toggleStyle(.checkbox)
-                    }
-
-                    Toggle(
-                        "Discount Wochentag (5 % Montag–Freitag)",
-                        isOn: $weekdayDiscountEnabled
-                    )
-                    .toggleStyle(.checkbox)
-
                     Text(
                         "Blockzeit umfasst Flug- und Rollzeit, "
                         + "nicht die Standzeit beim Tankstopp."
@@ -590,23 +610,12 @@ HStack {
                         ETOPSScale.defaultOrangeRedMinutes
                     tankStopMinutes =
                         CalculationSettings.defaultTankStopMinutes
-                    vatPercent =
-                        CalculationSettings.defaultVATPercent
-                    weekdayDiscountEnabled =
-                        CalculationSettings
-                            .defaultWeekdayDiscountEnabled
                     reserveMinutes =
                         CalculationSettings
                             .defaultReserveMinutes
                     maxTravelMinutesUntilOvernight =
                         CalculationSettings
                             .defaultMaxTravelMinutesUntilOvernight
-                    prepaymentDiscount15To29Enabled =
-                        CalculationSettings
-                            .defaultPrepaymentDiscount15To29Enabled
-                    prepaymentDiscount30PlusEnabled =
-                        CalculationSettings
-                            .defaultPrepaymentDiscount30PlusEnabled
                 }
                 Spacer()
             }

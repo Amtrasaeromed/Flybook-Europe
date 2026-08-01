@@ -1,5 +1,12 @@
 import SwiftUI
 
+enum AircraftFuelType: String, CaseIterable, Identifiable {
+    case avgas = "AVGAS 100LL"
+    case ul91 = "UL91"
+    case mogas = "MOGAS"
+    var id: String { rawValue }
+}
+
 enum AircraftType: String, CaseIterable, Identifiable {
     case a211 = "A211"
     case pa28160 = "PA28-160"
@@ -20,6 +27,11 @@ enum AircraftType: String, CaseIterable, Identifiable {
 
     var usableFuelKey: String {
         keyPrefix + ".usableFuel"
+    }
+    var mtowKey: String { keyPrefix + ".mtowKilograms" }
+    var preferredFuelKey: String { keyPrefix + ".preferredFuel" }
+    func approvedFuelKey(_ fuel: AircraftFuelType) -> String {
+        keyPrefix + ".approvedFuel." + fuel.rawValue
     }
 
     var climbSpeedKey: String { keyPrefix + ".climbSpeedKIAS" }
@@ -48,6 +60,15 @@ enum AircraftType: String, CaseIterable, Identifiable {
 
     var defaultUsableFuel: Double {
         self == .a211 ? 100 : 180
+    }
+
+    var defaultMTOWKilograms: Double { self == .a211 ? 750 : 0 }
+    var defaultPreferredFuel: AircraftFuelType { self == .a211 ? .mogas : .avgas }
+    func defaultFuelApproval(_ fuel: AircraftFuelType) -> Bool {
+        switch self {
+        case .a211: return fuel == .avgas || fuel == .mogas
+        case .pa28160: return fuel == .avgas
+        }
     }
 
     var defaultClimbPerformance: ClimbPerformance {
@@ -150,6 +171,27 @@ enum AircraftProfileStore {
             key: aircraft.usableFuelKey,
             fallback: aircraft.defaultUsableFuel
         )
+    }
+
+    static func mtowKilograms(for aircraft: AircraftType) -> Double {
+        storedValue(key: aircraft.mtowKey, fallback: aircraft.defaultMTOWKilograms)
+    }
+
+    static func preferredFuel(for aircraft: AircraftType) -> AircraftFuelType {
+        let raw = UserDefaults.standard.string(forKey: aircraft.preferredFuelKey)
+        return raw.flatMap(AircraftFuelType.init(rawValue:)) ?? aircraft.defaultPreferredFuel
+    }
+
+    static func isApproved(_ fuel: AircraftFuelType, for aircraft: AircraftType) -> Bool {
+        let key = aircraft.approvedFuelKey(fuel)
+        guard UserDefaults.standard.object(forKey: key) != nil else {
+            return aircraft.defaultFuelApproval(fuel)
+        }
+        return UserDefaults.standard.bool(forKey: key)
+    }
+
+    static func approvedFuels(for aircraft: AircraftType) -> [AircraftFuelType] {
+        AircraftFuelType.allCases.filter { isApproved($0, for: aircraft) }
     }
 
     static func climbPerformance(for aircraft: AircraftType) -> ClimbPerformance {
@@ -278,6 +320,11 @@ private struct AircraftProfileEditor: View {
     @AppStorage private var hourlyRateEUR: Double
     @AppStorage private var fuelConsumptionPerHour: Double
     @AppStorage private var usableFuel: Double
+    @AppStorage private var mtowKilograms: Double
+    @AppStorage private var preferredFuelRaw: String
+    @AppStorage private var avgasApproved: Bool
+    @AppStorage private var ul91Approved: Bool
+    @AppStorage private var mogasApproved: Bool
     @AppStorage private var climbSpeedKIAS: Double
     @AppStorage private var cruisePowerPercent: Int
     @AppStorage private var climbTime1000Minutes: Double
@@ -325,6 +372,11 @@ private struct AircraftProfileEditor: View {
                 aircraft.defaultUsableFuel,
             aircraft.usableFuelKey
         )
+        _mtowKilograms = AppStorage(wrappedValue: aircraft.defaultMTOWKilograms, aircraft.mtowKey)
+        _preferredFuelRaw = AppStorage(wrappedValue: aircraft.defaultPreferredFuel.rawValue, aircraft.preferredFuelKey)
+        _avgasApproved = AppStorage(wrappedValue: aircraft.defaultFuelApproval(.avgas), aircraft.approvedFuelKey(.avgas))
+        _ul91Approved = AppStorage(wrappedValue: aircraft.defaultFuelApproval(.ul91), aircraft.approvedFuelKey(.ul91))
+        _mogasApproved = AppStorage(wrappedValue: aircraft.defaultFuelApproval(.mogas), aircraft.approvedFuelKey(.mogas))
 
         let climb = aircraft.defaultClimbPerformance
         _cruisePowerPercent = AppStorage(
@@ -359,6 +411,34 @@ private struct AircraftProfileEditor: View {
                             )
 
                             fuelCapacityRow
+
+                            profileRow(
+                                title: "MTOW",
+                                value: $mtowKilograms,
+                                range: 0...5_000,
+                                step: 1,
+                                suffix: "kg"
+                            )
+
+                            HStack {
+                                Text("Bevorzugte Kraftstoffsorte")
+                                Spacer()
+                                Picker("Bevorzugte Kraftstoffsorte", selection: $preferredFuelRaw) {
+                                    ForEach(AircraftFuelType.allCases) { fuel in
+                                        Text(fuel.rawValue).tag(fuel.rawValue)
+                                    }
+                                }
+                                .labelsHidden()
+                                .frame(width: 190)
+                            }
+
+                            HStack(spacing: 18) {
+                                Text("Zugelassen")
+                                Spacer()
+                                Toggle("AVGAS", isOn: $avgasApproved)
+                                Toggle("UL91", isOn: $ul91Approved)
+                                Toggle("MOGAS", isOn: $mogasApproved)
+                            }
                         }
                         .padding(8)
                     }
@@ -438,6 +518,11 @@ private struct AircraftProfileEditor: View {
                                 .defaultFuelConsumptionPerHour
                         usableFuel =
                             aircraft.defaultUsableFuel
+                        mtowKilograms = aircraft.defaultMTOWKilograms
+                        preferredFuelRaw = aircraft.defaultPreferredFuel.rawValue
+                        avgasApproved = aircraft.defaultFuelApproval(.avgas)
+                        ul91Approved = aircraft.defaultFuelApproval(.ul91)
+                        mogasApproved = aircraft.defaultFuelApproval(.mogas)
                         let climb = aircraft.defaultClimbPerformance
                         climbSpeedKIAS = climb.speedKIAS
                         climbTime1000Minutes = climb.timeAt1000FeetMinutes

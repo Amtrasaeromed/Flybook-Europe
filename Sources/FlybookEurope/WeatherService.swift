@@ -595,7 +595,7 @@ actor WeatherService {
                 )
             }
 
-            let hourlySurfaceWindKnots: [Double?] = (8..<20).map { hour in
+            let hourlySurfaceWindKnots: [Double?] = (5..<24).map { hour in
                 let timestamp = String(
                     format: "%@T%02d:00",
                     localDate,

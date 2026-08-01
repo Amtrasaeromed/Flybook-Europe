@@ -57,6 +57,9 @@ struct DestinationPage: View {
     @State private var flightPlanningMode = FlightPlanningMode.roundTrip
     @State private var isOneWay = false
     @State private var outboundReserveNotConsumed = false
+    @State private var refuelAtDestination = false
+    @State private var refuelLiters = 70.0
+    @State private var manualRefuelPrice: Double?
     @State private var intermediateICAO = "EDFZ"
     @AppStorage(CalculationSettingsKey.reservationFromTimestamp)
     private var reservationFromTimestamp = Date().timeIntervalSince1970
@@ -93,9 +96,43 @@ struct DestinationPage: View {
         FuelDisplayUnit(rawValue: fuelDisplayUnitRaw) ?? .liters
     }
 
+    private var preferredFuel: AircraftFuelType {
+        AircraftProfileStore.preferredFuel(for: selectedAircraft)
+    }
+
+    private func price(_ fuel: AircraftFuelType, at airport: Destination) -> Double? {
+        switch fuel { case .avgas: return airport.avgasPricePerLiterEUR; case .ul91: return airport.ul91PricePerLiterEUR; case .mogas: return airport.mogasPricePerLiterEUR }
+    }
+
+    private var destinationFuelPrice: Double? { manualRefuelPrice ?? price(preferredFuel, at: destination) }
+
+    private var homeReferencePrice: Double? {
+        let approved = AircraftProfileStore.approvedFuels(for: selectedAircraft)
+        let values = approved.compactMap { fuel -> Double? in
+            switch fuel { case .avgas: return mainzAvgasPrice; case .ul91: return nil; case .mogas: return mainzMogasPrice }
+        }
+        return values.min()
+    }
+
+    private var destinationVATPercent: Double {
+        let code = destination.country.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return ["DE":19,"DEUTSCHLAND":19,"NL":21,"NIEDERLANDE":21,"DK":25,"DÄNEMARK":25,"CZ":21,"TSCHECHIEN":21,"FR":20,"FRANKREICH":20,"AT":20,"ÖSTERREICH":20,"CH":8.1,"SCHWEIZ":8.1,"SI":22,"SLOWENIEN":22,"HR":25,"KROATIEN":25,"IT":22,"ITALIEN":22][code] ?? 0
+    }
+
+    private var refuelLossEUR: Double? {
+        guard refuelAtDestination else { return 0 }
+        guard let gross = destinationFuelPrice, let reference = homeReferencePrice else { return nil }
+        let foreign = !["DE", "DEUTSCHLAND"].contains(destination.country.uppercased())
+        let reimbursable = foreign ? min(gross / (1 + destinationVATPercent / 100), reference) : min(gross, reference)
+        return max(0, (gross - reimbursable) * refuelLiters)
+    }
+
     @AppStorage(AircraftSettingsKey.selectedAircraft)
     private var selectedAircraftRaw =
         AircraftType.a211.rawValue
+
+    @AppStorage(BaseSettingsKey.activeBase)
+    private var activeBaseRaw = FlybookBase.lsvMainz.rawValue
 
     @AppStorage(ETOPSSettingsKey.activeUser)
     private var activeUserRaw =
@@ -955,7 +992,7 @@ struct DestinationPage: View {
             )
             .offset(x: 34, y: 28)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
                 FlybookCard {
                     TravelDurationBar(
                         minutes:
@@ -965,13 +1002,16 @@ struct DestinationPage: View {
                     )
                     .offset(y: 2)
                 }
-                .frame(height: 64)
+                .frame(height: 52)
 
                 fiveDayForecastSection
+                    .padding(.top, 20)
 
                 tenDayForecastSection
+                    .padding(.top, 8)
 
                 mapAndImageSection
+                    .padding(.top, 8)
 
                 calculationRowSection
             }
@@ -1020,12 +1060,26 @@ struct DestinationPage: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text("BASIS")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                        .frame(width: 86, alignment: .leading)
+                    Picker("Basis", selection: $activeBaseRaw) {
+                        ForEach(FlybookBase.allCases) { base in
+                            Text(base.rawValue).tag(base.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 210, alignment: .leading)
+                }
                 HStack(spacing: 10) {
                     Text("FLUGZEUG")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
-                        .frame(width: 78, alignment: .trailing)
+                        .frame(width: 86, alignment: .leading)
 
                     Picker(
                         "Flugzeug",
@@ -1040,14 +1094,15 @@ struct DestinationPage: View {
                     .labelsHidden()
                     .font(.system(size: 15, weight: .semibold))
                     .controlSize(.regular)
-                    .frame(width: 160)
+                    .pickerStyle(.menu)
+                    .frame(width: 210, alignment: .leading)
                 }
 
                 HStack(spacing: 10) {
                     Text("NUTZER")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
-                        .frame(width: 78, alignment: .trailing)
+                        .frame(width: 86, alignment: .leading)
 
                     Picker(
                         "Nutzer",
@@ -1060,7 +1115,8 @@ struct DestinationPage: View {
                     .labelsHidden()
                     .font(.system(size: 15, weight: .semibold))
                     .controlSize(.regular)
-                    .frame(width: 160)
+                    .pickerStyle(.menu)
+                    .frame(width: 210, alignment: .leading)
                 }
             }
             .padding(.top, 8)
@@ -1069,6 +1125,9 @@ struct DestinationPage: View {
             ETOPSProfileStore.activate(
                 FlybookUser(rawValue: newValue) ?? .stephan
             )
+        }
+        .onChange(of: activeBaseRaw) { newValue in
+            BaseProfileStore.activate(FlybookBase(rawValue: newValue) ?? .lsvMainz)
         }
     }
 
@@ -1378,6 +1437,7 @@ struct DestinationPage: View {
                     returnDirectNM: returnDirectNM,
                     outboundTrackMiles: outboundTrackMilesBinding,
                     returnTrackMiles: returnTrackMilesBinding,
+                    refuelAtDestination: $refuelAtDestination,
                     destinationTimeZone: planningDestination.timeZone,
                     timeDisplayMode: timeDisplayMode,
                     tankStopMinutes: tankStopMinutes,
@@ -1498,6 +1558,18 @@ struct DestinationPage: View {
 
                 Divider()
 
+                DestinationRefuelCalculationRow(
+                    enabled: $refuelAtDestination,
+                    fuel: preferredFuel,
+                    knownPrice: price(preferredFuel, at: destination),
+                    manualPrice: $manualRefuelPrice,
+                    liters: $refuelLiters,
+                    unit: fuelDisplayUnit,
+                    lossEUR: refuelLossEUR
+                )
+
+                Divider()
+
                 CalculationTotalRow(
                     includesReturn: !isOneWay,
                     outboundReserveNotConsumed:
@@ -1542,20 +1614,18 @@ struct DestinationPage: View {
                     prepaymentDiscount30PlusEnabled:
                         prepaymentDiscount30PlusEnabled,
                     minimumRequiredBlockHours:
-                        requiredReservationBlockHours
+                        requiredReservationBlockHours,
+                    refuelLossEUR: refuelLossEUR,
+                    refuelEnabled: refuelAtDestination
                 )
 
             }
         }
-        .frame(width: 466, height: isOneWay ? 272 : 362)
+        .frame(width: 1010, height: isOneWay ? 272 : 362)
     }
 
     private var calculationRowSection: some View {
-        HStack {
-            calculationSection
-            Spacer()
-        }
-        .frame(width: 1010, alignment: .leading)
+        calculationSection.frame(width: 1010, alignment: .leading)
     }
 
     private var timeModeBinding: Binding<TimeDisplayMode> {
@@ -1962,7 +2032,7 @@ private struct CompactDailyForecastTile: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.gray.opacity(0.13))
+                .fill(Color(red: 0.94, green: 0.975, blue: 1.0))
         )
     }
 
@@ -2113,7 +2183,7 @@ private struct DailyForecastTile: View {
 
     private var hourlyWindBar: some View {
         HStack(spacing: 0) {
-            ForEach(0..<12, id: \.self) { index in
+            ForEach(0..<19, id: \.self) { index in
                 let wind = day.hourlySurfaceWindKnots?
                     .indices.contains(index) == true
                     ? day.hourlySurfaceWindKnots?[index]
@@ -2127,8 +2197,8 @@ private struct DailyForecastTile: View {
                     .help(
                         String(
                             format: "%02d–%02d Uhr: %@",
-                            index + 8,
-                            index + 9,
+                            index + 5,
+                            index + 6,
                             wind.map {
                                 String(format: "%.0f kt Dauerwind", $0)
                             } ?? "keine Winddaten"
@@ -2141,30 +2211,30 @@ private struct DailyForecastTile: View {
 
     private func windColor(_ windKnots: Double?) -> Color {
         guard let windKnots else {
-            return FlybookColor.muted.opacity(0.22)
+            return Color(red: 0.92, green: 0.96, blue: 0.99)
         }
 
         switch windKnots {
-        case ..<3:
-            return .white
-        case ..<6:
-            return Color(red: 1.00, green: 0.96, blue: 0.82)
-        case ..<9:
-            return Color(red: 1.00, green: 0.90, blue: 0.62)
-        case ..<12:
-            return Color(red: 1.00, green: 0.82, blue: 0.42)
-        case ..<15:
-            return Color(red: 1.00, green: 0.72, blue: 0.25)
-        case ..<18:
-            return Color(red: 0.98, green: 0.60, blue: 0.13)
-        case ..<21:
-            return Color(red: 0.94, green: 0.48, blue: 0.06)
-        case ..<24:
-            return Color(red: 0.90, green: 0.36, blue: 0.02)
-        case ..<25:
-            return Color(red: 0.87, green: 0.30, blue: 0.01)
+        case ...3:
+            return Color(red: 0.86, green: 0.98, blue: 0.88)
+        case ...6:
+            return Color(red: 0.55, green: 0.90, blue: 0.61)
+        case ...9:
+            return Color(red: 0.22, green: 0.69, blue: 0.35)
+        case ...12:
+            return Color(red: 0.67, green: 0.86, blue: 0.98)
+        case ...15:
+            return Color(red: 0.34, green: 0.63, blue: 0.91)
+        case ...18:
+            return Color(red: 0.42, green: 0.38, blue: 0.78)
+        case ...21:
+            return Color(red: 0.94, green: 0.55, blue: 0.55)
+        case ...24:
+            return Color(red: 0.88, green: 0.30, blue: 0.34)
+        case ...27:
+            return Color(red: 0.72, green: 0.13, blue: 0.18)
         default:
-            return Color(red: 0.78, green: 0.20, blue: 0.00)
+            return Color(red: 0.43, green: 0.03, blue: 0.08)
         }
     }
 
@@ -2397,7 +2467,7 @@ private struct PlanningWeatherCard: View {
             .padding(.vertical, 4)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.gray.opacity(0.07))
+                    .fill(Color(red: 0.92, green: 0.97, blue: 1.0))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
@@ -2463,7 +2533,7 @@ private struct PlanningWeatherCard: View {
                 )
 
             if let sunriseText, let sunsetText {
-                HStack(spacing: 8) {
+                HStack(spacing: 2) {
                     Label(
                         TimeInput.displayClock(
                             sunriseText,
@@ -2471,6 +2541,7 @@ private struct PlanningWeatherCard: View {
                         ),
                         systemImage: "sunrise.fill"
                     )
+                    .frame(width: 66, alignment: .leading)
                     Label(
                         TimeInput.displayClock(
                             sunsetText,
@@ -2478,13 +2549,14 @@ private struct PlanningWeatherCard: View {
                         ),
                         systemImage: "sunset.fill"
                     )
+                    .frame(width: 66, alignment: .leading)
                 }
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(FlybookColor.muted)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .foregroundStyle(FlybookColor.navy)
             }
 
             if let civilDawnText, let civilDuskText {
-                HStack(spacing: 8) {
+                HStack(spacing: 2) {
                     Label(
                         TimeInput.displayClock(
                             civilDawnText,
@@ -2493,6 +2565,7 @@ private struct PlanningWeatherCard: View {
                         systemImage: "sun.horizon.fill"
                     )
                     .help("Beginn der bürgerlichen Dämmerung")
+                    .frame(width: 66, alignment: .leading)
 
                     Label(
                         TimeInput.displayClock(
@@ -2502,8 +2575,9 @@ private struct PlanningWeatherCard: View {
                         systemImage: "moon.stars.fill"
                     )
                     .help("Ende der bürgerlichen Dämmerung")
+                    .frame(width: 66, alignment: .leading)
                 }
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(FlybookColor.muted)
             }
         }
@@ -2637,6 +2711,7 @@ private struct FlightTimePlanningRows: View {
     let returnDirectNM: Double
     @Binding var outboundTrackMiles: Double
     @Binding var returnTrackMiles: Double
+    @Binding var refuelAtDestination: Bool
     let destinationTimeZone: TimeZone
     let timeDisplayMode: TimeDisplayMode
     let tankStopMinutes: Int
@@ -3020,6 +3095,7 @@ private struct FlightTimePlanningRows: View {
                 reverseRoute: reverseRoute,
                 setNow: setOutboundToNow,
                 showsETOPSHeader: true,
+                refuelSelection: $refuelAtDestination,
                 stopCount: $outboundStops,
                 flightAltitudeFeet:
                     $outboundFlightAltitudeFeet,
@@ -3146,7 +3222,8 @@ private struct FlightTimePlanningRows: View {
                 resetSchedule: resetSchedule,
                 reverseRoute: reverseRoute,
                 setNow: setReturnToNow,
-                showsETOPSHeader: true,
+                    showsETOPSHeader: true,
+                    refuelSelection: nil,
                 stopCount: $returnStops,
                 flightAltitudeFeet:
                     $returnFlightAltitudeFeet,
@@ -3443,6 +3520,7 @@ private struct FlightPlanningLine<
     let reverseRoute: () -> Void
     let setNow: () -> Void
     let showsETOPSHeader: Bool
+    var refuelSelection: Binding<Bool>? = nil
     @Binding var stopCount: Int
     @Binding var flightAltitudeFeet: Int
     let altitudeOptions: [Int]
@@ -3598,6 +3676,18 @@ private struct FlightPlanningLine<
                                 trailingWeather.runwayCrosswindWarning
                         )
                     }
+
+                    if let refuelSelection {
+                        Button {
+                            refuelSelection.wrappedValue.toggle()
+                        } label: {
+                            Image(systemName: "fuelpump.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(refuelSelection.wrappedValue ? FlybookColor.blue : FlybookColor.muted)
+                        }
+                        .buttonStyle(.plain)
+                        .help(refuelSelection.wrappedValue ? "Betankung am Ziel ausgewählt" : "Am Ziel tanken")
+                    }
                 }
 
                 HStack(alignment: .center, spacing: 4) {
@@ -3723,37 +3813,27 @@ private struct FlightPlanningLine<
             .help("Farbe aus der Dauer des einzelnen Fluglegs")
         }
         .fixedSize(horizontal: false, vertical: true)
-        .overlay(alignment: .topLeading) {
+        .overlay(alignment: .bottomLeading) {
             if showsRefreshButton {
-                VStack(spacing: 8) {
+                HStack(spacing: 5) {
                     Button(action: refreshWeather) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 21, weight: .bold))
-                            .frame(width: 38, height: 32)
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(width: 28, height: 26)
                     }
                     .help("Wetterdaten jetzt aktualisieren")
 
                     Button(action: resetSchedule) {
-                        VStack(spacing: 2) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 17, weight: .bold))
-                            Text("Reset")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .frame(width: 38, height: 38)
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(width: 28, height: 26)
                     }
                     .help("Datum und Uhrzeiten auf Standard zurücksetzen")
 
                     Button(action: reverseRoute) {
-                        VStack(spacing: 2) {
-                            Image(systemName: "arrow.left.arrow.right")
-                                .font(.system(size: 17, weight: .bold))
-                            Text("Umkehren")
-                                .font(.system(size: 9, weight: .bold))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                        }
-                        .frame(width: 38, height: 38)
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 16, weight: .bold))
+                            .frame(width: 28, height: 26)
                     }
                     .help("Start- und Zielflugplatz vertauschen")
                 }
@@ -3769,10 +3849,12 @@ private struct TrackMilesEditor: View {
 
     var body: some View {
         VStack(spacing: 3) {
-            Text("TRACK\nNM")
+            Text("TRACK NM")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
                 .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .frame(width: 112)
 
             Text(String(format: "%.0f", trackMiles))
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
@@ -4256,6 +4338,60 @@ struct ReservationManagerView: View {
     }
 }
 
+private struct DestinationRefuelCalculationRow: View {
+    @Binding var enabled: Bool
+    let fuel: AircraftFuelType
+    let knownPrice: Double?
+    @Binding var manualPrice: Double?
+    @Binding var liters: Double
+    let unit: FuelDisplayUnit
+    let lossEUR: Double?
+
+    private var effectivePrice: Double? { manualPrice ?? knownPrice }
+    private var shownQuantity: Double { unit.fromLiters(liters) }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button { enabled.toggle() } label: {
+                Image(systemName: "fuelpump.fill")
+                    .foregroundStyle(enabled ? FlybookColor.blue : FlybookColor.muted)
+            }
+            .buttonStyle(.plain)
+
+            Text(fuel.rawValue).font(.system(size: 12, weight: .bold)).frame(width: 92, alignment: .leading)
+
+            Group {
+                Text(effectivePrice.map { String(format: "%.2f €/L", $0) } ?? "?")
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                stepButtons(down: { changePrice(-0.01) }, up: { changePrice(0.01) })
+                Text(String(format: unit == .liters ? "%.0f L" : "%.1f gal", shownQuantity))
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                stepButtons(down: { liters = max(0, liters - (unit == .liters ? 1 : 3.785_411_784)) }, up: { liters += unit == .liters ? 1 : 3.785_411_784 })
+                Spacer()
+                Text(lossEUR.map { String(format: "%.2f € Verlust", $0) } ?? "?")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundStyle(FlybookColor.navy)
+            }
+            .opacity(enabled ? 1 : 0)
+            .disabled(!enabled)
+        }
+        .frame(height: 38)
+    }
+
+    private func changePrice(_ delta: Double) {
+        if manualPrice == nil { manualPrice = 2.80 }
+        else { manualPrice = max(0, (manualPrice! + delta) * 100).rounded() / 100 }
+    }
+
+    private func stepButtons(down: @escaping () -> Void, up: @escaping () -> Void) -> some View {
+        VStack(spacing: 0) {
+            Button(action: up) { Image(systemName: "chevron.up") }
+            Button(action: down) { Image(systemName: "chevron.down") }
+        }
+        .buttonStyle(.plain).font(.system(size: 9, weight: .bold))
+    }
+}
+
 private struct CalculationTotalRow: View {
     let includesReturn: Bool
     let outboundReserveNotConsumed: Bool
@@ -4288,6 +4424,8 @@ private struct CalculationTotalRow: View {
     let prepaymentDiscount15To29Enabled: Bool
     let prepaymentDiscount30PlusEnabled: Bool
     let minimumRequiredBlockHours: Double
+    let refuelLossEUR: Double?
+    let refuelEnabled: Bool
 
     private var outboundMinutes: Int {
         FlightMath.adjustedBlockMinutes(
@@ -4374,7 +4512,7 @@ private struct CalculationTotalRow: View {
             includesReturn
                 ? legCost(minutes: returnMinutes, date: returnFlightDate)
                 : 0
-        )
+        ) + (refuelLossEUR ?? 0)
     }
 
     var body: some View {
@@ -4400,7 +4538,7 @@ private struct CalculationTotalRow: View {
             )
 
             totalBox(
-                value: totalCost
+                value: refuelEnabled && refuelLossEUR == nil ? "?" : totalCost
                     .rounded(.toNearestOrAwayFromZero)
                     .formatted(
                     .currency(code: "EUR")
@@ -4412,9 +4550,7 @@ private struct CalculationTotalRow: View {
     }
 
     private func decimalHours(_ minutes: Int) -> String {
-        let hours = Double(minutes) / 60.0
-        let commerciallyRounded =
-            (hours * 10).rounded(.toNearestOrAwayFromZero) / 10
+        let commerciallyRounded = ceil(Double(max(0, minutes)) / 6.0) / 10.0
         return commerciallyRounded.formatted(
             .number
                 .locale(Locale(identifier: "de_DE"))
@@ -4546,9 +4682,7 @@ private struct CalculationRow: View {
     }
 
     private var blockTimeText: String {
-        let hours = Double(blockMinutes) / 60.0
-        let commerciallyRounded =
-            (hours * 10).rounded(.toNearestOrAwayFromZero) / 10
+        let commerciallyRounded = ceil(Double(max(0, blockMinutes)) / 6.0) / 10.0
         return commerciallyRounded.formatted(
             .number
                 .locale(Locale(identifier: "de_DE"))

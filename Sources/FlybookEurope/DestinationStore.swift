@@ -26,7 +26,8 @@ final class DestinationStore: ObservableObject {
             avgas: 3.03,
             ul91: nil,
             mogas: 2.59
-        )
+        ),
+        "EHMZ": FuelPriceRecord(avgas: 3.25, ul91: nil, mogas: 1.83)
     ]
 
     private let airportElevationFeet: [String: Double] = [
@@ -253,12 +254,15 @@ final class DestinationStore: ObservableObject {
 
     private func refreshMonthlyFuelPrices() async {
         let prices = await MonthlyFuelPriceService.shared.prices(
-            for: destinations.map(\.icao),
+            for: destinations.map(\.icao).filter { $0 != "EDFZ" },
             seed: Self.fuelPrices
         )
+        var verifiedPrices = prices
+        verifiedPrices["EDFZ"] = await MonthlyFuelPriceService.shared.officialMainzPrices()
+            ?? FuelPriceRecord(avgas: 3.03, ul91: nil, mogas: 2.59)
         var updated = destinations
         for index in updated.indices {
-            guard let price = prices[updated[index].icao] else {
+            guard let price = verifiedPrices[updated[index].icao] else {
                 continue
             }
             updated[index].avgasPricePerLiterEUR = price.avgas
@@ -267,7 +271,7 @@ final class DestinationStore: ObservableObject {
         }
         destinations = updated
 
-        if let mainz = prices["EDFZ"] {
+        if let mainz = verifiedPrices["EDFZ"] {
             if let avgas = mainz.avgas {
                 UserDefaults.standard.set(
                     avgas,
