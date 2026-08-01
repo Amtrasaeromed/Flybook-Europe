@@ -32,7 +32,7 @@ final class RouteWindViewModel: ObservableObject {
         errorMessage = nil
         do {
             var result: [RouteWind] = []
-            let optimizationLevels = Array(stride(from: 1_500, through: 10_000, by: 100))
+            let optimizationLevels = Array(stride(from: 2_500, through: 10_000, by: 100))
             let requestedLevels = Array(
                 Set(optimizationLevels + altitudeOptions + [selectedAltitudeFeet])
             ).sorted()
@@ -55,7 +55,7 @@ final class RouteWindViewModel: ObservableObject {
             }
 
             let candidates = result.filter {
-                (1_500...10_000).contains($0.altitudeFeet)
+                (2_500...10_000).contains($0.altitudeFeet)
             }
             let bestLevel = candidates.min { first, second in
                 travelMinutes(

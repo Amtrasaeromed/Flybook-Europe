@@ -19,6 +19,7 @@ struct DestinationPage: View {
     let destination: Destination
     let availableOrigins: [AirportReference]
     @State private var selectedOriginICAO = "EDFZ"
+    @State private var isRouteReversed = false
     @StateObject private var weatherModel = WeatherViewModel()
     @StateObject private var outboundRouteWindModel = RouteWindViewModel()
     @StateObject private var returnRouteWindModel = RouteWindViewModel()
@@ -117,8 +118,8 @@ struct DestinationPage: View {
 
     private var routeDirectNM: Double {
         AirportDistance.nauticalMiles(
-            from: selectedOrigin,
-            to: destination
+            from: planningOrigin,
+            to: planningDestination
         )
     }
 
@@ -136,33 +137,68 @@ struct DestinationPage: View {
         )
     }
 
+    private var planningOrigin: AirportReference {
+        isRouteReversed ? destinationReference : selectedOrigin
+    }
+
+    private var planningDestination: AirportReference {
+        isRouteReversed ? selectedOrigin : destinationReference
+    }
+
+    private var planningOriginSelection: Binding<String> {
+        Binding(
+            get: { planningOrigin.icao },
+            set: { newICAO in
+                if newICAO.caseInsensitiveCompare(destinationReference.icao)
+                    == .orderedSame
+                {
+                    isRouteReversed = true
+                } else {
+                    selectedOriginICAO = newICAO
+                    isRouteReversed = false
+                }
+            }
+        )
+    }
+
+    private var planningAirportOptions: [AirportReference] {
+        var airports = availableOrigins
+        if !airports.contains(where: {
+            $0.icao.caseInsensitiveCompare(destinationReference.icao)
+                == .orderedSame
+        }) {
+            airports.append(destinationReference)
+        }
+        return airports
+    }
+
     private var intermediateAirport: AirportReference {
         availableOrigins.first {
             $0.icao == intermediateICAO
-        } ?? destinationReference
+        } ?? planningDestination
     }
 
     private var firstLegDestination: AirportReference {
         flightPlanningMode == .multiStop
             ? intermediateAirport
-            : destinationReference
+            : planningDestination
     }
 
     private var secondLegOrigin: AirportReference {
         flightPlanningMode == .multiStop
             ? intermediateAirport
-            : destinationReference
+            : planningDestination
     }
 
     private var secondLegDestination: AirportReference {
         flightPlanningMode == .multiStop
-            ? destinationReference
-            : selectedOrigin
+            ? planningDestination
+            : planningOrigin
     }
 
     private var outboundDirectNM: Double {
         AirportDistance.nauticalMiles(
-            from: selectedOrigin,
+            from: planningOrigin,
             to: firstLegDestination
         )
     }
@@ -206,8 +242,8 @@ struct DestinationPage: View {
 
     private var outboundCourseDegrees: Double {
         return WindMath.initialBearing(
-            latitude1: selectedOrigin.latitude,
-            longitude1: selectedOrigin.longitude,
+            latitude1: planningOrigin.latitude,
+            longitude1: planningOrigin.longitude,
             latitude2: firstLegDestination.latitude,
             longitude2: firstLegDestination.longitude
         )
@@ -240,9 +276,9 @@ struct DestinationPage: View {
         if (180..<360).contains(
             WindMath.normalized(courseDegrees)
         ) {
-            return [3500, 4500, 6500, 8500]
+            return [2500, 3500, 4500, 6500, 8500]
         }
-        return [3500, 5500, 7500, 9500]
+        return [2500, 3500, 5500, 7500, 9500]
     }
 
     private var selectedAircraft: AircraftType {
@@ -342,7 +378,7 @@ struct DestinationPage: View {
         .task(id: outboundWindTaskID) {
             await outboundRouteWindModel.load(
                 destination: firstLegDestination,
-                origin: selectedOrigin,
+                origin: planningOrigin,
                 plannedStart: outboundStartInstant,
                 plannedEnd: outboundArrivalInstantForWeather,
                 altitudeOptions: outboundAltitudeOptions,
@@ -354,7 +390,7 @@ struct DestinationPage: View {
                 stopCount: outboundStops,
                 tankStopMinutes: tankStopMinutes,
                 fallbackCruiseSpeedKnots: cruiseGroundSpeedKnots,
-                departurePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                departurePressureAltitudeFeet: planningOrigin.elevationFeet,
                 climbPerformance: climbPerformance,
                 cruisePerformance: cruisePerformance
             )
@@ -382,23 +418,23 @@ struct DestinationPage: View {
         .task(id: outboundEDFZWeatherTaskID) {
             await outboundEDFZWeatherModel.load(
                 plannedDate: outboundFlightDate,
-                airport: selectedOrigin
+                airport: planningOrigin
             )
         }
         .task(id: returnEDFZWeatherTaskID) {
             await returnEDFZWeatherModel.load(
                 plannedDate: returnFlightDate,
-                airport: selectedOrigin
+                airport: planningOrigin
             )
         }
         .task(id: multiStopWeatherTaskID) {
             await destinationAirportWeatherModel.load(
                 plannedDate: outboundFlightDate,
-                airport: destinationReference
+                airport: planningDestination
             )
             await destinationReturnWeatherModel.load(
                 plannedDate: returnFlightDate,
-                airport: destinationReference
+                airport: planningDestination
             )
             if flightPlanningMode == .multiStop {
                 await intermediateWeatherModel.load(
@@ -415,7 +451,7 @@ struct DestinationPage: View {
                     recommendedStopCount(
                         headwindKnots: wind.outboundHeadwindKnots,
                         directNM: outboundDirectNM,
-                        climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                        climbDeparturePressureAltitudeFeet: planningOrigin.elevationFeet,
                         climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet)
                     )
                 )
@@ -468,6 +504,10 @@ struct DestinationPage: View {
         .onChange(of: selectedOriginICAO) { _ in
             normalizeFlightAltitudes()
         }
+        .onChange(of: isRouteReversed) { _ in
+            resetAutomaticStops()
+            normalizeFlightAltitudes()
+        }
         .onChange(of: flightPlanningMode) { mode in
             if mode == .roundTrip {
                 let today =
@@ -486,12 +526,12 @@ struct DestinationPage: View {
                     ) ?? today
             }
             if mode == .multiStop,
-               intermediateICAO == selectedOrigin.icao
+               intermediateICAO == planningOrigin.icao
                 || intermediateICAO == destination.icao
             {
                 intermediateICAO =
                     availableOrigins.first {
-                        $0.icao != selectedOrigin.icao
+                        $0.icao != planningOrigin.icao
                             && $0.icao != destination.icao
                     }?.icao ?? intermediateICAO
             }
@@ -629,7 +669,7 @@ struct DestinationPage: View {
                 recommendedStopCount(
                     headwindKnots: wind.outboundHeadwindKnots,
                     directNM: outboundDirectNM,
-                    climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                    climbDeparturePressureAltitudeFeet: planningOrigin.elevationFeet,
                     climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet)
                 )
             )
@@ -665,18 +705,19 @@ struct DestinationPage: View {
     }
 
     private var outboundEDFZWeatherTaskID: String {
-        dateTaskID(prefix: "out-\(selectedOrigin.icao)", date: outboundFlightDate)
+        dateTaskID(prefix: "out-\(planningOrigin.icao)-\(planningDestination.icao)", date: outboundFlightDate)
     }
 
     private var returnEDFZWeatherTaskID: String {
-        dateTaskID(prefix: "ret-\(selectedOrigin.icao)", date: returnFlightDate)
+        dateTaskID(prefix: "ret-\(planningOrigin.icao)-\(planningDestination.icao)", date: returnFlightDate)
     }
 
     private var multiStopWeatherTaskID: String {
         dateTaskID(
             prefix:
                 "multi-\(flightPlanningMode.rawValue)-"
-                + "\(intermediateICAO)-\(destination.icao)",
+                + "\(intermediateICAO)-\(planningOrigin.icao)-"
+                + planningDestination.icao,
             date: outboundFlightDate
         )
         + "-"
@@ -709,7 +750,7 @@ struct DestinationPage: View {
             "\(prefix)-\(destination.icao)-"
             + "\(anchorBucket)-\(stopCount)-"
             + selectedAircraftRaw
-            + "-\(selectedOrigin.icao)"
+            + "-\(planningOrigin.icao)-\(planningDestination.icao)"
             + "-\(flightPlanningMode.rawValue)"
             + "-\(intermediateICAO)"
             + "-M\(trackMiles)"
@@ -725,7 +766,7 @@ struct DestinationPage: View {
     private var displayTimeZone: TimeZone {
         timeDisplayMode == .utc
             ? TimeZone(secondsFromGMT: 0)!
-            : selectedOrigin.timeZone
+            : planningOrigin.timeZone
     }
 
     private var outboundTravelMinutesForWeather: Int {
@@ -736,7 +777,7 @@ struct DestinationPage: View {
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
                 cruiseGroundSpeedKnots,
-            climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+            climbDeparturePressureAltitudeFeet: planningOrigin.elevationFeet,
             climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
             climbPerformance: climbPerformance,
             cruisePerformance: cruisePerformance,
@@ -774,7 +815,7 @@ struct DestinationPage: View {
                 outboundRouteWindModel.wind?.outboundHeadwindKnots,
             cruiseGroundSpeedKnots: cruiseGroundSpeedKnots,
             climbDeparturePressureAltitudeFeet:
-                selectedOrigin.elevationFeet,
+                planningOrigin.elevationFeet,
             climbTargetPressureAltitudeFeet:
                 Double(outboundFlightAltitudeFeet),
             climbPerformance: climbPerformance,
@@ -1055,7 +1096,7 @@ struct DestinationPage: View {
             )
             await outboundRouteWindModel.load(
                 destination: firstLegDestination,
-                origin: selectedOrigin,
+                origin: planningOrigin,
                 plannedStart: outboundStartInstant,
                 plannedEnd: outboundArrivalInstantForWeather,
                 altitudeOptions: outboundAltitudeOptions,
@@ -1067,7 +1108,7 @@ struct DestinationPage: View {
                 stopCount: outboundStops,
                 tankStopMinutes: tankStopMinutes,
                 fallbackCruiseSpeedKnots: cruiseGroundSpeedKnots,
-                departurePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                departurePressureAltitudeFeet: planningOrigin.elevationFeet,
                 climbPerformance: climbPerformance,
                 cruisePerformance: cruisePerformance
             )
@@ -1091,19 +1132,19 @@ struct DestinationPage: View {
             )
             await outboundEDFZWeatherModel.load(
                 plannedDate: outboundFlightDate,
-                airport: selectedOrigin
+                airport: planningOrigin
             )
             await returnEDFZWeatherModel.load(
                 plannedDate: returnFlightDate,
-                airport: selectedOrigin
+                airport: planningOrigin
             )
             await destinationAirportWeatherModel.load(
                 plannedDate: outboundFlightDate,
-                airport: destinationReference
+                airport: planningDestination
             )
             await destinationReturnWeatherModel.load(
                 plannedDate: returnFlightDate,
-                airport: destinationReference
+                airport: planningDestination
             )
             if flightPlanningMode == .multiStop {
                 await intermediateWeatherModel.load(
@@ -1138,6 +1179,12 @@ struct DestinationPage: View {
                 ) ?? today
             desiredHomeArrivalText = "17:00"
         }
+    }
+
+    private func reverseFlightRoute() {
+        isRouteReversed.toggle()
+        outboundTrackMilesOverride = nil
+        returnTrackMilesOverride = nil
     }
 
     private var flightSection: some View {
@@ -1201,9 +1248,9 @@ struct DestinationPage: View {
 
                             Picker(
                                 "Abflugort",
-                                selection: $selectedOriginICAO
+                                selection: planningOriginSelection
                             ) {
-                                ForEach(availableOrigins) { airport in
+                                ForEach(planningAirportOptions) { airport in
                                     Text("\(airport.icao) · \(airport.name)")
                                         .tag(airport.icao)
                                 }
@@ -1281,7 +1328,7 @@ struct DestinationPage: View {
                     planningMode: flightPlanningMode,
                     isOneWay: isOneWay,
                     intermediateAirportICAO: $intermediateICAO,
-                    airportOptions: availableOrigins,
+                    airportOptions: planningAirportOptions,
                     outboundFlightDate: $outboundFlightDate,
                     returnFlightDate: $returnFlightDate,
                     outboundStartText: $outboundStartText,
@@ -1325,16 +1372,13 @@ struct DestinationPage: View {
                     returnDestinationWeather:
                         weatherModel.weather?.days.dropFirst().first,
                     destination: destination,
-                    origin: selectedOrigin,
+                    origin: planningOrigin,
+                    routeDestination: planningDestination,
                     outboundDirectNM: outboundDirectNM,
                     returnDirectNM: returnDirectNM,
                     outboundTrackMiles: outboundTrackMilesBinding,
                     returnTrackMiles: returnTrackMilesBinding,
-                    destinationTimeZone:
-                        DestinationTimeZone.value(
-                            for: destination,
-                            weatherTimeZone: weatherModel.weather?.timezone
-                        ),
+                    destinationTimeZone: planningDestination.timeZone,
                     timeDisplayMode: timeDisplayMode,
                     tankStopMinutes: tankStopMinutes,
                     preTakeoffGroundMinutes: preTakeoffGroundMinutes,
@@ -1344,7 +1388,8 @@ struct DestinationPage: View {
                     climbPerformance: climbPerformance,
                     cruisePerformance: cruisePerformance,
                     refreshWeather: refreshWeather,
-                    resetSchedule: resetFlightPlanningSchedule
+                    resetSchedule: resetFlightPlanningSchedule,
+                    reverseRoute: reverseFlightRoute
                 )
             }
         }
@@ -1389,7 +1434,7 @@ struct DestinationPage: View {
                     flightDate: outboundFlightDate,
                     cruiseGroundSpeedKnots:
                         cruiseGroundSpeedKnots,
-                    climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                    climbDeparturePressureAltitudeFeet: planningOrigin.elevationFeet,
                     climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
                     climbPerformance: climbPerformance,
                     cruisePerformance: cruisePerformance,
@@ -1477,7 +1522,7 @@ struct DestinationPage: View {
                     returnFlightDate: returnFlightDate,
                     cruiseGroundSpeedKnots:
                         cruiseGroundSpeedKnots,
-                    outboundClimbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                    outboundClimbDeparturePressureAltitudeFeet: planningOrigin.elevationFeet,
                     outboundClimbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
                     returnClimbDeparturePressureAltitudeFeet: secondLegOrigin.elevationFeet,
                     returnClimbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
@@ -1521,10 +1566,10 @@ struct DestinationPage: View {
 
                 let oldZone = timeDisplayMode == .utc
                     ? TimeZone(secondsFromGMT: 0)!
-                    : selectedOrigin.timeZone
+                    : planningOrigin.timeZone
                 let newZone = newMode == .utc
                     ? TimeZone(secondsFromGMT: 0)!
-                    : selectedOrigin.timeZone
+                    : planningOrigin.timeZone
 
                 outboundStartText = convertedClock(
                     outboundStartText,
@@ -1727,12 +1772,12 @@ struct DestinationPage: View {
                         .foregroundStyle(FlybookColor.navy)
 
                     DestinationMapView(
-                        latitude: destination.latitude,
-                        longitude: destination.longitude,
-                        title: destination.name,
-                        originLatitude: selectedOrigin.latitude,
-                        originLongitude: selectedOrigin.longitude,
-                        originTitle: selectedOrigin.icao,
+                        latitude: planningDestination.latitude,
+                        longitude: planningDestination.longitude,
+                        title: planningDestination.name,
+                        originLatitude: planningOrigin.latitude,
+                        originLongitude: planningOrigin.longitude,
+                        originTitle: planningOrigin.icao,
                         intermediateLatitude:
                             flightPlanningMode == .multiStop
                                 ? intermediateAirport.latitude
@@ -1998,15 +2043,21 @@ private struct DailyForecastTile: View {
             HStack(spacing: 8) {
                 periodSymbol(
                     title: "08:00",
-                    code: day.morningWeatherCode
+                    code: day.morningWeatherCode,
+                    category: day.morningCategory,
+                    interval: "05–11 Uhr"
                 )
                 periodSymbol(
                     title: "14:00",
-                    code: day.middayWeatherCode
+                    code: day.middayWeatherCode,
+                    category: day.middayCategory,
+                    interval: "11–17 Uhr"
                 )
                 periodSymbol(
                     title: "20:00",
-                    code: day.eveningWeatherCode
+                    code: day.eveningWeatherCode,
+                    category: day.eveningCategory,
+                    interval: "17–23 Uhr"
                 )
             }
 
@@ -2032,8 +2083,8 @@ private struct DailyForecastTile: View {
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(.orange)
                         .help(
-                            "Bodenwind erreicht an diesem Tag "
-                            + "mindestens 15 kt."
+                            "Starker Bodenwind: über 15 kt "
+                            + "Dauerwind oder über 20 kt Böen."
                         )
                 }
             }
@@ -2044,15 +2095,84 @@ private struct DailyForecastTile: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.gray.opacity(0.13))
         )
+        .overlay(alignment: .bottom) {
+            hourlyWindBar
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        bottomLeadingRadius: 10,
+                        bottomTrailingRadius: 10
+                    )
+                )
+        }
     }
 
     private var showsStrongWindIndicator: Bool {
-        (day.maximumSurfaceWindKnots ?? 0) >= 15
+        (day.maximumSurfaceWindKnots ?? 0) > 15
+            || (day.maximumWindGustKnots ?? 0) > 20
+    }
+
+    private var hourlyWindBar: some View {
+        HStack(spacing: 0) {
+            ForEach(0..<12, id: \.self) { index in
+                let wind = day.hourlySurfaceWindKnots?
+                    .indices.contains(index) == true
+                    ? day.hourlySurfaceWindKnots?[index]
+                    : nil
+                Rectangle()
+                    .fill(windColor(wind))
+                    .overlay {
+                        Rectangle()
+                            .stroke(Color.white.opacity(0.75), lineWidth: 0.5)
+                    }
+                    .help(
+                        String(
+                            format: "%02d–%02d Uhr: %@",
+                            index + 8,
+                            index + 9,
+                            wind.map {
+                                String(format: "%.0f kt Dauerwind", $0)
+                            } ?? "keine Winddaten"
+                        )
+                    )
+            }
+        }
+        .frame(height: 7)
+    }
+
+    private func windColor(_ windKnots: Double?) -> Color {
+        guard let windKnots else {
+            return FlybookColor.muted.opacity(0.22)
+        }
+
+        switch windKnots {
+        case ..<3:
+            return .white
+        case ..<6:
+            return Color(red: 1.00, green: 0.96, blue: 0.82)
+        case ..<9:
+            return Color(red: 1.00, green: 0.90, blue: 0.62)
+        case ..<12:
+            return Color(red: 1.00, green: 0.82, blue: 0.42)
+        case ..<15:
+            return Color(red: 1.00, green: 0.72, blue: 0.25)
+        case ..<18:
+            return Color(red: 0.98, green: 0.60, blue: 0.13)
+        case ..<21:
+            return Color(red: 0.94, green: 0.48, blue: 0.06)
+        case ..<24:
+            return Color(red: 0.90, green: 0.36, blue: 0.02)
+        case ..<25:
+            return Color(red: 0.87, green: 0.30, blue: 0.01)
+        default:
+            return Color(red: 0.78, green: 0.20, blue: 0.00)
+        }
     }
 
     private func periodSymbol(
         title: String,
-        code: Int?
+        code: Int?,
+        category: FlightCategory?,
+        interval: String
     ) -> some View {
         VStack(spacing: 2) {
             Text(title)
@@ -2063,6 +2183,26 @@ private struct DailyForecastTile: View {
                 .font(.system(size: 22, weight: .medium))
                 .symbolRenderingMode(.multicolor)
                 .frame(width: 30, height: 28)
+
+            RoundedRectangle(cornerRadius: 3)
+                .fill(categoryColor(category))
+                .frame(width: 38, height: 6)
+                .help(
+                    "\(interval): schlechteste Kategorie "
+                    + (category ?? .unavailable).rawValue
+                )
+        }
+    }
+
+    private func categoryColor(
+        _ category: FlightCategory?
+    ) -> Color {
+        switch category ?? .unavailable {
+        case .vfr: return .green
+        case .mvfr: return .blue
+        case .ifr: return .red
+        case .lifr: return .purple
+        case .unavailable: return FlybookColor.muted.opacity(0.45)
         }
     }
 
@@ -2164,6 +2304,7 @@ private struct PlanningWeather {
     let ceilingFeet: Double?
     let category: FlightCategory
     let runway: String?
+    let runwayCrosswindWarning: RunwayCrosswindWarning
 
     init(
         sample: EDFZWeatherSample?,
@@ -2192,8 +2333,16 @@ private struct PlanningWeather {
                 windFromDegrees: direction,
                 speedKnots: speed
             )
+            runwayCrosswindWarning = EDFZRunway.crosswindWarning(
+                for: runwayICAO,
+                runway: runway,
+                windFromDegrees: direction,
+                steadyWindKnots: speed,
+                gustKnots: gust
+            )
         } else {
             runway = nil
+            runwayCrosswindWarning = .none
         }
     }
 
@@ -2211,13 +2360,16 @@ private struct PlanningWeather {
         ceilingFeet = day?.ceilingFeetAGL
         category = day?.category ?? .unavailable
         runway = nil
+        runwayCrosswindWarning = .none
     }
 }
 
 private struct PlanningWeatherCard: View {
     let weather: PlanningWeather
+    let civilDawnText: String?
     let sunriseText: String?
     let sunsetText: String?
+    let civilDuskText: String?
 
     @AppStorage(UnitSystemSettingsKey.displaySystem)
     private var displayUnitSystemRaw = DisplayUnitSystem.eu.rawValue
@@ -2243,6 +2395,10 @@ private struct PlanningWeatherCard: View {
             .foregroundStyle(FlybookColor.navy)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.gray.opacity(0.07))
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(FlybookColor.navy.opacity(0.45), lineWidth: 1)
@@ -2324,6 +2480,30 @@ private struct PlanningWeatherCard: View {
                     )
                 }
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(FlybookColor.muted)
+            }
+
+            if let civilDawnText, let civilDuskText {
+                HStack(spacing: 8) {
+                    Label(
+                        TimeInput.displayClock(
+                            civilDawnText,
+                            usesTwelveHourFormat: usesTwelveHourFormat
+                        ),
+                        systemImage: "sun.horizon.fill"
+                    )
+                    .help("Beginn der bürgerlichen Dämmerung")
+
+                    Label(
+                        TimeInput.displayClock(
+                            civilDuskText,
+                            usesTwelveHourFormat: usesTwelveHourFormat
+                        ),
+                        systemImage: "moon.stars.fill"
+                    )
+                    .help("Ende der bürgerlichen Dämmerung")
+                }
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(FlybookColor.muted)
             }
         }
@@ -2452,6 +2632,7 @@ private struct FlightTimePlanningRows: View {
     let returnDestinationWeather: ForecastDay?
     let destination: Destination
     let origin: AirportReference
+    let routeDestination: AirportReference
     let outboundDirectNM: Double
     let returnDirectNM: Double
     @Binding var outboundTrackMiles: Double
@@ -2466,16 +2647,10 @@ private struct FlightTimePlanningRows: View {
     let cruisePerformance: CruisePerformance
     let refreshWeather: () -> Void
     let resetSchedule: () -> Void
+    let reverseRoute: () -> Void
 
     private var destinationReference: AirportReference {
-        AirportReference(
-            icao: destination.icao,
-            name: destination.name,
-            latitude: destination.latitude ?? 0,
-            longitude: destination.longitude ?? 0,
-            elevationFeet: destination.elevationFeet,
-            timeZone: destinationTimeZone
-        )
+        routeDestination
     }
 
     private var intermediateAirport: AirportReference {
@@ -2534,7 +2709,7 @@ private struct FlightTimePlanningRows: View {
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
                 cruiseGroundSpeedKnots,
-            climbDeparturePressureAltitudeFeet: destination.elevationFeet,
+            climbDeparturePressureAltitudeFeet: secondDepartureAirport.elevationFeet,
             climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
             climbPerformance: climbPerformance,
             cruisePerformance: cruisePerformance,
@@ -2754,7 +2929,7 @@ private struct FlightTimePlanningRows: View {
         latitude: Double?,
         longitude: Double?,
         timeZone: TimeZone
-    ) -> (String?, String?) {
+    ) -> (civilDawn: String?, sunrise: String?, sunset: String?, civilDusk: String?) {
         guard
             let instant,
             let latitude,
@@ -2766,7 +2941,7 @@ private struct FlightTimePlanningRows: View {
                 timeZone: timeZone
             )
         else {
-            return (nil, nil)
+            return (nil, nil, nil, nil)
         }
 
         let formatter = DateFormatter()
@@ -2775,8 +2950,10 @@ private struct FlightTimePlanningRows: View {
         formatter.dateFormat = "HH:mm"
 
         return (
+            formatter.string(from: events.civilDawn),
             formatter.string(from: events.sunrise),
-            formatter.string(from: events.sunset)
+            formatter.string(from: events.sunset),
+            formatter.string(from: events.civilDusk)
         )
     }
 
@@ -2840,6 +3017,7 @@ private struct FlightTimePlanningRows: View {
                 showsRefreshButton: true,
                 refreshWeather: refreshWeather,
                 resetSchedule: resetSchedule,
+                reverseRoute: reverseRoute,
                 setNow: setOutboundToNow,
                 showsETOPSHeader: true,
                 stopCount: $outboundStops,
@@ -2866,34 +3044,62 @@ private struct FlightTimePlanningRows: View {
                     runwayICAO: origin.icao
                 ),
                 trailingWeather: firstArrivalWeather,
+                leadingCivilDawnText:
+                    sunTexts(
+                        at: outboundStartInstant,
+                        latitude: origin.latitude,
+                        longitude: origin.longitude,
+                        timeZone: origin.timeZone
+                    ).civilDawn,
                 leadingSunriseText:
                     sunTexts(
                         at: outboundStartInstant,
                         latitude: origin.latitude,
                         longitude: origin.longitude,
                         timeZone: origin.timeZone
-                    ).0,
+                    ).sunrise,
                 leadingSunsetText:
                     sunTexts(
                         at: outboundStartInstant,
                         latitude: origin.latitude,
                         longitude: origin.longitude,
                         timeZone: origin.timeZone
-                    ).1,
+                    ).sunset,
+                leadingCivilDuskText:
+                    sunTexts(
+                        at: outboundStartInstant,
+                        latitude: origin.latitude,
+                        longitude: origin.longitude,
+                        timeZone: origin.timeZone
+                    ).civilDusk,
+                trailingCivilDawnText:
+                    sunTexts(
+                        at: outboundArrivalInstant,
+                        latitude: firstArrivalAirport.latitude,
+                        longitude: firstArrivalAirport.longitude,
+                        timeZone: firstArrivalAirport.timeZone
+                    ).civilDawn,
                 trailingSunriseText:
                     sunTexts(
                         at: outboundArrivalInstant,
                         latitude: firstArrivalAirport.latitude,
                         longitude: firstArrivalAirport.longitude,
                         timeZone: firstArrivalAirport.timeZone
-                    ).0,
+                    ).sunrise,
                 trailingSunsetText:
                     sunTexts(
                         at: outboundArrivalInstant,
                         latitude: firstArrivalAirport.latitude,
                         longitude: firstArrivalAirport.longitude,
                         timeZone: firstArrivalAirport.timeZone
-                    ).1,
+                    ).sunset,
+                trailingCivilDuskText:
+                    sunTexts(
+                        at: outboundArrivalInstant,
+                        latitude: firstArrivalAirport.latitude,
+                        longitude: firstArrivalAirport.longitude,
+                        timeZone: firstArrivalAirport.timeZone
+                    ).civilDusk,
                 leadingTitle: "ABFLUG \(origin.icao)",
                 leadingRunway: runway(for: outboundAirportSample),
                 trailingTitle:
@@ -2938,6 +3144,7 @@ private struct FlightTimePlanningRows: View {
                 showsRefreshButton: false,
                 refreshWeather: refreshWeather,
                 resetSchedule: resetSchedule,
+                reverseRoute: reverseRoute,
                 setNow: setReturnToNow,
                 showsETOPSHeader: true,
                 stopCount: $returnStops,
@@ -2960,34 +3167,62 @@ private struct FlightTimePlanningRows: View {
                 cruisePerformance: cruisePerformance,
                 leadingWeather: secondDepartureWeather,
                 trailingWeather: secondArrivalWeather,
+                leadingCivilDawnText:
+                    sunTexts(
+                        at: returnDepartureInstant,
+                        latitude: secondDepartureAirport.latitude,
+                        longitude: secondDepartureAirport.longitude,
+                        timeZone: secondDepartureAirport.timeZone
+                    ).civilDawn,
                 leadingSunriseText:
                     sunTexts(
                         at: returnDepartureInstant,
                         latitude: secondDepartureAirport.latitude,
                         longitude: secondDepartureAirport.longitude,
                         timeZone: secondDepartureAirport.timeZone
-                    ).0,
+                    ).sunrise,
                 leadingSunsetText:
                     sunTexts(
                         at: returnDepartureInstant,
                         latitude: secondDepartureAirport.latitude,
                         longitude: secondDepartureAirport.longitude,
                         timeZone: secondDepartureAirport.timeZone
-                    ).1,
+                    ).sunset,
+                leadingCivilDuskText:
+                    sunTexts(
+                        at: returnDepartureInstant,
+                        latitude: secondDepartureAirport.latitude,
+                        longitude: secondDepartureAirport.longitude,
+                        timeZone: secondDepartureAirport.timeZone
+                    ).civilDusk,
+                trailingCivilDawnText:
+                    sunTexts(
+                        at: homeArrivalInstant,
+                        latitude: secondArrivalAirport.latitude,
+                        longitude: secondArrivalAirport.longitude,
+                        timeZone: secondArrivalAirport.timeZone
+                    ).civilDawn,
                 trailingSunriseText:
                     sunTexts(
                         at: homeArrivalInstant,
                         latitude: secondArrivalAirport.latitude,
                         longitude: secondArrivalAirport.longitude,
                         timeZone: secondArrivalAirport.timeZone
-                    ).0,
+                    ).sunrise,
                 trailingSunsetText:
                     sunTexts(
                         at: homeArrivalInstant,
                         latitude: secondArrivalAirport.latitude,
                         longitude: secondArrivalAirport.longitude,
                         timeZone: secondArrivalAirport.timeZone
-                    ).1,
+                    ).sunset,
+                trailingCivilDuskText:
+                    sunTexts(
+                        at: homeArrivalInstant,
+                        latitude: secondArrivalAirport.latitude,
+                        longitude: secondArrivalAirport.longitude,
+                        timeZone: secondArrivalAirport.timeZone
+                    ).civilDusk,
                 leadingTitle:
                     "ABFLUG \(secondDepartureAirport.icao)",
                 leadingRunway: secondDepartureWeather.runway,
@@ -3205,6 +3440,7 @@ private struct FlightPlanningLine<
     let showsRefreshButton: Bool
     let refreshWeather: () -> Void
     let resetSchedule: () -> Void
+    let reverseRoute: () -> Void
     let setNow: () -> Void
     let showsETOPSHeader: Bool
     @Binding var stopCount: Int
@@ -3225,10 +3461,14 @@ private struct FlightPlanningLine<
     let cruisePerformance: CruisePerformance
     let leadingWeather: PlanningWeather
     let trailingWeather: PlanningWeather
+    let leadingCivilDawnText: String?
     let leadingSunriseText: String?
     let leadingSunsetText: String?
+    let leadingCivilDuskText: String?
+    let trailingCivilDawnText: String?
     let trailingSunriseText: String?
     let trailingSunsetText: String?
+    let trailingCivilDuskText: String?
     let leadingTitle: String
     let leadingRunway: String?
     let trailingTitle: String
@@ -3325,7 +3565,9 @@ private struct FlightPlanningLine<
                 HStack(alignment: .top, spacing: 22) {
                     FlightLocationHeader(
                         title: leadingTitle,
-                        runway: leadingRunway
+                        runway: leadingRunway,
+                        crosswindWarning:
+                            leadingWeather.runwayCrosswindWarning
                     )
 
                     if let trailingAirportSelection {
@@ -3351,7 +3593,9 @@ private struct FlightPlanningLine<
                     } else {
                         FlightLocationHeader(
                             title: trailingTitle,
-                            runway: trailingRunway
+                            runway: trailingRunway,
+                            crosswindWarning:
+                                trailingWeather.runwayCrosswindWarning
                         )
                     }
                 }
@@ -3382,10 +3626,12 @@ private struct FlightPlanningLine<
                 HStack(spacing: 4) {
                     PlanningWeatherCard(
                         weather: leadingWeather,
+                        civilDawnText: leadingCivilDawnText,
                         sunriseText: leadingSunriseText,
-                        sunsetText: leadingSunsetText
+                        sunsetText: leadingSunsetText,
+                        civilDuskText: leadingCivilDuskText
                     )
-                    .frame(width: 142, height: 164)
+                    .frame(width: 142, height: 184)
                     .frame(width: 174)
 
                     Color.clear
@@ -3393,10 +3639,12 @@ private struct FlightPlanningLine<
 
                     PlanningWeatherCard(
                         weather: trailingWeather,
+                        civilDawnText: trailingCivilDawnText,
                         sunriseText: trailingSunriseText,
-                        sunsetText: trailingSunsetText
+                        sunsetText: trailingSunsetText,
+                        civilDuskText: trailingCivilDuskText
                     )
-                    .frame(width: 142, height: 164)
+                    .frame(width: 142, height: 184)
                     .frame(width: 174)
                 }
 
@@ -3495,6 +3743,19 @@ private struct FlightPlanningLine<
                         .frame(width: 38, height: 38)
                     }
                     .help("Datum und Uhrzeiten auf Standard zurücksetzen")
+
+                    Button(action: reverseRoute) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "arrow.left.arrow.right")
+                                .font(.system(size: 17, weight: .bold))
+                            Text("Umkehren")
+                                .font(.system(size: 9, weight: .bold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(width: 38, height: 38)
+                    }
+                    .help("Start- und Zielflugplatz vertauschen")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.regular)
@@ -4839,6 +5100,7 @@ private struct CalculatedFlightTime: View {
 private struct FlightLocationHeader: View {
     let title: String
     let runway: String?
+    let crosswindWarning: RunwayCrosswindWarning
 
     var body: some View {
         VStack(spacing: 4) {
@@ -4850,10 +5112,36 @@ private struct FlightLocationHeader: View {
             Label(runway ?? " ", systemImage: "road.lanes")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(crosswindBackgroundColor)
+                )
                 .opacity(runway == nil ? 0 : 1)
-                .frame(height: 16)
+                .frame(height: 20)
+                .help(crosswindHelp)
         }
         .frame(width: 174)
+    }
+
+    private var crosswindBackgroundColor: Color {
+        switch crosswindWarning {
+        case .none: return .clear
+        case .yellow: return Color.yellow.opacity(0.65)
+        case .red: return Color.red.opacity(0.72)
+        }
+    }
+
+    private var crosswindHelp: String {
+        switch crosswindWarning {
+        case .none:
+            return "Pistenempfehlung nach Windrichtung"
+        case .yellow:
+            return "Erhöhte Querwindkomponente"
+        case .red:
+            return "Hohe Querwindkomponente"
+        }
     }
 }
 

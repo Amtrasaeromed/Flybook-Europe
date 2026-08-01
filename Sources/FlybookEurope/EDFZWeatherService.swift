@@ -32,6 +32,19 @@ struct EDFZForecast: Hashable {
     }
 }
 
+enum RunwayCrosswindWarning: Int, Comparable {
+    case none = 0
+    case yellow = 1
+    case red = 2
+
+    static func < (
+        lhs: RunwayCrosswindWarning,
+        rhs: RunwayCrosswindWarning
+    ) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
 enum EDFZRunway {
     static func activeRunway(
         for airportICAO: String,
@@ -71,6 +84,50 @@ enum EDFZRunway {
             : runways.secondLabel
     }
 
+    static func crosswindWarning(
+        for airportICAO: String,
+        runway: String?,
+        windFromDegrees: Double?,
+        steadyWindKnots: Double?,
+        gustKnots: Double?
+    ) -> RunwayCrosswindWarning {
+        guard
+            let runway,
+            let runwayHeading = heading(
+                for: airportICAO,
+                runway: runway
+            ),
+            let windFromDegrees,
+            let steadyWindKnots
+        else {
+            return .none
+        }
+
+        let angleRadians = angularDifference(
+            windFromDegrees,
+            runwayHeading
+        ) * .pi / 180.0
+        let crosswindFactor = abs(sin(angleRadians))
+        let steadyCrosswind = steadyWindKnots * crosswindFactor
+        let gustCrosswind = gustKnots.map {
+            $0 * crosswindFactor
+        }
+
+        if steadyCrosswind > 15
+            || (gustCrosswind ?? 0) > 30
+        {
+            return .red
+        }
+
+        if steadyCrosswind >= 10
+            || (gustCrosswind ?? 0) > 15
+        {
+            return .yellow
+        }
+
+        return .none
+    }
+
     static func activeRunway(
         windFromDegrees: Double,
         speedKnots: Double
@@ -91,6 +148,24 @@ enum EDFZRunway {
                 .truncatingRemainder(dividingBy: 360.0)
         )
         return min(raw, 360.0 - raw)
+    }
+
+    private static func heading(
+        for airportICAO: String,
+        runway: String
+    ) -> Double? {
+        switch (airportICAO.uppercased(), runway) {
+        case ("EDFZ", "07"), ("EDKA", "07"), ("EDWJ", "07"):
+            return 70
+        case ("EDFZ", "25"), ("EDKA", "25"), ("EDWJ", "25"):
+            return 250
+        case ("EHMZ", "09"), ("EDMZ", "09"):
+            return 87
+        case ("EHMZ", "27"), ("EDMZ", "27"):
+            return 267
+        default:
+            return nil
+        }
     }
 }
 

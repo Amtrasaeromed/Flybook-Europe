@@ -175,6 +175,15 @@ actor WeatherService {
             eveningWeatherCode:
                 preferred.eveningWeatherCode
                 ?? fallback.eveningWeatherCode,
+            morningCategory:
+                preferred.morningCategory
+                ?? fallback.morningCategory,
+            middayCategory:
+                preferred.middayCategory
+                ?? fallback.middayCategory,
+            eveningCategory:
+                preferred.eveningCategory
+                ?? fallback.eveningCategory,
             minimumTemperatureCelsius:
                 preferred.minimumTemperatureCelsius
                 ?? fallback.minimumTemperatureCelsius,
@@ -184,6 +193,12 @@ actor WeatherService {
             maximumSurfaceWindKnots:
                 preferred.maximumSurfaceWindKnots
                 ?? fallback.maximumSurfaceWindKnots,
+            maximumWindGustKnots:
+                preferred.maximumWindGustKnots
+                ?? fallback.maximumWindGustKnots,
+            hourlySurfaceWindKnots:
+                preferred.hourlySurfaceWindKnots
+                ?? fallback.hourlySurfaceWindKnots,
             model: preferred.model
         )
     }
@@ -547,6 +562,17 @@ actor WeatherService {
                     )
                 }
                 .max()
+            let maximumWindGustKnots = api.hourly.time.indices
+                .filter {
+                    api.hourly.time[$0].hasPrefix(localDate)
+                }
+                .compactMap {
+                    optionalValue(
+                        api.hourly.windGusts10m,
+                        at: $0
+                    )
+                }
+                .max()
 
             func weatherCode(at hour: Int) -> Int? {
                 let timestamp = String(
@@ -569,6 +595,70 @@ actor WeatherService {
                 )
             }
 
+            let hourlySurfaceWindKnots: [Double?] = (8..<20).map { hour in
+                let timestamp = String(
+                    format: "%@T%02d:00",
+                    localDate,
+                    hour
+                )
+                guard let hourlyIndex = api.hourly.time.firstIndex(
+                    of: timestamp
+                ) else {
+                    return nil
+                }
+                return optionalValue(
+                    api.hourly.windSpeed10m,
+                    at: hourlyIndex
+                )
+            }
+
+            func category(at hourlyIndex: Int) -> FlightCategory {
+                let lowCloudCover = optionalValue(
+                    api.hourly.cloudCoverLow,
+                    at: hourlyIndex
+                )
+                let cloudBase = estimatedCloudBaseFeet(
+                    temperature: optionalValue(
+                        api.hourly.temperature2m,
+                        at: hourlyIndex
+                    ),
+                    dewPoint: optionalValue(
+                        api.hourly.dewPoint2m,
+                        at: hourlyIndex
+                    )
+                )
+                return flightCategory(
+                    visibilityMeters: optionalValue(
+                        api.hourly.visibility,
+                        at: hourlyIndex
+                    ),
+                    ceilingFeet: estimateCeiling(
+                        lowCloudPercent: lowCloudCover,
+                        cloudBaseFeet: cloudBase
+                    )
+                )
+            }
+
+            func worstCategory(in hours: Range<Int>) -> FlightCategory {
+                let categories = hours.compactMap { hour -> FlightCategory? in
+                    let timestamp = String(
+                        format: "%@T%02d:00",
+                        localDate,
+                        hour
+                    )
+                    guard let hourlyIndex = api.hourly.time.firstIndex(
+                        of: timestamp
+                    ) else {
+                        return nil
+                    }
+                    return category(at: hourlyIndex)
+                }
+
+                return categories.max {
+                    $0.severity < $1.severity
+                } ?? .unavailable
+            }
+
             return DailyForecast(
                 localDate: localDate,
                 weatherCode: optionalValue(
@@ -581,6 +671,12 @@ actor WeatherService {
                     weatherCode(at: 14),
                 eveningWeatherCode:
                     weatherCode(at: 20),
+                morningCategory:
+                    worstCategory(in: 5..<11),
+                middayCategory:
+                    worstCategory(in: 11..<17),
+                eveningCategory:
+                    worstCategory(in: 17..<23),
                 minimumTemperatureCelsius:
                     optionalValue(
                         api.daily.temperature2mMin,
@@ -593,6 +689,10 @@ actor WeatherService {
                     ),
                 maximumSurfaceWindKnots:
                     maximumSurfaceWindKnots,
+                maximumWindGustKnots:
+                    maximumWindGustKnots,
+                hourlySurfaceWindKnots:
+                    hourlySurfaceWindKnots,
                 model: modelLabel
             )
         }

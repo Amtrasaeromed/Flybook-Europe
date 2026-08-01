@@ -114,12 +114,22 @@ struct Destination: Identifiable, Hashable {
     let flightTimes: FlightTimes
 }
 
-enum FlightCategory: String, Codable {
+enum FlightCategory: String, Codable, Hashable {
     case vfr = "VFR"
     case mvfr = "MVFR"
     case ifr = "IFR"
     case lifr = "LIFR"
     case unavailable = "N/A"
+
+    var severity: Int {
+        switch self {
+        case .vfr: return 1
+        case .mvfr: return 2
+        case .ifr: return 3
+        case .lifr: return 4
+        case .unavailable: return 0
+        }
+    }
 }
 
 struct WindSample: Codable, Hashable {
@@ -283,9 +293,14 @@ struct DailyForecast: Codable, Hashable, Identifiable {
     let morningWeatherCode: Int?
     let middayWeatherCode: Int?
     let eveningWeatherCode: Int?
+    let morningCategory: FlightCategory?
+    let middayCategory: FlightCategory?
+    let eveningCategory: FlightCategory?
     let minimumTemperatureCelsius: Double?
     let maximumTemperatureCelsius: Double?
     let maximumSurfaceWindKnots: Double?
+    let maximumWindGustKnots: Double?
+    let hourlySurfaceWindKnots: [Double?]?
     let model: String
 }
 
