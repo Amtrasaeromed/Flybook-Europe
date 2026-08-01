@@ -4,6 +4,12 @@ struct FuelPriceRecord: Codable, Hashable {
     var avgas: Double?
     var ul91: Double?
     var mogas: Double?
+
+    init(avgas: Double? = nil, ul91: Double? = nil, mogas: Double? = nil) {
+        self.avgas = avgas
+        self.ul91 = ul91
+        self.mogas = mogas
+    }
 }
 
 enum FuelPriceSettingsKey {
@@ -27,14 +33,14 @@ actor MonthlyFuelPriceService {
         let key = currentMonthKey
         if let cache = try? loadCache(),
            cache.monthKey == key,
-           cache.validationVersion == 2
+           cache.validationVersion == 4
         {
             return cache.prices
         }
 
         let previousCache = try? loadCache()
         var result =
-            previousCache?.validationVersion == 2
+            previousCache?.validationVersion == 4
             ? previousCache?.prices ?? seed
             : seed
 
@@ -53,7 +59,7 @@ actor MonthlyFuelPriceService {
                     group.addTask {
                         (
                             icao,
-                            try? await self.fetch(icao: icao)
+                                try? await self.fetchCommunityPrices(icao: icao)
                         )
                     }
                 }
@@ -78,7 +84,7 @@ actor MonthlyFuelPriceService {
         try? saveCache(
             Cache(
                 monthKey: key,
-                validationVersion: 2,
+                validationVersion: 4,
                 prices: result
             )
         )
@@ -93,12 +99,34 @@ actor MonthlyFuelPriceService {
         return formatter.string(from: Date())
     }
 
-    private func fetch(icao: String) async throws -> FuelPriceRecord {
-        guard let url = URL(
-            string: "https://spritpreisliste.de/airports/\(icao)"
-        ) else {
-            throw URLError(.badURL)
+    func officialMainzPrices() async -> FuelPriceRecord? {
+        guard let url = URL(string: "https://edfz.de/flugplatz/pilot-briefing/treibstoffpreise/") else { return nil }
+        guard let html = try? await download(url), !html.isEmpty else { return nil }
+        let record = FuelPriceRecord(
+            avgas: loosePrice(in: html, labels: ["AVGAS100LL", "AVGAS 100LL"]),
+            ul91: loosePrice(in: html, labels: ["UL91"]),
+            mogas: loosePrice(in: html, labels: ["Super Plus Aviation", "Super Plus"])
+        )
+        return record.avgas == nil && record.ul91 == nil && record.mogas == nil ? nil : record
+    }
+
+    private func fetchCommunityPrices(icao: String) async throws -> FuelPriceRecord {
+        guard icao != "EDFZ" else { throw URLError(.unsupportedURL) }
+        let primaryURL = URL(string: "https://spritpreisliste.de/airports/\(icao)")!
+        let secondaryURL = URL(string: "https://aviation-fuel-prices.com/airport-info/\(icao)")!
+        async let primary = try? download(primaryURL)
+        async let secondary = try? download(secondaryURL)
+        let (primaryHTML, secondaryHTML) = await (primary, secondary)
+        let first = primaryHTML.map(parse) ?? FuelPriceRecord()
+        let second = secondaryHTML.map(parse) ?? FuelPriceRecord()
+        let record = merged(first, fallback: second)
+        guard record.avgas != nil || record.ul91 != nil || record.mogas != nil else {
+            throw URLError(.cannotParseResponse)
         }
+        return record
+    }
+
+    private func download(_ url: URL) async throws -> String {
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode),
@@ -107,6 +135,10 @@ actor MonthlyFuelPriceService {
             throw URLError(.badServerResponse)
         }
 
+        return html
+    }
+
+    private func parse(_ html: String) -> FuelPriceRecord {
         let text = html
             .replacingOccurrences(
                 of: "<[^>]+>",
@@ -115,27 +147,34 @@ actor MonthlyFuelPriceService {
             )
             .replacingOccurrences(of: "&nbsp;", with: " ")
 
-        let record = FuelPriceRecord(
+        return FuelPriceRecord(
             avgas: price(
                 in: text,
                 labels: ["100 LL Preis", "AVGAS 100 LL"]
-            ),
+            ) ?? loosePrice(in: text, labels: ["AVGAS 100LL", "AVGAS100LL"]),
             ul91: price(
                 in: text,
                 labels: ["UL91 Preis", "AVGAS UL91"]
-            ),
+            ) ?? loosePrice(in: text, labels: ["UL91"]),
             mogas: price(
                 in: text,
                 labels: ["Super+ Preis", "MOGAS Preis", "Super Plus"]
-            )
+            ) ?? loosePrice(in: text, labels: ["MOGAS", "Super+", "Super Plus"])
         )
-        guard record.avgas != nil
-                || record.ul91 != nil
-                || record.mogas != nil
-        else {
-            throw URLError(.cannotParseResponse)
+    }
+
+    private func loosePrice(in text: String, labels: [String]) -> Double? {
+        for label in labels {
+            let escaped = NSRegularExpression.escapedPattern(for: label)
+            let pattern = escaped + #"(?is:.{0,220}?)([0-9]+[,.][0-9]{2,3})\s*(?:€|EUR)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  let range = Range(match.range(at: 1), in: text),
+                  let value = Double(text[range].replacingOccurrences(of: ",", with: ".")),
+                  (0.5...10).contains(value) else { continue }
+            return value
         }
-        return record
+        return nil
     }
 
     private func price(

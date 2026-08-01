@@ -7,6 +7,7 @@ struct FlybookEuropeApp: App {
     @State private var didSelectDefaultDestination = false
     @State private var showsETOPSSetup = false
     @State private var showsAircraftSetup = false
+    @State private var showsBaseSetup = false
     @State private var showsAlternates = false
     @State private var showsReservationManager = false
     @AppStorage(UnitSystemSettingsKey.displaySystem)
@@ -63,6 +64,7 @@ struct FlybookEuropeApp: App {
                     DestinationPage(
                         destination:
                             store.destinations[selectedIndex],
+                        availableDestinations: store.destinations,
                         availableOrigins: [.edfz]
                             + store.destinations.compactMap { airport in
                                 guard airport.icao != "EDFZ" else {
@@ -211,6 +213,15 @@ struct FlybookEuropeApp: App {
             .help("Allgemeines Setup")
             .sheet(isPresented: $showsETOPSSetup) {
                 ETOPSSetupView()
+            }
+            Button {
+                showsBaseSetup = true
+            } label: {
+                Image(systemName: "building.2")
+            }
+            .help("Basiskonfiguration")
+            .sheet(isPresented: $showsBaseSetup) {
+                BaseSetupView(destinations: store.destinations)
             }
             Button {
                 showsAircraftSetup = true
