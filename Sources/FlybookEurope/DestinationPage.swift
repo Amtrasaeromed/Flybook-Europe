@@ -17,6 +17,7 @@ enum FlightPlanningMode: String, CaseIterable, Identifiable {
 
 struct DestinationPage: View {
     let destination: Destination
+    let availableDestinations: [Destination]
     let availableOrigins: [AirportReference]
     @State private var selectedOriginICAO = "EDFZ"
     @State private var isRouteReversed = false
@@ -104,25 +105,43 @@ struct DestinationPage: View {
         switch fuel { case .avgas: return airport.avgasPricePerLiterEUR; case .ul91: return airport.ul91PricePerLiterEUR; case .mogas: return airport.mogasPricePerLiterEUR }
     }
 
-    private var destinationFuelPrice: Double? { manualRefuelPrice ?? price(preferredFuel, at: destination) }
+    private var refuelAirport: Destination {
+        availableDestinations.first { $0.icao == planningDestination.icao } ?? destination
+    }
+
+    private var destinationFuelPrice: Double? { manualRefuelPrice ?? price(preferredFuel, at: refuelAirport) }
+
+    private var activeBase: FlybookBase {
+        FlybookBase(rawValue: activeBaseRaw) ?? .lsvMainz
+    }
+
+    private var homeAirportICAO: String {
+        BaseProfileStore.profile(for: activeBase).homeAirportICAO
+    }
+
+    private func homePrice(_ fuel: AircraftFuelType) -> Double? {
+        if homeAirportICAO == "EDFZ" {
+            switch fuel { case .avgas: return mainzAvgasPrice; case .ul91: return nil; case .mogas: return mainzMogasPrice }
+        }
+        guard let airport = availableDestinations.first(where: { $0.icao == homeAirportICAO }) else { return nil }
+        return price(fuel, at: airport)
+    }
 
     private var homeReferencePrice: Double? {
         let approved = AircraftProfileStore.approvedFuels(for: selectedAircraft)
-        let values = approved.compactMap { fuel -> Double? in
-            switch fuel { case .avgas: return mainzAvgasPrice; case .ul91: return nil; case .mogas: return mainzMogasPrice }
-        }
+        let values = approved.compactMap(homePrice)
         return values.min()
     }
 
     private var destinationVATPercent: Double {
-        let code = destination.country.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let code = refuelAirport.country.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return ["DE":19,"DEUTSCHLAND":19,"NL":21,"NIEDERLANDE":21,"DK":25,"DÄNEMARK":25,"CZ":21,"TSCHECHIEN":21,"FR":20,"FRANKREICH":20,"AT":20,"ÖSTERREICH":20,"CH":8.1,"SCHWEIZ":8.1,"SI":22,"SLOWENIEN":22,"HR":25,"KROATIEN":25,"IT":22,"ITALIEN":22][code] ?? 0
     }
 
     private var refuelLossEUR: Double? {
         guard refuelAtDestination else { return 0 }
         guard let gross = destinationFuelPrice, let reference = homeReferencePrice else { return nil }
-        let foreign = !["DE", "DEUTSCHLAND"].contains(destination.country.uppercased())
+        let foreign = !["DE", "DEUTSCHLAND"].contains(refuelAirport.country.uppercased())
         let reimbursable = foreign ? min(gross / (1 + destinationVATPercent / 100), reference) : min(gross, reference)
         return max(0, (gross - reimbursable) * refuelLiters)
     }
@@ -1024,34 +1043,35 @@ struct DestinationPage: View {
         }
     }
 
+    private var displayedHeaderDestination: Destination {
+        availableDestinations.first { $0.icao == planningDestination.icao } ?? destination
+    }
+
     private var headerSubtitle: String {
-        let elevation = Int(destination.elevationFeet.rounded())
+        let shown = displayedHeaderDestination
+        let elevation = Int(shown.elevationFeet.rounded())
         let distance = Int(routeDirectNM.rounded())
-        return "\(destination.icao)  ·  "
-            + "\(countryFlag(destination.country))  ·  "
-            + "\(destination.region.uppercased())  ·  "
+        return "\(shown.icao)  ·  "
+            + "\(countryFlag(shown.country))  ·  "
+            + "\(shown.region.uppercased())  ·  "
             + "HÖHE \(elevation) FT  ·  LUFTLINIE \(distance) NM"
     }
 
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(destination.name.uppercased())
+                Text(displayedHeaderDestination.name.uppercased())
                     .font(
                         .system(
-                            size: destination.name.count > 16
+                            size: displayedHeaderDestination.name.count > 16
                                 ? 54
                                 : 70,
                             weight: .bold
                         )
                     )
                     .foregroundStyle(FlybookColor.navy)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.72)
-                    .fixedSize(
-                        horizontal: false,
-                        vertical: true
-                    )
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.48)
 
                 Text(headerSubtitle)
                 .font(.system(size: 16))
@@ -1561,7 +1581,7 @@ struct DestinationPage: View {
                 DestinationRefuelCalculationRow(
                     enabled: $refuelAtDestination,
                     fuel: preferredFuel,
-                    knownPrice: price(preferredFuel, at: destination),
+                    knownPrice: price(preferredFuel, at: refuelAirport),
                     manualPrice: $manualRefuelPrice,
                     liters: $refuelLiters,
                     unit: fuelDisplayUnit,
@@ -1809,24 +1829,21 @@ struct DestinationPage: View {
                         value: destination.avgas,
                         fuelStatus: true,
                         pricePerLiterEUR:
-                            destination.avgasPricePerLiterEUR,
-                        referencePricePerLiterEUR: mainzAvgasPrice
+                            destination.avgasPricePerLiterEUR
                     )
                     AirportMetric(
                         title: "UL91",
                         value: destination.ul91,
                         fuelStatus: true,
                         pricePerLiterEUR:
-                            destination.ul91PricePerLiterEUR,
-                        referencePricePerLiterEUR: nil
+                            destination.ul91PricePerLiterEUR
                     )
                     AirportMetric(
                         title: "MOGAS",
                         value: destination.mogas,
                         fuelStatus: true,
                         pricePerLiterEUR:
-                            destination.mogasPricePerLiterEUR,
-                        referencePricePerLiterEUR: mainzMogasPrice
+                            destination.mogasPricePerLiterEUR
                     )
                 }
             }
@@ -5330,52 +5347,33 @@ private struct AirportMetric: View {
     let value: String
     var fuelStatus = false
     var pricePerLiterEUR: Double? = nil
-    var referencePricePerLiterEUR: Double? = nil
-
-    private var valueColor: Color {
-        guard fuelStatus else { return FlybookColor.navy }
-        let normalized = value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        if normalized == "ja" || normalized == "yes" { return .green }
-        if normalized == "nein" || normalized == "no" { return .red }
-        return FlybookColor.navy
+    private var normalizedAvailability: String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
-    private var priceColor: Color {
-        guard let pricePerLiterEUR,
-              let referencePricePerLiterEUR
-        else { return FlybookColor.muted }
-        if abs(pricePerLiterEUR - referencePricePerLiterEUR) < 0.005 {
-            return FlybookColor.blue
-        }
-        return pricePerLiterEUR > referencePricePerLiterEUR
-            ? .red
-            : .green
-    }
-
-    private var priceText: String {
-        guard let pricePerLiterEUR else { return "— €/L" }
-        let formattedPrice = pricePerLiterEUR.formatted(
+    private var displayedValue: String {
+        guard fuelStatus else { return value }
+        if let pricePerLiterEUR {
+            return pricePerLiterEUR.formatted(
             .currency(code: "EUR")
                 .locale(Locale(identifier: "de_DE"))
                 .precision(.fractionLength(2))
-        ) + "/L"
-
-        guard let referencePricePerLiterEUR else {
-            return formattedPrice
+            ) + "/L"
         }
-
-        let differenceCents =
-            Int(
-                ((pricePerLiterEUR - referencePricePerLiterEUR) * 100)
-                    .rounded()
-            )
-        if differenceCents == 0 {
-            return formattedPrice + " (±0 ct)"
+        if ["ja", "yes", "verfügbar", "vorhanden"].contains(normalizedAvailability) {
+            return "Ja"
         }
-        let sign = differenceCents > 0 ? "+" : ""
-        return formattedPrice + " (\(sign)\(differenceCents) ct)"
+        if ["nein", "no", "nicht vorhanden", "keine"].contains(normalizedAvailability) {
+            return "Nein"
+        }
+        return "?"
+    }
+
+    private var displayedColor: Color {
+        guard fuelStatus else { return FlybookColor.navy }
+        if pricePerLiterEUR != nil || displayedValue == "Ja" { return .green }
+        if displayedValue == "Nein" { return .red }
+        return FlybookColor.muted
     }
 
     var body: some View {
@@ -5383,20 +5381,12 @@ private struct AirportMetric: View {
             Text(title)
                 .font(.system(size: 13, weight: .bold))
 
-            Text(value)
+            Text(displayedValue)
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(valueColor)
+                .foregroundStyle(displayedColor)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
+                .lineLimit(1)
                 .minimumScaleFactor(0.72)
-
-            if fuelStatus {
-                Text(priceText)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(priceColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
         }
         .foregroundStyle(FlybookColor.navy)
         .frame(maxWidth: .infinity)

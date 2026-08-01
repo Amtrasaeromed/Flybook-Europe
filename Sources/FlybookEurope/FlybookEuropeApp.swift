@@ -64,6 +64,7 @@ struct FlybookEuropeApp: App {
                     DestinationPage(
                         destination:
                             store.destinations[selectedIndex],
+                        availableDestinations: store.destinations,
                         availableOrigins: [.edfz]
                             + store.destinations.compactMap { airport in
                                 guard airport.icao != "EDFZ" else {
