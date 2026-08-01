@@ -23,6 +23,23 @@ struct AirportReference: Identifiable, Hashable {
 enum AirportDistance {
     static func nauticalMiles(
         from origin: AirportReference,
+        to destination: AirportReference
+    ) -> Double {
+        let radiusNM = 3440.065
+        let lat1 = origin.latitude * .pi / 180
+        let lat2 = destination.latitude * .pi / 180
+        let deltaLat =
+            (destination.latitude - origin.latitude) * .pi / 180
+        let deltaLon =
+            (destination.longitude - origin.longitude) * .pi / 180
+        let value = sin(deltaLat / 2) * sin(deltaLat / 2)
+            + cos(lat1) * cos(lat2)
+            * sin(deltaLon / 2) * sin(deltaLon / 2)
+        return radiusNM * 2 * atan2(sqrt(value), sqrt(1 - value))
+    }
+
+    static func nauticalMiles(
+        from origin: AirportReference,
         to destination: Destination
     ) -> Double {
         guard let latitude = destination.latitude,
@@ -77,6 +94,9 @@ struct Destination: Identifiable, Hashable {
     let avgas: String
     let ul91: String
     let mogas: String
+    var avgasPricePerLiterEUR: Double?
+    var ul91PricePerLiterEUR: Double?
+    var mogasPricePerLiterEUR: Double?
     let ppr: String
     let transfer: String
     let transferMinutes: Int
@@ -117,21 +137,26 @@ struct RouteWind: Codable, Hashable {
     let directionDegrees: Double
     let speedKnots: Double
     let outboundCourseDegrees: Double
+    let routeIsReturn: Bool
+    let routeHeadwindComponents: [Double]
+    let modelBestAltitudeFeetAtPoints: [Double]
+
+    private var effectiveRouteHeadwindKnots: Double {
+        guard !routeHeadwindComponents.isEmpty else { return 0 }
+        return routeHeadwindComponents.reduce(0, +)
+            / Double(routeHeadwindComponents.count)
+    }
 
     var outboundHeadwindKnots: Double {
-        WindMath.headwindComponent(
-            windFromDegrees: directionDegrees,
-            speedKnots: speedKnots,
-            courseDegrees: outboundCourseDegrees
-        )
+        routeIsReturn
+            ? -effectiveRouteHeadwindKnots
+            : effectiveRouteHeadwindKnots
     }
 
     var returnHeadwindKnots: Double {
-        WindMath.headwindComponent(
-            windFromDegrees: directionDegrees,
-            speedKnots: speedKnots,
-            courseDegrees: WindMath.normalized(outboundCourseDegrees + 180.0)
-        )
+        routeIsReturn
+            ? effectiveRouteHeadwindKnots
+            : -effectiveRouteHeadwindKnots
     }
 }
 
@@ -188,6 +213,45 @@ enum WindMath {
         let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon)
         return normalized(atan2(y, x) * 180.0 / .pi)
     }
+
+    static func point(
+        latitude1: Double,
+        longitude1: Double,
+        latitude2: Double,
+        longitude2: Double,
+        fraction: Double
+    ) -> (latitude: Double, longitude: Double) {
+        let clamped = max(0, min(1, fraction))
+        let lat1 = latitude1 * .pi / 180
+        let lon1 = longitude1 * .pi / 180
+        let lat2 = latitude2 * .pi / 180
+        let lon2 = longitude2 * .pi / 180
+        let delta = 2 * asin(
+            sqrt(
+                pow(sin((lat2 - lat1) / 2), 2)
+                + cos(lat1) * cos(lat2)
+                * pow(sin((lon2 - lon1) / 2), 2)
+            )
+        )
+
+        guard delta > 0.000_001 else {
+            return (latitude1, longitude1)
+        }
+
+        let a = sin((1 - clamped) * delta) / sin(delta)
+        let b = sin(clamped * delta) / sin(delta)
+        let x = a * cos(lat1) * cos(lon1)
+            + b * cos(lat2) * cos(lon2)
+        let y = a * cos(lat1) * sin(lon1)
+            + b * cos(lat2) * sin(lon2)
+        let z = a * sin(lat1) + b * sin(lat2)
+        let latitude = atan2(z, sqrt(x * x + y * y))
+        let longitude = atan2(y, x)
+        return (
+            latitude * 180 / .pi,
+            longitude * 180 / .pi
+        )
+    }
 }
 
 struct ForecastDay: Codable, Hashable, Identifiable {
@@ -199,6 +263,8 @@ struct ForecastDay: Codable, Hashable, Identifiable {
     let temperatureCelsius: Double?
     let weatherCode: Int?
     let visibilityMeters: Double?
+    let lowCloudCoverPercent: Double?
+    let lowestCloudBaseFeetAGL: Double?
     let ceilingFeetAGL: Double?
     let precipitationProbability: Double?
     let pressureMSLHPA: Double?
@@ -219,6 +285,7 @@ struct DailyForecast: Codable, Hashable, Identifiable {
     let eveningWeatherCode: Int?
     let minimumTemperatureCelsius: Double?
     let maximumTemperatureCelsius: Double?
+    let maximumSurfaceWindKnots: Double?
     let model: String
 }
 
@@ -230,7 +297,142 @@ struct DestinationWeather: Codable, Hashable {
     let dailyForecast: [DailyForecast]
 }
 
+struct ClimbPerformance: Hashable {
+    let speedKIAS: Double
+    let timeAt1000FeetMinutes: Double
+    let distanceAt1000FeetNM: Double
+    let timeAt3000FeetMinutes: Double
+    let distanceAt3000FeetNM: Double
+    let timeAt5000FeetMinutes: Double
+    let distanceAt5000FeetNM: Double
+    let timeAt7000FeetMinutes: Double
+    let distanceAt7000FeetNM: Double
+    let timeAt10000FeetMinutes: Double
+    let distanceAt10000FeetNM: Double
+
+    static let a211Default = ClimbPerformance(
+        speedKIAS: 65,
+        timeAt1000FeetMinutes: 1.5,
+        distanceAt1000FeetNM: 1.6,
+        timeAt3000FeetMinutes: 4.8,
+        distanceAt3000FeetNM: 5.5,
+        timeAt5000FeetMinutes: 8.8,
+        distanceAt5000FeetNM: 9.7,
+        timeAt7000FeetMinutes: 13.0,
+        distanceAt7000FeetNM: 15.4,
+        timeAt10000FeetMinutes: 23.2,
+        distanceAt10000FeetNM: 27.2
+    )
+
+    private func interpolatedValue(
+        atPressureAltitudeFeet altitude: Double,
+        values: [Double]
+    ) -> Double {
+        let altitudes = [0.0, 1000, 3000, 5000, 7000, 10000]
+        var monotonicValues = [0.0]
+        for value in values {
+            monotonicValues.append(max(monotonicValues.last ?? 0, value))
+        }
+        let height = max(0, altitude)
+        let points = Array(zip(altitudes, monotonicValues))
+        for index in 1..<points.count where height <= points[index].0 {
+            let lower = points[index - 1]
+            let upper = points[index]
+            let fraction = (height - lower.0) / (upper.0 - lower.0)
+            return lower.1 + fraction * (upper.1 - lower.1)
+        }
+        let lower = points[points.count - 2]
+        let upper = points[points.count - 1]
+        return upper.1 + (height - upper.0) / (upper.0 - lower.0) * (upper.1 - lower.1)
+    }
+
+    func cumulativeDistanceNM(atPressureAltitudeFeet altitude: Double) -> Double {
+        interpolatedValue(
+            atPressureAltitudeFeet: altitude,
+            values: [
+                distanceAt1000FeetNM,
+                distanceAt3000FeetNM,
+                distanceAt5000FeetNM,
+                distanceAt7000FeetNM,
+                distanceAt10000FeetNM
+            ]
+        )
+    }
+
+    func cumulativeTimeMinutes(atPressureAltitudeFeet altitude: Double) -> Double {
+        interpolatedValue(
+            atPressureAltitudeFeet: altitude,
+            values: [
+                timeAt1000FeetMinutes,
+                timeAt3000FeetMinutes,
+                timeAt5000FeetMinutes,
+                timeAt7000FeetMinutes,
+                timeAt10000FeetMinutes
+            ]
+        )
+    }
+
+    func distanceNM(fromPressureAltitudeFeet departure: Double, toPressureAltitudeFeet target: Double) -> Double {
+        max(
+            0,
+            cumulativeDistanceNM(atPressureAltitudeFeet: target)
+                - cumulativeDistanceNM(atPressureAltitudeFeet: departure)
+        )
+    }
+
+    func timeMinutes(fromPressureAltitudeFeet departure: Double, toPressureAltitudeFeet target: Double) -> Double {
+        max(
+            0,
+            cumulativeTimeMinutes(atPressureAltitudeFeet: target)
+                - cumulativeTimeMinutes(atPressureAltitudeFeet: departure)
+        )
+    }
+}
+
+struct CruisePerformance: Hashable {
+    let powerPercent: Int
+    let tasAt1000Feet: Double
+    let tasAt3000Feet: Double
+    let tasAt5000Feet: Double
+    let tasAt7000Feet: Double
+    let tasAt10000Feet: Double
+
+    func tasKnots(atPressureAltitudeFeet altitude: Double) -> Double? {
+        let values = [
+            tasAt1000Feet,
+            tasAt3000Feet,
+            tasAt5000Feet,
+            tasAt7000Feet,
+            tasAt10000Feet
+        ]
+        guard values.allSatisfy({ $0 > 0 }) else { return nil }
+        let altitudes = [1000.0, 3000, 5000, 7000, 10000]
+        let height = max(altitudes[0], altitude)
+        for index in 1..<altitudes.count where height <= altitudes[index] {
+            let fraction = (height - altitudes[index - 1])
+                / (altitudes[index] - altitudes[index - 1])
+            return values[index - 1]
+                + fraction * (values[index] - values[index - 1])
+        }
+        let last = altitudes.count - 1
+        let fraction = (height - altitudes[last - 1])
+            / (altitudes[last] - altitudes[last - 1])
+        return values[last - 1]
+            + fraction * (values[last] - values[last - 1])
+    }
+}
+
 enum FlightMath {
+    static func routeMiles(directNM: Double, stopCount: Int) -> Double {
+        let routeExtraNM: Double
+        switch stopCount {
+        case 0: routeExtraNM = 10
+        case 2: routeExtraNM = 50
+        default: routeExtraNM = 30
+        }
+        return directNM * 1.05 + routeExtraNM
+    }
+
     static func calculate(directNM: Double) -> FlightTimes {
         let cruiseKnots = 105.0
         let slowKnots = 75.0
@@ -290,54 +492,120 @@ enum FlightMath {
         )
     }
 
-    static func adjustedMinutes(
+    static func adjustedDurationMinutes(
         directNM: Double,
         stopCount: Int,
         headwindKnots: Double?,
         tankStopMinutes: Int = 60,
-        cruiseGroundSpeedKnots: Double = 105.0
-    ) -> Int {
-        let cruiseKnots =
-            max(60.0, cruiseGroundSpeedKnots)
-        let slowKnots = 75.0
-
+        cruiseGroundSpeedKnots: Double = 105.0,
+        climbDeparturePressureAltitudeFeet: Double = 0,
+        climbTargetPressureAltitudeFeet: Double = 0,
+        climbPerformance: ClimbPerformance = .a211Default,
+        cruisePerformance: CruisePerformance? = nil,
+        trackMilesNM: Double? = nil,
+        preTakeoffGroundMinutes: Int = 5,
+        postLandingGroundMinutes: Int = 3
+    ) -> Double {
+        let cruiseKnots = max(
+            60.0,
+            cruisePerformance?.tasKnots(
+                atPressureAltitudeFeet: climbTargetPressureAltitudeFeet
+            ) ?? cruiseGroundSpeedKnots
+        )
         let routeExtraNM: Double
         let slowDistanceNM: Double
-        let taxiMinutes: Double
         let groundStopMinutes: Double
 
         switch stopCount {
         case 0:
             routeExtraNM = 10.0
             slowDistanceNM = 10.0
-            taxiMinutes = 6.0
             groundStopMinutes = 0.0
         case 2:
             routeExtraNM = 50.0
             slowDistanceNM = 30.0
-            taxiMinutes = 18.0
             groundStopMinutes =
                 Double(max(0, tankStopMinutes) * 2)
         default:
             routeExtraNM = 30.0
             slowDistanceNM = 20.0
-            taxiMinutes = 12.0
             groundStopMinutes =
                 Double(max(0, tankStopMinutes))
         }
 
-        let routeNM = directNM * 1.05 + routeExtraNM
-        let cruiseDistanceNM = max(0.0, routeNM - slowDistanceNM)
+        let routeNM = max(
+            0,
+            trackMilesNM ?? (directNM * 1.05 + routeExtraNM)
+        )
+        let climbDistancePerLeg = climbPerformance.distanceNM(
+            fromPressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            toPressureAltitudeFeet: climbTargetPressureAltitudeFeet
+        )
+        let climbDistanceNM = min(routeNM, climbDistancePerLeg * Double(stopCount + 1))
+        let climbMinutesPerLeg = climbPerformance.timeMinutes(
+            fromPressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            toPressureAltitudeFeet: climbTargetPressureAltitudeFeet
+        )
+        let fullClimbDistanceNM = climbDistancePerLeg * Double(stopCount + 1)
+        let flownClimbFraction = fullClimbDistanceNM > 0
+            ? min(1, climbDistanceNM / fullClimbDistanceNM)
+            : 0
+        let climbMinutes = climbMinutesPerLeg
+            * Double(stopCount + 1)
+            * flownClimbFraction
+        let remainingSlowDistanceNM = min(
+            max(0, routeNM - climbDistanceNM),
+            max(0, slowDistanceNM - climbDistanceNM)
+        )
+        let cruiseDistanceNM = max(0.0, routeNM - climbDistanceNM - remainingSlowDistanceNM)
         let component = headwindKnots ?? 0.0
         let effectiveCruiseKnots = max(55.0, min(155.0, cruiseKnots - component))
+        let legs = max(1, stopCount + 1)
+        let localGroundMinutes = Double(
+            legs * (
+                max(0, preTakeoffGroundMinutes)
+                + max(0, postLandingGroundMinutes)
+            )
+        )
 
         let minutes =
             cruiseDistanceNM / effectiveCruiseKnots * 60.0
-            + slowDistanceNM / slowKnots * 60.0
-            + taxiMinutes
+            + climbMinutes
+            + remainingSlowDistanceNM / 75.0 * 60.0
             + groundStopMinutes
+            + localGroundMinutes
 
-        return Int(round(minutes))
+        return minutes
+    }
+
+    static func adjustedMinutes(
+        directNM: Double,
+        stopCount: Int,
+        headwindKnots: Double?,
+        tankStopMinutes: Int = 60,
+        cruiseGroundSpeedKnots: Double = 105.0,
+        climbDeparturePressureAltitudeFeet: Double = 0,
+        climbTargetPressureAltitudeFeet: Double = 0,
+        climbPerformance: ClimbPerformance = .a211Default,
+        cruisePerformance: CruisePerformance? = nil,
+        trackMilesNM: Double? = nil,
+        preTakeoffGroundMinutes: Int = 5,
+        postLandingGroundMinutes: Int = 3
+    ) -> Int {
+        Int(round(adjustedDurationMinutes(
+            directNM: directNM,
+            stopCount: stopCount,
+            headwindKnots: headwindKnots,
+            tankStopMinutes: tankStopMinutes,
+            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: climbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: trackMilesNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
+        )))
     }
 
 
@@ -345,7 +613,14 @@ enum FlightMath {
         directNM: Double,
         stopCount: Int,
         headwindKnots: Double?,
-        cruiseGroundSpeedKnots: Double = 105.0
+        cruiseGroundSpeedKnots: Double = 105.0,
+        climbDeparturePressureAltitudeFeet: Double = 0,
+        climbTargetPressureAltitudeFeet: Double = 0,
+        climbPerformance: ClimbPerformance = .a211Default,
+        cruisePerformance: CruisePerformance? = nil,
+        trackMilesNM: Double? = nil,
+        preTakeoffGroundMinutes: Int = 5,
+        postLandingGroundMinutes: Int = 3
     ) -> Int {
         adjustedMinutes(
             directNM: directNM,
@@ -353,7 +628,14 @@ enum FlightMath {
             headwindKnots: headwindKnots,
             tankStopMinutes: 0,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: climbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: trackMilesNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
@@ -362,7 +644,14 @@ enum FlightMath {
         stopCount: Int,
         headwindKnots: Double?,
         tankStopMinutes: Int = 60,
-        cruiseGroundSpeedKnots: Double = 105.0
+        cruiseGroundSpeedKnots: Double = 105.0,
+        climbDeparturePressureAltitudeFeet: Double = 0,
+        climbTargetPressureAltitudeFeet: Double = 0,
+        climbPerformance: ClimbPerformance = .a211Default,
+        cruisePerformance: CruisePerformance? = nil,
+        trackMilesNM: Double? = nil,
+        preTakeoffGroundMinutes: Int = 5,
+        postLandingGroundMinutes: Int = 3
     ) -> Int {
         let legs = max(1, stopCount + 1)
         let total = adjustedMinutes(
@@ -371,7 +660,14 @@ enum FlightMath {
             headwindKnots: headwindKnots,
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: climbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: trackMilesNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
         let groundStops =
             Double(stopCount * max(0, tankStopMinutes))

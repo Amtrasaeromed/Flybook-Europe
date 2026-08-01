@@ -19,15 +19,25 @@ private struct DestinationExtra: Decodable {
 @MainActor
 final class DestinationStore: ObservableObject {
 
-    private static let expectedDestinationCount = 35
+    private static let expectedDestinationCount = 39
+    private static let fuelPrices: [String: FuelPriceRecord] = [
+        // Offizielle Bruttopreise, gültig ab 13.05.2026.
+        "EDFZ": FuelPriceRecord(
+            avgas: 3.03,
+            ul91: nil,
+            mogas: 2.59
+        )
+    ]
 
     private let airportElevationFeet: [String: Double] = [
+        "EDFZ": 760,
         "EKVJ": 17,
         "EKSS": 1,
         "EKRN": 52,
         "EKSB": 24,
         "EKAE": 3,
         "EDWL": 7,
+        "EDWJ": 8,
         "EHAL": 11,
         "EHTX": 2,
         "EHMZ": 6,
@@ -54,6 +64,8 @@ final class DestinationStore: ObservableObject {
         "LDRI": 278,
         "LDLO": 151,
         "EDHL": 53,
+        "EDXH": 8,
+        "LIPV": 13,
         "EDDV": 171,
         "EDGE": 1101,
         "EDKA": 623,
@@ -131,7 +143,7 @@ final class DestinationStore: ObservableObject {
                 return row[index].trimmingCharacters(in: .whitespacesAndNewlines)
             }
 
-            let parsedDestinations =
+            var parsedDestinations =
                 rows.dropFirst().compactMap {
                     row -> Destination? in
                 let icao = value(row, "ICAO")
@@ -142,6 +154,7 @@ final class DestinationStore: ObservableObject {
                 let rawName = value(row, "Ziel")
                 let fallbackName = rawName.components(separatedBy: "/").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? rawName
                 let directNM = number(value(row, "NM direkt"))
+                let fuelPrices = Self.fuelPrices[icao]
 
                 return Destination(
                     icao: icao,
@@ -157,6 +170,9 @@ final class DestinationStore: ObservableObject {
                     avgas: value(row, "AVGAS"),
                     ul91: value(row, "UL91"),
                     mogas: value(row, "MOGAS"),
+                    avgasPricePerLiterEUR: fuelPrices?.avgas,
+                    ul91PricePerLiterEUR: fuelPrices?.ul91,
+                    mogasPricePerLiterEUR: fuelPrices?.mogas,
                     ppr: value(row, "PPR"),
                     transfer: value(row, "Transfer"),
                     transferMinutes: Int(number(value(row, "Transfer min"))),
@@ -177,6 +193,10 @@ final class DestinationStore: ObservableObject {
                             directNM: directNM
                         )
                 )
+            }
+
+            if !parsedDestinations.contains(where: { $0.icao == "EDFZ" }) {
+                parsedDestinations.append(mainzDestination)
             }
 
             guard !parsedDestinations.isEmpty else {
@@ -204,7 +224,24 @@ final class DestinationStore: ObservableObject {
                 return
             }
 
-            destinations = parsedDestinations
+            destinations = parsedDestinations.sorted { first, second in
+                let firstDistance = AirportDistance.nauticalMiles(
+                    from: .edfz,
+                    to: first
+                )
+                let secondDistance = AirportDistance.nauticalMiles(
+                    from: .edfz,
+                    to: second
+                )
+
+                if abs(firstDistance - secondDistance) < 0.01 {
+                    return first.icao < second.icao
+                }
+                return firstDistance < secondDistance
+            }
+            Task {
+                await refreshMonthlyFuelPrices()
+            }
 
         } catch {
             destinations = []
@@ -212,6 +249,77 @@ final class DestinationStore: ObservableObject {
                 "Mastertabelle konnte nicht gelesen werden: "
                 + error.localizedDescription
         }
+    }
+
+    private func refreshMonthlyFuelPrices() async {
+        let prices = await MonthlyFuelPriceService.shared.prices(
+            for: destinations.map(\.icao),
+            seed: Self.fuelPrices
+        )
+        var updated = destinations
+        for index in updated.indices {
+            guard let price = prices[updated[index].icao] else {
+                continue
+            }
+            updated[index].avgasPricePerLiterEUR = price.avgas
+            updated[index].ul91PricePerLiterEUR = price.ul91
+            updated[index].mogasPricePerLiterEUR = price.mogas
+        }
+        destinations = updated
+
+        if let mainz = prices["EDFZ"] {
+            if let avgas = mainz.avgas {
+                UserDefaults.standard.set(
+                    avgas,
+                    forKey: FuelPriceSettingsKey.mainzAvgas
+                )
+            }
+            if let mogas = mainz.mogas {
+                UserDefaults.standard.set(
+                    mogas,
+                    forKey: FuelPriceSettingsKey.mainzMogas
+                )
+            }
+        }
+    }
+
+    private var mainzDestination: Destination {
+        Destination(
+            icao: "EDFZ",
+            name: "Mainz-Finthen",
+            country: "DE",
+            region: "Rheinhessen",
+            weekendScore: "",
+            season: "Ganzjährig",
+            airportFilter: "Heimatflugplatz",
+            directNM: 0,
+            runwayM: 1000,
+            surface: "Asphalt",
+            avgas: "prüfen",
+            ul91: "prüfen",
+            mogas: "Ja",
+            avgasPricePerLiterEUR:
+                Self.fuelPrices["EDFZ"]?.avgas,
+            ul91PricePerLiterEUR:
+                Self.fuelPrices["EDFZ"]?.ul91,
+            mogasPricePerLiterEUR:
+                Self.fuelPrices["EDFZ"]?.mogas,
+            ppr: "Nein",
+            transfer: "Mainz / Rheinhessen",
+            transferMinutes: 20,
+            bikeDirect: "Nein",
+            highlights: "Mainz · Rheinhessen · Rhein",
+            activities: "Rundflug · Stadt · Weinregion",
+            airportNote: "Mainz-Finthen ist als Ziel und für Rundflüge ab EDFZ auswählbar.",
+            status: "Heimatflugplatz",
+            airportSource: "",
+            tourismSource: "",
+            latitude: AirportReference.edfz.latitude,
+            longitude: AirportReference.edfz.longitude,
+            elevationFeet: AirportReference.edfz.elevationFeet,
+            regionalImageName: "EDFZ",
+            flightTimes: FlightMath.calculate(directNM: 0)
+        )
     }
 
     private func loadExtras() -> [String: DestinationExtra] {

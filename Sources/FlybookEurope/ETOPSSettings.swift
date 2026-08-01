@@ -12,6 +12,19 @@ enum PressureSettingsKey {
     static let displayUnit = "flybookPressureDisplayUnit"
 }
 
+enum FuelDisplayUnit: String, CaseIterable, Identifiable {
+    case liters
+    case usGallons
+
+    var id: String { rawValue }
+    var label: String { self == .liters ? "Liter" : "US gal" }
+    var symbol: String { self == .liters ? "L" : "gal" }
+
+    func fromLiters(_ liters: Double) -> Double {
+        self == .liters ? liters : liters / 3.785_411_784
+    }
+}
+
 enum CalculationSettingsKey {
     static let tankStopMinutes =
         "flybookTankStopMinutes"
@@ -27,6 +40,18 @@ enum CalculationSettingsKey {
         "flybookPrepaymentDiscount15To29Enabled"
     static let prepaymentDiscount30PlusEnabled =
         "flybookPrepaymentDiscount30PlusEnabled"
+    static let fuelDisplayUnit =
+        "flybookFuelDisplayUnit"
+    static let preTakeoffGroundMinutes =
+        "flybookPreTakeoffGroundMinutes"
+    static let postLandingGroundMinutes =
+        "flybookPostLandingGroundMinutes"
+    static let reservationFromTimestamp =
+        "flybookReservationFromTimestamp"
+    static let reservationUntilTimestamp =
+        "flybookReservationUntilTimestamp"
+    static let calculatedBlockMinutes =
+        "flybookCalculatedBlockMinutes"
 }
 
 enum CalculationSettings {
@@ -37,11 +62,106 @@ enum CalculationSettings {
     static let defaultMaxTravelMinutesUntilOvernight = 105
     static let defaultPrepaymentDiscount15To29Enabled = false
     static let defaultPrepaymentDiscount30PlusEnabled = false
+    static let defaultPreTakeoffGroundMinutes = 5
+    static let defaultPostLandingGroundMinutes = 3
 }
 
 enum ETOPSSettingsKey {
     static let greenYellowMinutes = "etopsGreenYellowMinutes"
     static let orangeRedMinutes = "etopsOrangeRedMinutes"
+    static let activeUser = "etopsActiveUser"
+}
+
+enum FlybookUser: String, CaseIterable, Identifiable {
+    case stephan = "Stephan"
+    case maria = "Maria"
+
+    var id: String { rawValue }
+}
+
+enum ETOPSProfileStore {
+    private static func key(
+        _ user: FlybookUser,
+        _ value: String
+    ) -> String {
+        "etopsProfile.\(user.rawValue).\(value)"
+    }
+
+    static func greenYellow(for user: FlybookUser) -> Int {
+        let defaults = UserDefaults.standard
+        let profileKey = key(user, "greenYellowMinutes")
+        if defaults.object(forKey: profileKey) != nil {
+            return defaults.integer(forKey: profileKey)
+        }
+        if user == .stephan,
+           defaults.object(
+            forKey: ETOPSSettingsKey.greenYellowMinutes
+           ) != nil
+        {
+            return defaults.integer(
+                forKey: ETOPSSettingsKey.greenYellowMinutes
+            )
+        }
+        return ETOPSScale.defaultGreenYellowMinutes
+    }
+
+    static func orangeRed(for user: FlybookUser) -> Int {
+        let defaults = UserDefaults.standard
+        let profileKey = key(user, "orangeRedMinutes")
+        if defaults.object(forKey: profileKey) != nil {
+            return defaults.integer(forKey: profileKey)
+        }
+        if user == .stephan,
+           defaults.object(
+            forKey: ETOPSSettingsKey.orangeRedMinutes
+           ) != nil
+        {
+            return defaults.integer(
+                forKey: ETOPSSettingsKey.orangeRedMinutes
+            )
+        }
+        return ETOPSScale.defaultOrangeRedMinutes
+    }
+
+    static func save(
+        user: FlybookUser,
+        greenYellow: Int,
+        orangeRed: Int,
+        activate: Bool
+    ) {
+        let limits = ETOPSScale.normalized(
+            greenYellow: greenYellow,
+            orangeRed: orangeRed
+        )
+        let defaults = UserDefaults.standard
+        defaults.set(
+            limits.greenYellow,
+            forKey: key(user, "greenYellowMinutes")
+        )
+        defaults.set(
+            limits.orangeRed,
+            forKey: key(user, "orangeRedMinutes")
+        )
+        if activate {
+            self.activate(user)
+        }
+    }
+
+    static func activate(_ user: FlybookUser) {
+        let defaults = UserDefaults.standard
+        defaults.set(
+            user.rawValue,
+            forKey: ETOPSSettingsKey.activeUser
+        )
+        defaults.set(
+            greenYellow(for: user),
+            forKey: ETOPSSettingsKey.greenYellowMinutes
+        )
+        defaults.set(
+            orangeRed(for: user),
+            forKey: ETOPSSettingsKey.orangeRedMinutes
+        )
+    }
 }
 
 enum ETOPSScale {
@@ -80,16 +200,33 @@ enum ETOPSScale {
         }
         return .red
     }
+
+    static func isRed(
+        travelMinutes: Int,
+        greenYellow: Int,
+        orangeRed: Int
+    ) -> Bool {
+        travelMinutes >= normalized(
+            greenYellow: greenYellow,
+            orangeRed: orangeRed
+        ).orangeRed
+    }
 }
 
 struct ETOPSSetupView: View {
-    @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
+    @State
     private var greenYellowMinutes =
         ETOPSScale.defaultGreenYellowMinutes
 
-    @AppStorage(ETOPSSettingsKey.orangeRedMinutes)
+    @State
     private var orangeRedMinutes =
         ETOPSScale.defaultOrangeRedMinutes
+
+    @AppStorage(ETOPSSettingsKey.activeUser)
+    private var activeUserRaw = FlybookUser.stephan.rawValue
+
+    @State
+    private var editedUserRaw = FlybookUser.stephan.rawValue
 
     @AppStorage(CalculationSettingsKey.tankStopMinutes)
     private var tankStopMinutes =
@@ -106,6 +243,14 @@ struct ETOPSSetupView: View {
     @AppStorage(CalculationSettingsKey.reserveMinutes)
     private var reserveMinutes =
         CalculationSettings.defaultReserveMinutes
+
+    @AppStorage(CalculationSettingsKey.preTakeoffGroundMinutes)
+    private var preTakeoffGroundMinutes =
+        CalculationSettings.defaultPreTakeoffGroundMinutes
+
+    @AppStorage(CalculationSettingsKey.postLandingGroundMinutes)
+    private var postLandingGroundMinutes =
+        CalculationSettings.defaultPostLandingGroundMinutes
 
     @AppStorage(
         CalculationSettingsKey.maxTravelMinutesUntilOvernight
@@ -139,9 +284,9 @@ struct ETOPSSetupView: View {
             VStack(alignment: .leading, spacing: 22) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ETOPS-PIPI Setup")
+                    Text("Allgemeines Setup")
                         .font(.title2.bold())
-                    Text("Grenzen für die farbliche Bewertung der Dauer eines einzelnen Fluglegs")
+                    Text("Flugkalkulation, Anzeige und ETOPS-PIPI")
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -149,6 +294,34 @@ struct ETOPSSetupView: View {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+            }
+
+            GroupBox("NUTZERPROFIL") {
+                HStack(spacing: 16) {
+                    Picker(
+                        "Nutzer",
+                        selection: $editedUserRaw
+                    ) {
+                        ForEach(FlybookUser.allCases) { user in
+                            Text(user.rawValue).tag(user.rawValue)
+                        }
+                    }
+                    .frame(width: 180)
+
+                    Button("Als aktives Profil speichern") {
+                        saveAndActivateProfile()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    if editedUserRaw == activeUserRaw {
+                        Label(
+                            "Aktiv",
+                            systemImage: "checkmark.circle.fill"
+                        )
+                        .foregroundStyle(.green)
+                    }
+                }
+                .padding(8)
             }
 
             HStack {
@@ -238,6 +411,16 @@ struct ETOPSSetupView: View {
                             )
                         }
                     }
+
+                    groundTimeRow(
+                        title: "Vor Start (Warmlauf/Taxi)",
+                        minutes: $preTakeoffGroundMinutes
+                    )
+
+                    groundTimeRow(
+                        title: "Nach Landung (Taxi)",
+                        minutes: $postLandingGroundMinutes
+                    )
 
 HStack {
                         Text("Mehrwertsteuer")
@@ -431,6 +614,13 @@ HStack {
             .padding(28)
         }
         .frame(width: 780, height: 720)
+        .onAppear {
+            editedUserRaw = activeUserRaw
+            loadEditedProfile()
+        }
+        .onChange(of: editedUserRaw) { _ in
+            loadEditedProfile()
+        }
         .onChange(of: greenYellowMinutes) { newValue in
             if newValue >= orangeRedMinutes {
                 orangeRedMinutes = newValue + 10
@@ -441,6 +631,45 @@ HStack {
                 greenYellowMinutes = max(30, newValue - 10)
             }
         }
+    }
+
+    private func groundTimeRow(
+        title: String,
+        minutes: Binding<Int>
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.headline)
+                .frame(width: 250, alignment: .leading)
+
+            Stepper(value: minutes, in: 0...30, step: 1) {
+                Text("\(minutes.wrappedValue) Minuten")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .frame(width: 120, alignment: .trailing)
+            }
+            .frame(width: 190)
+        }
+    }
+
+    private func loadEditedProfile() {
+        let user = FlybookUser(rawValue: editedUserRaw)
+            ?? .stephan
+        greenYellowMinutes =
+            ETOPSProfileStore.greenYellow(for: user)
+        orangeRedMinutes =
+            ETOPSProfileStore.orangeRed(for: user)
+    }
+
+    private func saveAndActivateProfile() {
+        let user = FlybookUser(rawValue: editedUserRaw)
+            ?? .stephan
+        ETOPSProfileStore.save(
+            user: user,
+            greenYellow: greenYellowMinutes,
+            orangeRed: orangeRedMinutes,
+            activate: true
+        )
+        activeUserRaw = user.rawValue
     }
 
     private var prepaymentDiscount15To29Binding:

@@ -8,6 +8,13 @@ enum TimeDisplayMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum FlightPlanningMode: String, CaseIterable, Identifiable {
+    case roundTrip = "Hin-/Rückflug"
+    case multiStop = "Multi-Stop"
+
+    var id: String { rawValue }
+}
+
 struct DestinationPage: View {
     let destination: Destination
     let availableOrigins: [AirportReference]
@@ -17,6 +24,11 @@ struct DestinationPage: View {
     @StateObject private var returnRouteWindModel = RouteWindViewModel()
     @StateObject private var outboundEDFZWeatherModel = EDFZWeatherViewModel()
     @StateObject private var returnEDFZWeatherModel = EDFZWeatherViewModel()
+    @StateObject private var intermediateWeatherModel = EDFZWeatherViewModel()
+    @StateObject private var destinationAirportWeatherModel =
+        EDFZWeatherViewModel()
+    @StateObject private var destinationReturnWeatherModel =
+        EDFZWeatherViewModel()
     @State private var outboundFlightDate =
         Calendar.current.date(
             byAdding: .day,
@@ -31,11 +43,27 @@ struct DestinationPage: View {
         ) ?? Date()
     @State private var outboundStartText = "09:30"
     @State private var desiredHomeArrivalText = "17:00"
+    @State private var multiStopDepartureText = ""
     @State private var outboundStops = 0
     @State private var returnStops = 0
+    @State private var outboundStopsManuallySet = false
+    @State private var returnStopsManuallySet = false
+    @State private var outboundTrackMilesOverride: Double?
+    @State private var returnTrackMilesOverride: Double?
     @State private var outboundFlightAltitudeFeet = 5000
     @State private var returnFlightAltitudeFeet = 5000
     @State private var timeDisplayMode: TimeDisplayMode = .local
+    @State private var flightPlanningMode = FlightPlanningMode.roundTrip
+    @State private var isOneWay = false
+    @State private var outboundReserveNotConsumed = false
+    @State private var intermediateICAO = "EDFZ"
+    @AppStorage(CalculationSettingsKey.reservationFromTimestamp)
+    private var reservationFromTimestamp = Date().timeIntervalSince1970
+    @AppStorage(CalculationSettingsKey.reservationUntilTimestamp)
+    private var reservationUntilTimestamp =
+        Date().addingTimeInterval(12 * 60 * 60).timeIntervalSince1970
+    @AppStorage(CalculationSettingsKey.calculatedBlockMinutes)
+    private var storedCalculatedBlockMinutes = 0
 
     @AppStorage(CalculationSettingsKey.tankStopMinutes)
     private var tankStopMinutes =
@@ -45,9 +73,40 @@ struct DestinationPage: View {
     private var vatPercent =
         CalculationSettings.defaultVATPercent
 
+    @AppStorage(CalculationSettingsKey.preTakeoffGroundMinutes)
+    private var preTakeoffGroundMinutes =
+        CalculationSettings.defaultPreTakeoffGroundMinutes
+
+    @AppStorage(CalculationSettingsKey.postLandingGroundMinutes)
+    private var postLandingGroundMinutes =
+        CalculationSettings.defaultPostLandingGroundMinutes
+
+    @AppStorage(CalculationSettingsKey.fuelDisplayUnit)
+    private var fuelDisplayUnitRaw = FuelDisplayUnit.liters.rawValue
+    @AppStorage(FuelPriceSettingsKey.mainzAvgas)
+    private var mainzAvgasPrice = 3.03
+    @AppStorage(FuelPriceSettingsKey.mainzMogas)
+    private var mainzMogasPrice = 2.59
+
+    private var fuelDisplayUnit: FuelDisplayUnit {
+        FuelDisplayUnit(rawValue: fuelDisplayUnitRaw) ?? .liters
+    }
+
     @AppStorage(AircraftSettingsKey.selectedAircraft)
     private var selectedAircraftRaw =
         AircraftType.a211.rawValue
+
+    @AppStorage(ETOPSSettingsKey.activeUser)
+    private var activeUserRaw =
+        FlybookUser.stephan.rawValue
+
+    @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
+    private var etopsGreenYellowMinutes =
+        ETOPSScale.defaultGreenYellowMinutes
+
+    @AppStorage(ETOPSSettingsKey.orangeRedMinutes)
+    private var etopsOrangeRedMinutes =
+        ETOPSScale.defaultOrangeRedMinutes
 
     private var selectedOrigin: AirportReference {
         availableOrigins.first {
@@ -63,6 +122,129 @@ struct DestinationPage: View {
         )
     }
 
+    private var destinationReference: AirportReference {
+        AirportReference(
+            icao: destination.icao,
+            name: destination.name,
+            latitude: destination.latitude ?? 0,
+            longitude: destination.longitude ?? 0,
+            elevationFeet: destination.elevationFeet,
+            timeZone: DestinationTimeZone.value(
+                for: destination,
+                weatherTimeZone: weatherModel.weather?.timezone
+            )
+        )
+    }
+
+    private var intermediateAirport: AirportReference {
+        availableOrigins.first {
+            $0.icao == intermediateICAO
+        } ?? destinationReference
+    }
+
+    private var firstLegDestination: AirportReference {
+        flightPlanningMode == .multiStop
+            ? intermediateAirport
+            : destinationReference
+    }
+
+    private var secondLegOrigin: AirportReference {
+        flightPlanningMode == .multiStop
+            ? intermediateAirport
+            : destinationReference
+    }
+
+    private var secondLegDestination: AirportReference {
+        flightPlanningMode == .multiStop
+            ? destinationReference
+            : selectedOrigin
+    }
+
+    private var outboundDirectNM: Double {
+        AirportDistance.nauticalMiles(
+            from: selectedOrigin,
+            to: firstLegDestination
+        )
+    }
+
+    private var returnDirectNM: Double {
+        AirportDistance.nauticalMiles(
+            from: secondLegOrigin,
+            to: secondLegDestination
+        )
+    }
+
+    private var calculatedOutboundTrackMiles: Double {
+        FlightMath.routeMiles(directNM: outboundDirectNM, stopCount: outboundStops)
+    }
+
+    private var calculatedReturnTrackMiles: Double {
+        FlightMath.routeMiles(directNM: returnDirectNM, stopCount: returnStops)
+    }
+
+    private var outboundTrackMiles: Double {
+        outboundTrackMilesOverride ?? calculatedOutboundTrackMiles
+    }
+
+    private var returnTrackMiles: Double {
+        returnTrackMilesOverride ?? calculatedReturnTrackMiles
+    }
+
+    private var outboundTrackMilesBinding: Binding<Double> {
+        Binding(
+            get: { outboundTrackMiles },
+            set: { outboundTrackMilesOverride = max(0, $0) }
+        )
+    }
+
+    private var returnTrackMilesBinding: Binding<Double> {
+        Binding(
+            get: { returnTrackMiles },
+            set: { returnTrackMilesOverride = max(0, $0) }
+        )
+    }
+
+    private var outboundCourseDegrees: Double {
+        return WindMath.initialBearing(
+            latitude1: selectedOrigin.latitude,
+            longitude1: selectedOrigin.longitude,
+            latitude2: firstLegDestination.latitude,
+            longitude2: firstLegDestination.longitude
+        )
+    }
+
+    private var outboundAltitudeOptions: [Int] {
+        semicircularAltitudeOptions(
+            courseDegrees: outboundCourseDegrees
+        )
+    }
+
+    private var returnAltitudeOptions: [Int] {
+        semicircularAltitudeOptions(
+            courseDegrees: returnCourseDegrees
+        )
+    }
+
+    private var returnCourseDegrees: Double {
+        return WindMath.initialBearing(
+            latitude1: secondLegOrigin.latitude,
+            longitude1: secondLegOrigin.longitude,
+            latitude2: secondLegDestination.latitude,
+            longitude2: secondLegDestination.longitude
+        )
+    }
+
+    private func semicircularAltitudeOptions(
+        courseDegrees: Double
+    ) -> [Int] {
+        if (180..<360).contains(
+            WindMath.normalized(courseDegrees)
+        ) {
+            return [3500, 4500, 6500, 8500]
+        }
+        return [3500, 5500, 7500, 9500]
+    }
+
     private var selectedAircraft: AircraftType {
         AircraftType(rawValue: selectedAircraftRaw)
             ?? .a211
@@ -75,9 +257,8 @@ struct DestinationPage: View {
     }
 
     private var cruiseGroundSpeedKnots: Double {
-        AircraftProfileStore.cruiseSpeed(
-            for: selectedAircraft
-        )
+        // Nur Sicherheitswert für noch unvollständige TAS-Tabellen.
+        selectedAircraft.defaultCruiseGroundSpeedKnots
     }
 
     private var fuelConsumptionPerHour: Double {
@@ -90,6 +271,14 @@ struct DestinationPage: View {
         AircraftProfileStore.usableFuel(
             for: selectedAircraft
         )
+    }
+
+    private var climbPerformance: ClimbPerformance {
+        AircraftProfileStore.climbPerformance(for: selectedAircraft)
+    }
+
+    private var cruisePerformance: CruisePerformance {
+        AircraftProfileStore.cruisePerformance(for: selectedAircraft)
     }
 
     @AppStorage(CalculationSettingsKey.weekdayDiscountEnabled)
@@ -152,22 +341,42 @@ struct DestinationPage: View {
         }
         .task(id: outboundWindTaskID) {
             await outboundRouteWindModel.load(
-                destination: destination,
+                destination: firstLegDestination,
                 origin: selectedOrigin,
-                plannedInstant:
-                    outboundWindForecastInstant,
-                altitudeFeet:
-                    outboundFlightAltitudeFeet
+                plannedStart: outboundStartInstant,
+                plannedEnd: outboundArrivalInstantForWeather,
+                altitudeOptions: outboundAltitudeOptions,
+                selectedAltitudeFeet:
+                    outboundFlightAltitudeFeet,
+                isReturn: false,
+                directNM: outboundDirectNM,
+                trackMilesNM: outboundTrackMiles,
+                stopCount: outboundStops,
+                tankStopMinutes: tankStopMinutes,
+                fallbackCruiseSpeedKnots: cruiseGroundSpeedKnots,
+                departurePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                climbPerformance: climbPerformance,
+                cruisePerformance: cruisePerformance
             )
         }
         .task(id: returnWindTaskID) {
             await returnRouteWindModel.load(
-                destination: destination,
-                origin: selectedOrigin,
-                plannedInstant:
-                    returnWindForecastInstant,
-                altitudeFeet:
-                    returnFlightAltitudeFeet
+                destination: secondLegDestination,
+                origin: secondLegOrigin,
+                plannedStart: returnDepartureInstantForWeather,
+                plannedEnd: returnArrivalInstant,
+                altitudeOptions: returnAltitudeOptions,
+                selectedAltitudeFeet:
+                    returnFlightAltitudeFeet,
+                isReturn: false,
+                directNM: returnDirectNM,
+                trackMilesNM: returnTrackMiles,
+                stopCount: returnStops,
+                tankStopMinutes: tankStopMinutes,
+                fallbackCruiseSpeedKnots: cruiseGroundSpeedKnots,
+                departurePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+                climbPerformance: climbPerformance,
+                cruisePerformance: cruisePerformance
             )
         }
         .task(id: outboundEDFZWeatherTaskID) {
@@ -182,19 +391,276 @@ struct DestinationPage: View {
                 airport: selectedOrigin
             )
         }
+        .task(id: multiStopWeatherTaskID) {
+            await destinationAirportWeatherModel.load(
+                plannedDate: outboundFlightDate,
+                airport: destinationReference
+            )
+            await destinationReturnWeatherModel.load(
+                plannedDate: returnFlightDate,
+                airport: destinationReference
+            )
+            if flightPlanningMode == .multiStop {
+                await intermediateWeatherModel.load(
+                    plannedDate: outboundFlightDate,
+                    airport: intermediateAirport
+                )
+            }
+        }
+        .onChange(of: outboundRouteWindModel.wind) { wind in
+            guard let wind else { return }
+            if !outboundStopsManuallySet {
+                outboundStops = max(
+                    outboundStops,
+                    recommendedStopCount(
+                        headwindKnots: wind.outboundHeadwindKnots,
+                        directNM: outboundDirectNM,
+                        climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                        climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet)
+                    )
+                )
+            }
+        }
+        .onChange(of: returnRouteWindModel.wind) { wind in
+            guard let wind else { return }
+            if !returnStopsManuallySet {
+                returnStops = max(
+                    returnStops,
+                    recommendedStopCount(
+                        headwindKnots: wind.outboundHeadwindKnots,
+                        directNM: returnDirectNM,
+                        climbDeparturePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+                        climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet)
+                    )
+                )
+            }
+        }
+        .onChange(of: outboundFlightAltitudeFeet) { altitude in
+            outboundRouteWindModel.selectAltitude(altitude)
+        }
+        .onChange(of: returnFlightAltitudeFeet) { altitude in
+            returnRouteWindModel.selectAltitude(altitude)
+        }
+        .onChange(of: outboundRouteWindModel.bestLevelFeet) { bestLevel in
+            guard let bestLevel else { return }
+            outboundFlightAltitudeFeet = nearestAltitude(
+                to: bestLevel,
+                in: outboundAltitudeOptions
+            )
+        }
+        .onChange(of: returnRouteWindModel.bestLevelFeet) { bestLevel in
+            guard let bestLevel else { return }
+            returnFlightAltitudeFeet = nearestAltitude(
+                to: bestLevel,
+                in: returnAltitudeOptions
+            )
+        }
+        .onChange(of: etopsGreenYellowMinutes) { _ in
+            applyAutomaticStopSelection()
+        }
+        .onChange(of: etopsOrangeRedMinutes) { _ in
+            applyAutomaticStopSelection()
+        }
+        .onChange(of: destination.icao) { _ in
+            resetAutomaticStops()
+            normalizeFlightAltitudes()
+        }
+        .onChange(of: selectedOriginICAO) { _ in
+            normalizeFlightAltitudes()
+        }
+        .onChange(of: flightPlanningMode) { mode in
+            if mode == .roundTrip {
+                let today =
+                    Calendar.current.startOfDay(for: Date())
+                outboundFlightDate =
+                    Calendar.current.date(
+                        byAdding: .day,
+                        value: 1,
+                        to: today
+                    ) ?? today
+                returnFlightDate =
+                    Calendar.current.date(
+                        byAdding: .day,
+                        value: 2,
+                        to: today
+                    ) ?? today
+            }
+            if mode == .multiStop,
+               intermediateICAO == selectedOrigin.icao
+                || intermediateICAO == destination.icao
+            {
+                intermediateICAO =
+                    availableOrigins.first {
+                        $0.icao != selectedOrigin.icao
+                            && $0.icao != destination.icao
+                    }?.icao ?? intermediateICAO
+            }
+            resetAutomaticStops()
+            outboundTrackMilesOverride = nil
+            returnTrackMilesOverride = nil
+            normalizeFlightAltitudes()
+        }
+        .onChange(of: intermediateICAO) { _ in
+            guard flightPlanningMode == .multiStop else { return }
+            resetAutomaticStops()
+            outboundTrackMilesOverride = nil
+            returnTrackMilesOverride = nil
+            normalizeFlightAltitudes()
+        }
+        .onChange(of: outboundFlightDate) { _ in
+            outboundStops = 0
+            outboundStopsManuallySet = false
+            outboundTrackMilesOverride = nil
+        }
+        .onChange(of: returnFlightDate) { _ in
+            returnStops = 0
+            returnStopsManuallySet = false
+            returnTrackMilesOverride = nil
+        }
+        .onChange(of: outboundStops) { _ in
+            outboundTrackMilesOverride = nil
+        }
+        .onChange(of: returnStops) { _ in
+            returnTrackMilesOverride = nil
+        }
+        .onChange(of: totalCalculatedBlockMinutes) { minutes in
+            storedCalculatedBlockMinutes = minutes
+        }
+        .onChange(of: outboundStartInstant) { _ in
+            synchronizeReservationWindow()
+        }
+        .onChange(of: reservationArrivalInstant) { _ in
+            synchronizeReservationWindow()
+        }
+        .onAppear {
+            normalizeFlightAltitudes()
+            storedCalculatedBlockMinutes = totalCalculatedBlockMinutes
+            synchronizeReservationWindow()
+        }
+    }
+
+    private var outboundStopsBinding: Binding<Int> {
+        Binding(
+            get: { outboundStops },
+            set: {
+                outboundStops = $0
+                outboundStopsManuallySet = true
+            }
+        )
+    }
+
+    private var returnStopsBinding: Binding<Int> {
+        Binding(
+            get: { returnStops },
+            set: {
+                returnStops = $0
+                returnStopsManuallySet = true
+            }
+        )
+    }
+
+    private func resetAutomaticStops() {
+        outboundStops = 0
+        returnStops = 0
+        outboundStopsManuallySet = false
+        returnStopsManuallySet = false
+    }
+
+    private func normalizeFlightAltitudes() {
+        outboundFlightAltitudeFeet = nearestAltitude(
+            to: outboundFlightAltitudeFeet,
+            in: outboundAltitudeOptions
+        )
+        returnFlightAltitudeFeet = nearestAltitude(
+            to: returnFlightAltitudeFeet,
+            in: returnAltitudeOptions
+        )
+    }
+
+    private func nearestAltitude(
+        to current: Int,
+        in options: [Int]
+    ) -> Int {
+        options.min {
+            abs($0 - current) < abs($1 - current)
+        } ?? current
+    }
+
+    private func recommendedStopCount(
+        headwindKnots: Double,
+        directNM: Double,
+        climbDeparturePressureAltitudeFeet: Double,
+        climbTargetPressureAltitudeFeet: Double
+    ) -> Int {
+        for stopCount in 0...2 {
+            let legMinutes =
+                FlightMath.adjustedPerLegMinutes(
+                    directNM: directNM,
+                    stopCount: stopCount,
+                    headwindKnots: headwindKnots,
+                    tankStopMinutes: tankStopMinutes,
+                    cruiseGroundSpeedKnots:
+                        cruiseGroundSpeedKnots,
+                    climbDeparturePressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+                    climbTargetPressureAltitudeFeet: climbTargetPressureAltitudeFeet,
+                    climbPerformance: climbPerformance,
+                    cruisePerformance: cruisePerformance,
+                    preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                    postLandingGroundMinutes: postLandingGroundMinutes
+                )
+
+            if !ETOPSScale.isRed(
+                travelMinutes: legMinutes,
+                greenYellow: etopsGreenYellowMinutes,
+                orangeRed: etopsOrangeRedMinutes
+            ) {
+                return stopCount
+            }
+        }
+
+        return 2
+    }
+
+    private func applyAutomaticStopSelection() {
+        if !outboundStopsManuallySet,
+           let wind = outboundRouteWindModel.wind {
+            outboundStops = max(
+                outboundStops,
+                recommendedStopCount(
+                    headwindKnots: wind.outboundHeadwindKnots,
+                    directNM: outboundDirectNM,
+                    climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                    climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet)
+                )
+            )
+        }
+        if !returnStopsManuallySet,
+           let wind = returnRouteWindModel.wind {
+            returnStops = max(
+                returnStops,
+                recommendedStopCount(
+                    headwindKnots: wind.outboundHeadwindKnots,
+                    directNM: returnDirectNM,
+                    climbDeparturePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+                    climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet)
+                )
+            )
+        }
     }
 
     private var outboundWindTaskID: String {
-        instantTaskID(
+        windTaskID(
             prefix: "out-wind",
-            instant: outboundWindForecastInstant
+            anchor: outboundStartInstant,
+            stopCount: outboundStops
         )
     }
 
     private var returnWindTaskID: String {
-        instantTaskID(
+        windTaskID(
             prefix: "ret-wind",
-            instant: returnWindForecastInstant
+            anchor: returnArrivalInstant,
+            stopCount: returnStops
         )
     }
 
@@ -204,6 +670,17 @@ struct DestinationPage: View {
 
     private var returnEDFZWeatherTaskID: String {
         dateTaskID(prefix: "ret-\(selectedOrigin.icao)", date: returnFlightDate)
+    }
+
+    private var multiStopWeatherTaskID: String {
+        dateTaskID(
+            prefix:
+                "multi-\(flightPlanningMode.rawValue)-"
+                + "\(intermediateICAO)-\(destination.icao)",
+            date: outboundFlightDate
+        )
+        + "-"
+        + dateTaskID(prefix: "destination-return", date: returnFlightDate)
     }
 
     private var weatherTaskID: String {
@@ -217,22 +694,32 @@ struct DestinationPage: View {
         return "\(prefix)-\(destination.icao)-\(formatter.string(from: date))"
     }
 
-    private func instantTaskID(
+    private func windTaskID(
         prefix: String,
-        instant: Date
+        anchor: Date,
+        stopCount: Int
     ) -> String {
-        let fiveMinuteBucket =
-            Int(instant.timeIntervalSince1970 / 300)
-
-        let altitudeFeet = prefix.hasPrefix("out")
-            ? outboundFlightAltitudeFeet
-            : returnFlightAltitudeFeet
+        let anchorBucket =
+            Int(anchor.timeIntervalSince1970 / 300)
+        let trackMiles = prefix.hasPrefix("out")
+            ? outboundTrackMiles
+            : returnTrackMiles
 
         return
             "\(prefix)-\(destination.icao)-"
-            + "\(fiveMinuteBucket)-"
+            + "\(anchorBucket)-\(stopCount)-"
             + selectedAircraftRaw
-            + "-\(selectedOrigin.icao)-\(altitudeFeet)"
+            + "-\(selectedOrigin.icao)"
+            + "-\(flightPlanningMode.rawValue)"
+            + "-\(intermediateICAO)"
+            + "-M\(trackMiles)"
+            + "-P\(cruisePerformance.powerPercent)"
+            + "-T\(cruisePerformance.tasAt1000Feet)"
+            + "-\(cruisePerformance.tasAt5000Feet)"
+            + "-\(cruisePerformance.tasAt10000Feet)"
+            + "-C\(climbPerformance.timeAt1000FeetMinutes)"
+            + "-\(climbPerformance.timeAt5000FeetMinutes)"
+            + "-\(climbPerformance.timeAt10000FeetMinutes)"
     }
 
     private var displayTimeZone: TimeZone {
@@ -243,30 +730,87 @@ struct DestinationPage: View {
 
     private var outboundTravelMinutesForWeather: Int {
         FlightMath.adjustedMinutes(
-            directNM: routeDirectNM,
+            directNM: outboundDirectNM,
             stopCount: outboundStops,
             headwindKnots: outboundRouteWindModel.wind?.outboundHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+            climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: outboundTrackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
     private var returnTravelMinutesForWeather: Int {
         FlightMath.adjustedMinutes(
-            directNM: routeDirectNM,
+            directNM: returnDirectNM,
             stopCount: returnStops,
             headwindKnots:
                 returnRouteWindModel.wind?
-                    .returnHeadwindKnots,
+                    .outboundHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+            climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: returnTrackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
+    private var totalCalculatedBlockMinutes: Int {
+        let outbound = FlightMath.adjustedBlockMinutes(
+            directNM: outboundDirectNM,
+            stopCount: outboundStops,
+            headwindKnots:
+                outboundRouteWindModel.wind?.outboundHeadwindKnots,
+            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet:
+                selectedOrigin.elevationFeet,
+            climbTargetPressureAltitudeFeet:
+                Double(outboundFlightAltitudeFeet),
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: outboundTrackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
+        )
+        let returnFlight = FlightMath.adjustedBlockMinutes(
+            directNM: returnDirectNM,
+            stopCount: returnStops,
+            headwindKnots:
+                returnRouteWindModel.wind?.outboundHeadwindKnots,
+            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet:
+                secondLegOrigin.elevationFeet,
+            climbTargetPressureAltitudeFeet:
+                Double(returnFlightAltitudeFeet),
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: returnTrackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
+        )
+        return outbound + (isOneWay ? 0 : returnFlight)
+    }
+
+    private var requiredReservationBlockHours: Double {
+        ReservationBreakdown.calculate(
+            from: Date(timeIntervalSince1970: reservationFromTimestamp),
+            until: Date(timeIntervalSince1970: reservationUntilTimestamp)
+        ).requiredBlockHours
+    }
+
     private var outboundStartInstant: Date {
-        FlightDateTime.instant(
+        return FlightDateTime.instant(
             date: outboundFlightDate,
             timeText: outboundStartText,
             timeZone: displayTimeZone
@@ -281,15 +825,13 @@ struct DestinationPage: View {
         )
     }
 
-    private var outboundWindForecastInstant: Date {
-        temporalMidpoint(
-            between: outboundStartInstant,
-            and: outboundArrivalInstantForWeather
-        )
-    }
-
     private var returnArrivalInstant: Date {
-        FlightDateTime.instant(
+        if flightPlanningMode == .multiStop {
+            return returnDepartureInstantForWeather.addingTimeInterval(
+                TimeInterval(returnTravelMinutesForWeather * 60)
+            )
+        }
+        return FlightDateTime.instant(
             date: returnFlightDate,
             timeText: desiredHomeArrivalText,
             timeZone: displayTimeZone
@@ -297,27 +839,48 @@ struct DestinationPage: View {
     }
 
     private var returnDepartureInstantForWeather: Date {
-        returnArrivalInstant.addingTimeInterval(
+        if flightPlanningMode == .multiStop {
+            let multiStopTimeZone =
+                timeDisplayMode == .utc
+                    ? TimeZone(secondsFromGMT: 0)!
+                    : secondLegOrigin.timeZone
+            if !multiStopDepartureText.isEmpty,
+               let manualDeparture = FlightDateTime.instant(
+                    date: returnFlightDate,
+                    timeText: multiStopDepartureText,
+                    timeZone: multiStopTimeZone
+               )
+            {
+                return manualDeparture
+            }
+            let rawDeparture = outboundArrivalInstantForWeather
+                .addingTimeInterval(TimeInterval(tankStopMinutes * 60))
+            let roundedTimestamp =
+                ceil(rawDeparture.timeIntervalSince1970 / 300) * 300
+            return Date(timeIntervalSince1970: roundedTimestamp)
+        }
+        return returnArrivalInstant.addingTimeInterval(
             TimeInterval(
                 -returnTravelMinutesForWeather * 60
             )
         )
     }
 
-    private var returnWindForecastInstant: Date {
-        temporalMidpoint(
-            between: returnDepartureInstantForWeather,
-            and: returnArrivalInstant
-        )
+    private var reservationArrivalInstant: Date {
+        isOneWay
+            ? outboundArrivalInstantForWeather
+            : returnArrivalInstant
     }
 
-    private func temporalMidpoint(
-        between start: Date,
-        and end: Date
-    ) -> Date {
-        start.addingTimeInterval(
-            end.timeIntervalSince(start) / 2.0
-        )
+    private func synchronizeReservationWindow() {
+        reservationFromTimestamp =
+            outboundStartInstant
+                .addingTimeInterval(-60 * 60)
+                .timeIntervalSince1970
+        reservationUntilTimestamp =
+            reservationArrivalInstant
+                .addingTimeInterval(60 * 60)
+                .timeIntervalSince1970
     }
 
     private var weatherTargetInstants: [Date] {
@@ -334,19 +897,14 @@ struct DestinationPage: View {
                         width: 675,
                         alignment: .leading
                     )
-                    .frame(
-                        minHeight: 181,
-                        alignment: .topLeading
-                    )
 
                 airportSection
                     .frame(width: 675)
-                    .padding(.top, 24)
+                    .padding(.top, 10)
 
                 flightSection
                     .frame(width: 675)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 24)
+                    .padding(.top, 12)
 
             }
             .frame(
@@ -356,11 +914,7 @@ struct DestinationPage: View {
             )
             .offset(x: 34, y: 28)
 
-            VStack(spacing: 20) {
-                fiveDayForecastSection
-
-                mapAndImageSection
-
+            VStack(spacing: 12) {
                 FlybookCard {
                     TravelDurationBar(
                         minutes:
@@ -368,10 +922,17 @@ struct DestinationPage: View {
                         thresholdMinutes:
                             maxTravelMinutesUntilOvernight
                     )
+                    .offset(y: 2)
                 }
-                .frame(height: 85)
+                .frame(height: 64)
 
-                calculationSection
+                fiveDayForecastSection
+
+                tenDayForecastSection
+
+                mapAndImageSection
+
+                calculationRowSection
             }
             .frame(
                 width: 1010,
@@ -418,25 +979,55 @@ struct DestinationPage: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 5) {
-                Text("FLUGZEUG")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(FlybookColor.muted)
+            VStack(alignment: .trailing, spacing: 10) {
+                HStack(spacing: 10) {
+                    Text("FLUGZEUG")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                        .frame(width: 78, alignment: .trailing)
 
-                Picker(
-                    "Flugzeug",
-                    selection: $selectedAircraftRaw
-                ) {
-                    ForEach(AircraftType.allCases) {
-                        aircraft in
-                        Text(aircraft.rawValue)
-                            .tag(aircraft.rawValue)
+                    Picker(
+                        "Flugzeug",
+                        selection: $selectedAircraftRaw
+                    ) {
+                        ForEach(AircraftType.allCases) {
+                            aircraft in
+                            Text(aircraft.rawValue)
+                                .tag(aircraft.rawValue)
+                        }
                     }
+                    .labelsHidden()
+                    .font(.system(size: 15, weight: .semibold))
+                    .controlSize(.regular)
+                    .frame(width: 160)
                 }
-                .labelsHidden()
-                .frame(width: 145)
+
+                HStack(spacing: 10) {
+                    Text("NUTZER")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                        .frame(width: 78, alignment: .trailing)
+
+                    Picker(
+                        "Nutzer",
+                        selection: $activeUserRaw
+                    ) {
+                        ForEach(FlybookUser.allCases) { user in
+                            Text(user.rawValue).tag(user.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .font(.system(size: 15, weight: .semibold))
+                    .controlSize(.regular)
+                    .frame(width: 160)
+                }
             }
             .padding(.top, 8)
+        }
+        .onChange(of: activeUserRaw) { newValue in
+            ETOPSProfileStore.activate(
+                FlybookUser(rawValue: newValue) ?? .stephan
+            )
         }
     }
 
@@ -463,16 +1054,40 @@ struct DestinationPage: View {
                 targetInstants: weatherTargetInstants
             )
             await outboundRouteWindModel.load(
-                destination: destination,
+                destination: firstLegDestination,
                 origin: selectedOrigin,
-                plannedInstant: outboundWindForecastInstant,
-                altitudeFeet: outboundFlightAltitudeFeet
+                plannedStart: outboundStartInstant,
+                plannedEnd: outboundArrivalInstantForWeather,
+                altitudeOptions: outboundAltitudeOptions,
+                selectedAltitudeFeet:
+                    outboundFlightAltitudeFeet,
+                isReturn: false,
+                directNM: outboundDirectNM,
+                trackMilesNM: outboundTrackMiles,
+                stopCount: outboundStops,
+                tankStopMinutes: tankStopMinutes,
+                fallbackCruiseSpeedKnots: cruiseGroundSpeedKnots,
+                departurePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                climbPerformance: climbPerformance,
+                cruisePerformance: cruisePerformance
             )
             await returnRouteWindModel.load(
-                destination: destination,
-                origin: selectedOrigin,
-                plannedInstant: returnWindForecastInstant,
-                altitudeFeet: returnFlightAltitudeFeet
+                destination: secondLegDestination,
+                origin: secondLegOrigin,
+                plannedStart: returnDepartureInstantForWeather,
+                plannedEnd: returnArrivalInstant,
+                altitudeOptions: returnAltitudeOptions,
+                selectedAltitudeFeet:
+                    returnFlightAltitudeFeet,
+                isReturn: false,
+                directNM: returnDirectNM,
+                trackMilesNM: returnTrackMiles,
+                stopCount: returnStops,
+                tankStopMinutes: tankStopMinutes,
+                fallbackCruiseSpeedKnots: cruiseGroundSpeedKnots,
+                departurePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+                climbPerformance: climbPerformance,
+                cruisePerformance: cruisePerformance
             )
             await outboundEDFZWeatherModel.load(
                 plannedDate: outboundFlightDate,
@@ -482,65 +1097,221 @@ struct DestinationPage: View {
                 plannedDate: returnFlightDate,
                 airport: selectedOrigin
             )
+            await destinationAirportWeatherModel.load(
+                plannedDate: outboundFlightDate,
+                airport: destinationReference
+            )
+            await destinationReturnWeatherModel.load(
+                plannedDate: returnFlightDate,
+                airport: destinationReference
+            )
+            if flightPlanningMode == .multiStop {
+                await intermediateWeatherModel.load(
+                    plannedDate: outboundFlightDate,
+                    airport: intermediateAirport
+                )
+            }
+        }
+    }
+
+    private func resetFlightPlanningSchedule() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow =
+            Calendar.current.date(
+                byAdding: .day,
+                value: 1,
+                to: today
+            ) ?? today
+
+        outboundFlightDate = tomorrow
+        outboundStartText = "09:30"
+        multiStopDepartureText = ""
+
+        if flightPlanningMode == .multiStop {
+            returnFlightDate = tomorrow
+        } else {
+            returnFlightDate =
+                Calendar.current.date(
+                    byAdding: .day,
+                    value: 2,
+                    to: today
+                ) ?? today
+            desiredHomeArrivalText = "17:00"
         }
     }
 
     private var flightSection: some View {
         FlybookCard {
             VStack(spacing: 18) {
-                HStack(alignment: .top, spacing: 18) {
-                    Text("FLUGPLANUNG")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(FlybookColor.navy)
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("FLUGPLANUNG")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(FlybookColor.navy)
 
-                    Text("ABFLUG")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(FlybookColor.navy)
+                            Spacer()
 
-                    Picker(
-                        "Abflugort",
-                        selection: $selectedOriginICAO
-                    ) {
-                        ForEach(availableOrigins) { airport in
-                            Text("\(airport.icao) · \(airport.name)")
-                                .tag(airport.icao)
+                            Picker("Zeitbasis", selection: timeModeBinding) {
+                                Text("Lokal").tag(TimeDisplayMode.local)
+                                Text("UTC").tag(TimeDisplayMode.utc)
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.segmented)
+                            .font(.system(size: 14, weight: .semibold))
+                            .controlSize(.regular)
+                            .frame(width: 150)
+                        }
+
+                        HStack(spacing: 10) {
+                            Button {
+                                let today =
+                                    Calendar.current.startOfDay(for: Date())
+                                outboundFlightDate =
+                                    Calendar.current.date(
+                                        byAdding: .day,
+                                        value: 1,
+                                        to: today
+                                    ) ?? today
+                                returnFlightDate =
+                                    Calendar.current.date(
+                                        byAdding: .day,
+                                        value: 2,
+                                        to: today
+                                    ) ?? today
+                                flightPlanningMode = .roundTrip
+                            } label: {
+                                Text(FlightPlanningMode.roundTrip.rawValue)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(
+                                flightPlanningMode == .roundTrip
+                                    ? FlybookColor.navy
+                                    : FlybookColor.muted.opacity(0.55)
+                            )
+                            .controlSize(.regular)
+                            .frame(width: 160)
+
+                            Text("ABFLUG")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(FlybookColor.navy)
+                                .frame(width: 62, alignment: .leading)
+
+                            Picker(
+                                "Abflugort",
+                                selection: $selectedOriginICAO
+                            ) {
+                                ForEach(availableOrigins) { airport in
+                                    Text("\(airport.icao) · \(airport.name)")
+                                        .tag(airport.icao)
+                                }
+                            }
+                            .labelsHidden()
+                            .font(.system(size: 15))
+                            .controlSize(.regular)
+                            .frame(width: 230)
+                            .help("Abflugort für alle Berechnungen")
+
+                            if flightPlanningMode == .roundTrip {
+                                Toggle("One-Way", isOn: $isOneWay)
+                                    .toggleStyle(.checkbox)
+                                    .font(
+                                        .system(
+                                            size: 15,
+                                            weight: .semibold
+                                        )
+                                    )
+                                    .foregroundStyle(FlybookColor.navy)
+                                    .fixedSize()
+                            }
+                        }
+
+                        HStack(spacing: 10) {
+                            Button {
+                                flightPlanningMode = .multiStop
+                                isOneWay = false
+                                returnFlightDate = outboundFlightDate
+                                multiStopDepartureText = ""
+                            } label: {
+                                Text(FlightPlanningMode.multiStop.rawValue)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(
+                                flightPlanningMode == .multiStop
+                                    ? FlybookColor.navy
+                                    : FlybookColor.muted.opacity(0.55)
+                            )
+                            .controlSize(.regular)
+                            .frame(width: 160)
+
+                            Text("STOP")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(FlybookColor.navy)
+                                .frame(width: 62, alignment: .leading)
+
+                            Picker(
+                                "Zwischenstopp",
+                                selection: $intermediateICAO
+                            ) {
+                                ForEach(availableOrigins) { airport in
+                                    Text("\(airport.icao) · \(airport.name)")
+                                        .tag(airport.icao)
+                                }
+                            }
+                            .labelsHidden()
+                            .font(.system(size: 15))
+                            .controlSize(.regular)
+                            .frame(width: 230)
+                            .disabled(flightPlanningMode != .multiStop)
+                            .opacity(
+                                flightPlanningMode == .multiStop ? 1 : 0.55
+                            )
                         }
                     }
-                    .labelsHidden()
-                    .frame(width: 215)
-                    .help("Abflugort für alle Berechnungen")
 
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 5) {
-                        Picker("Zeitbasis", selection: timeModeBinding) {
-                            Text("Lokal").tag(TimeDisplayMode.local)
-                            Text("UTC").tag(TimeDisplayMode.utc)
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                        .frame(width: 160)
-                    }
                 }
 
                 Divider()
 
                 FlightTimePlanningRows(
+                    planningMode: flightPlanningMode,
+                    isOneWay: isOneWay,
+                    intermediateAirportICAO: $intermediateICAO,
+                    airportOptions: availableOrigins,
                     outboundFlightDate: $outboundFlightDate,
                     returnFlightDate: $returnFlightDate,
                     outboundStartText: $outboundStartText,
                     desiredHomeArrivalText: $desiredHomeArrivalText,
-                    outboundStops: $outboundStops,
-                    returnStops: $returnStops,
+                    multiStopDepartureText: $multiStopDepartureText,
+                    outboundStops: outboundStopsBinding,
+                    returnStops: returnStopsBinding,
                     outboundFlightAltitudeFeet:
                         $outboundFlightAltitudeFeet,
                     returnFlightAltitudeFeet:
                         $returnFlightAltitudeFeet,
+                    outboundAltitudeOptions:
+                        outboundAltitudeOptions,
+                    returnAltitudeOptions:
+                        returnAltitudeOptions,
                     flightTimes: destination.flightTimes,
                     outboundRouteWind: outboundRouteWindModel.wind,
                     returnRouteWind: returnRouteWindModel.wind,
+                    outboundBestLevelFeet:
+                        outboundRouteWindModel.bestLevelFeet,
+                    returnBestLevelFeet:
+                        returnRouteWindModel.bestLevelFeet,
                     outboundEDFZForecast: outboundEDFZWeatherModel.forecast,
                     returnEDFZForecast: returnEDFZWeatherModel.forecast,
+                    intermediateAirportForecast:
+                        intermediateWeatherModel.forecast,
+                    destinationAirportForecast:
+                        destinationAirportWeatherModel.forecast,
+                    destinationReturnForecast:
+                        destinationReturnWeatherModel.forecast,
                     outboundDestinationPressureMbar:
                         weatherModel.weather?.days.first?
                             .pressureMSLHPA
@@ -555,7 +1326,10 @@ struct DestinationPage: View {
                         weatherModel.weather?.days.dropFirst().first,
                     destination: destination,
                     origin: selectedOrigin,
-                    directNM: routeDirectNM,
+                    outboundDirectNM: outboundDirectNM,
+                    returnDirectNM: returnDirectNM,
+                    outboundTrackMiles: outboundTrackMilesBinding,
+                    returnTrackMiles: returnTrackMilesBinding,
                     destinationTimeZone:
                         DestinationTimeZone.value(
                             for: destination,
@@ -563,27 +1337,47 @@ struct DestinationPage: View {
                         ),
                     timeDisplayMode: timeDisplayMode,
                     tankStopMinutes: tankStopMinutes,
+                    preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                    postLandingGroundMinutes: postLandingGroundMinutes,
                     cruiseGroundSpeedKnots:
                         cruiseGroundSpeedKnots,
-                    refreshWeather: refreshWeather
+                    climbPerformance: climbPerformance,
+                    cruisePerformance: cruisePerformance,
+                    refreshWeather: refreshWeather,
+                    resetSchedule: resetFlightPlanningSchedule
                 )
             }
-            .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
 
     private var calculationSection: some View {
         FlybookCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("KALKULATION")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(FlybookColor.navy)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("CHARTERKALKULATION")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                    Spacer()
+                    Picker("Kraftstoffeinheit", selection: $fuelDisplayUnitRaw) {
+                        ForEach(FuelDisplayUnit.allCases) { unit in
+                            Text(unit.label).tag(unit.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 145)
+                }
+
+                CalculationColumnHeaders()
 
                 CalculationRow(
-                    title: "HINFLUG",
+                    title: flightPlanningMode == .multiStop
+                        ? "1. LEG"
+                        : "HINFLUG",
                     stopCount: outboundStops,
-                    directNM: routeDirectNM,
+                    directNM: outboundDirectNM,
+                    trackMilesNM: outboundTrackMiles,
                     headwindKnots:
                         outboundRouteWindModel.wind?
                             .outboundHeadwindKnots,
@@ -595,59 +1389,86 @@ struct DestinationPage: View {
                     flightDate: outboundFlightDate,
                     cruiseGroundSpeedKnots:
                         cruiseGroundSpeedKnots,
+                    climbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                    climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
+                    climbPerformance: climbPerformance,
+                    cruisePerformance: cruisePerformance,
                     fuelConsumptionPerHour:
                         fuelConsumptionPerHour,
                     reserveMinutes:
                         reserveMinutes,
                     usableFuel:
                         usableFuel,
+                    fuelUnit: fuelDisplayUnit,
+                    preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                    postLandingGroundMinutes: postLandingGroundMinutes,
                     prepaymentDiscount15To29Enabled:
                         prepaymentDiscount15To29Enabled,
                     prepaymentDiscount30PlusEnabled:
-                        prepaymentDiscount30PlusEnabled
+                        prepaymentDiscount30PlusEnabled,
+                    reserveNotConsumed:
+                        $outboundReserveNotConsumed
                 )
 
-                Divider()
+                if !isOneWay {
+                    Divider()
 
-                CalculationRow(
-                    title: "RÜCKFLUG",
-                    stopCount: returnStops,
-                    directNM: routeDirectNM,
-                    headwindKnots:
-                        returnRouteWindModel.wind?
-                            .returnHeadwindKnots,
-                    tankStopMinutes: tankStopMinutes,
-                    hourlyRateEUR: hourlyRateEUR,
-                    vatPercent: vatPercent,
-                    weekdayDiscountEnabled:
-                        weekdayDiscountEnabled,
-                    flightDate: returnFlightDate,
-                    cruiseGroundSpeedKnots:
-                        cruiseGroundSpeedKnots,
-                    fuelConsumptionPerHour:
-                        fuelConsumptionPerHour,
-                    reserveMinutes:
-                        reserveMinutes,
-                    usableFuel:
-                        usableFuel,
-                    prepaymentDiscount15To29Enabled:
-                        prepaymentDiscount15To29Enabled,
-                    prepaymentDiscount30PlusEnabled:
-                        prepaymentDiscount30PlusEnabled
-                )
+                    CalculationRow(
+                        title: flightPlanningMode == .multiStop
+                            ? "2. LEG"
+                            : "RÜCKFLUG",
+                        stopCount: returnStops,
+                        directNM: returnDirectNM,
+                        trackMilesNM: returnTrackMiles,
+                        headwindKnots:
+                            returnRouteWindModel.wind?
+                                .outboundHeadwindKnots,
+                        tankStopMinutes: tankStopMinutes,
+                        hourlyRateEUR: hourlyRateEUR,
+                        vatPercent: vatPercent,
+                        weekdayDiscountEnabled:
+                            weekdayDiscountEnabled,
+                        flightDate: returnFlightDate,
+                        cruiseGroundSpeedKnots:
+                            cruiseGroundSpeedKnots,
+                        climbDeparturePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+                        climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
+                        climbPerformance: climbPerformance,
+                        cruisePerformance: cruisePerformance,
+                        fuelConsumptionPerHour:
+                            fuelConsumptionPerHour,
+                        reserveMinutes:
+                            reserveMinutes,
+                        usableFuel:
+                            usableFuel,
+                        fuelUnit: fuelDisplayUnit,
+                        preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                        postLandingGroundMinutes: postLandingGroundMinutes,
+                        prepaymentDiscount15To29Enabled:
+                            prepaymentDiscount15To29Enabled,
+                        prepaymentDiscount30PlusEnabled:
+                            prepaymentDiscount30PlusEnabled
+                    )
+                }
 
                 Divider()
 
                 CalculationTotalRow(
+                    includesReturn: !isOneWay,
+                    outboundReserveNotConsumed:
+                        outboundReserveNotConsumed,
                     outboundStopCount: outboundStops,
                     returnStopCount: returnStops,
-                    directNM: routeDirectNM,
+                    outboundDirectNM: outboundDirectNM,
+                    returnDirectNM: returnDirectNM,
+                    outboundTrackMilesNM: outboundTrackMiles,
+                    returnTrackMilesNM: returnTrackMiles,
                     outboundHeadwindKnots:
                         outboundRouteWindModel.wind?
                             .outboundHeadwindKnots,
                     returnHeadwindKnots:
                         returnRouteWindModel.wind?
-                            .returnHeadwindKnots,
+                            .outboundHeadwindKnots,
                     hourlyRateEUR: hourlyRateEUR,
                     vatPercent: vatPercent,
                     weekdayDiscountEnabled:
@@ -656,21 +1477,40 @@ struct DestinationPage: View {
                     returnFlightDate: returnFlightDate,
                     cruiseGroundSpeedKnots:
                         cruiseGroundSpeedKnots,
+                    outboundClimbDeparturePressureAltitudeFeet: selectedOrigin.elevationFeet,
+                    outboundClimbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
+                    returnClimbDeparturePressureAltitudeFeet: secondLegOrigin.elevationFeet,
+                    returnClimbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
+                    climbPerformance: climbPerformance,
+                    cruisePerformance: cruisePerformance,
                     fuelConsumptionPerHour:
                         fuelConsumptionPerHour,
                     reserveMinutes:
                         reserveMinutes,
                     usableFuel:
                         usableFuel,
+                    fuelUnit: fuelDisplayUnit,
+                    preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                    postLandingGroundMinutes: postLandingGroundMinutes,
                     prepaymentDiscount15To29Enabled:
                         prepaymentDiscount15To29Enabled,
                     prepaymentDiscount30PlusEnabled:
-                        prepaymentDiscount30PlusEnabled
+                        prepaymentDiscount30PlusEnabled,
+                    minimumRequiredBlockHours:
+                        requiredReservationBlockHours
                 )
 
             }
         }
-        .frame(height: 404)
+        .frame(width: 466, height: isOneWay ? 272 : 362)
+    }
+
+    private var calculationRowSection: some View {
+        HStack {
+            calculationSection
+            Spacer()
+        }
+        .frame(width: 1010, alignment: .leading)
     }
 
     private var timeModeBinding: Binding<TimeDisplayMode> {
@@ -842,28 +1682,37 @@ struct DestinationPage: View {
     private var airportSection: some View {
         FlybookCard {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("AIRPORT")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(FlybookColor.navy)
-
-                    Spacer()
-
-                    Text("N/A")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.gray))
-                }
+                Text("AIRPORT")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
 
                 HStack(alignment: .top, spacing: 8) {
                     AirportMetric(title: "Runway", value: "\(destination.runwayM) m")
                     AirportMetric(title: "Surface", value: destination.surface)
-                    AirportMetric(title: "AVGAS", value: destination.avgas, fuelStatus: true)
-                    AirportMetric(title: "UL91", value: destination.ul91, fuelStatus: true)
-                    AirportMetric(title: "MOGAS", value: destination.mogas, fuelStatus: true)
-                    AirportMetric(title: "PPR", value: destination.ppr)
+                    AirportMetric(
+                        title: "AVGAS",
+                        value: destination.avgas,
+                        fuelStatus: true,
+                        pricePerLiterEUR:
+                            destination.avgasPricePerLiterEUR,
+                        referencePricePerLiterEUR: mainzAvgasPrice
+                    )
+                    AirportMetric(
+                        title: "UL91",
+                        value: destination.ul91,
+                        fuelStatus: true,
+                        pricePerLiterEUR:
+                            destination.ul91PricePerLiterEUR,
+                        referencePricePerLiterEUR: nil
+                    )
+                    AirportMetric(
+                        title: "MOGAS",
+                        value: destination.mogas,
+                        fuelStatus: true,
+                        pricePerLiterEUR:
+                            destination.mogasPricePerLiterEUR,
+                        referencePricePerLiterEUR: mainzMogasPrice
+                    )
                 }
             }
         }
@@ -883,7 +1732,19 @@ struct DestinationPage: View {
                         title: destination.name,
                         originLatitude: selectedOrigin.latitude,
                         originLongitude: selectedOrigin.longitude,
-                        originTitle: selectedOrigin.icao
+                        originTitle: selectedOrigin.icao,
+                        intermediateLatitude:
+                            flightPlanningMode == .multiStop
+                                ? intermediateAirport.latitude
+                                : nil,
+                        intermediateLongitude:
+                            flightPlanningMode == .multiStop
+                                ? intermediateAirport.longitude
+                                : nil,
+                        intermediateTitle:
+                            flightPlanningMode == .multiStop
+                                ? intermediateAirport.icao
+                                : nil
                     )
                 }
                 .frame(maxWidth: .infinity)
@@ -917,7 +1778,7 @@ struct DestinationPage: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .frame(height: 410)
+        .frame(height: 375)
     }
 
     private var fiveDayForecastSection: some View {
@@ -940,9 +1801,15 @@ struct DestinationPage: View {
                    !forecast.isEmpty
                 {
                     HStack(spacing: 10) {
-                        ForEach(forecast.prefix(5)) {
-                            day in
-                            DailyForecastTile(day: day)
+                        ForEach(
+                            Array(forecast.prefix(5).enumerated()),
+                            id: \.element.id
+                        ) { index, day in
+                            DailyForecastTile(
+                                day: day,
+                                confidencePercent:
+                                    forecastConfidence(dayIndex: index)
+                            )
                         }
                     }
                 } else if weatherModel.isLoading {
@@ -959,15 +1826,174 @@ struct DestinationPage: View {
         }
         .frame(height: 185)
     }
+
+    private var tenDayForecastSection: some View {
+        FlybookCard {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("10-TAGES-WETTER")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+
+                if let forecast = weatherModel.weather?.dailyForecast,
+                   forecast.count > 5
+                {
+                    HStack(spacing: 4) {
+                        ForEach(
+                            Array(
+                                forecast
+                                    .dropFirst(5)
+                                    .prefix(5)
+                                    .enumerated()
+                            ),
+                            id: \.element.id
+                        ) { index, day in
+                            CompactDailyForecastTile(
+                                day: day,
+                                confidencePercent:
+                                    forecastConfidence(
+                                        dayIndex: index + 5
+                                    )
+                            )
+                        }
+                    }
+                } else if weatherModel.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text("10-Tage-Prognose nicht verfügbar")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(FlybookColor.muted)
+                }
+            }
+        }
+        .frame(height: 115)
+    }
+
+    private func forecastConfidence(dayIndex: Int) -> Int {
+        let rawValue = 100.0
+            - Double(dayIndex) * (50.0 / 9.0)
+        return max(
+            50,
+            Int((rawValue / 5.0).rounded()) * 5
+        )
+    }
 }
+
+private struct CompactDailyForecastTile: View {
+    let day: DailyForecast
+    let confidencePercent: Int
+
+    var body: some View {
+        VStack(spacing: 3) {
+            ZStack {
+                Text("\(weekday) \(shortDate)")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+                    .lineLimit(1)
+
+                HStack {
+                    confidenceLabel
+                    Spacer()
+                }
+            }
+
+            HStack(spacing: 4) {
+                Image(systemName: weatherSymbol(for: day.weatherCode))
+                    .font(.system(size: 22, weight: .medium))
+                    .symbolRenderingMode(.multicolor)
+                    .frame(width: 30, height: 28)
+
+                Text(
+                    day.maximumTemperatureCelsius.map {
+                        String(format: "%.0f°", $0)
+                    } ?? "—"
+                )
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.red)
+            }
+
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.13))
+        )
+    }
+
+    private var confidenceLabel: some View {
+        Text("\(confidencePercent)%")
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(FlybookColor.blue)
+            .help(
+                "Geschätzte Prognosequalität; sie nimmt "
+                + "mit wachsendem Vorhersagezeitraum ab."
+            )
+    }
+
+    private var date: Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: day.localDate)
+    }
+
+    private var shortDate: String {
+        guard let date else { return day.localDate }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "dd.MM."
+        return formatter.string(from: date)
+    }
+
+    private var weekday: String {
+        guard let date else { return day.localDate }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "EE"
+        return formatter.string(from: date).uppercased()
+    }
+
+    private func weatherSymbol(for code: Int?) -> String {
+        guard let code else { return "questionmark.circle" }
+
+        switch code {
+        case 0: return "sun.max.fill"
+        case 1, 2: return "cloud.sun.fill"
+        case 3: return "cloud.fill"
+        case 45, 48: return "cloud.fog.fill"
+        case 51...57: return "cloud.drizzle.fill"
+        case 61...67: return "cloud.rain.fill"
+        case 71...77: return "cloud.snow.fill"
+        case 80...82: return "cloud.heavyrain.fill"
+        case 95...99: return "cloud.bolt.rain.fill"
+        default: return "cloud.fill"
+        }
+    }
+}
+
 private struct DailyForecastTile: View {
     let day: DailyForecast
+    let confidencePercent: Int
 
     var body: some View {
         VStack(spacing: 7) {
-            Text("\(weekday) · \(shortDate)")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(FlybookColor.navy)
+            ZStack {
+                Text("\(weekday) · \(shortDate)")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+
+                HStack {
+                    Text("\(confidencePercent)%")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(FlybookColor.blue)
+                        .help(
+                            "Geschätzte Prognosequalität; sie nimmt "
+                            + "mit wachsendem Vorhersagezeitraum ab."
+                        )
+                    Spacer()
+                }
+            }
 
             HStack(spacing: 8) {
                 periodSymbol(
@@ -990,6 +2016,7 @@ private struct DailyForecastTile: View {
                         String(format: "↓ %.0f°", $0)
                     } ?? "↓ —"
                 )
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(FlybookColor.blue)
 
                 Text(
@@ -997,16 +2024,30 @@ private struct DailyForecastTile: View {
                         String(format: "↑ %.0f°", $0)
                     } ?? "↑ —"
                 )
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(.red)
+
+                if showsStrongWindIndicator {
+                    Image(systemName: "windsock.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.orange)
+                        .help(
+                            "Bodenwind erreicht an diesem Tag "
+                            + "mindestens 15 kt."
+                        )
+                }
             }
-            .font(.system(size: 20, weight: .bold))
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.gray.opacity(0.08))
+                .fill(Color.gray.opacity(0.13))
         )
+    }
+
+    private var showsStrongWindIndicator: Bool {
+        (day.maximumSurfaceWindKnots ?? 0) >= 15
     }
 
     private func periodSymbol(
@@ -1084,10 +2125,10 @@ private struct RouteWindSummary: View {
                 .foregroundStyle(FlybookColor.blue)
 
             if isLoading {
-                Text("Wind an der Streckenmitte wird geladen …")
+                Text("Wind an drei Streckenpunkten wird geladen …")
             } else if let wind {
                 Text(
-                    "WIND MITTE \(wind.altitudeFeet.formatted()) FT  ·  "
+                    "WIND ¼ · ½ · ¾  \(wind.altitudeFeet.formatted()) FT  ·  "
                     + String(format: "%03.0f / %.0f kt", wind.directionDegrees, wind.speedKnots)
                     + "  ·  HIN " + componentText(wind.outboundHeadwindKnots)
                     + "  ·  RÜCK " + componentText(wind.returnHeadwindKnots)
@@ -1118,6 +2159,8 @@ private struct PlanningWeather {
     let pressureMbar: Double?
     let elevationFeet: Double
     let visibilityMeters: Double?
+    let lowCloudCoverPercent: Double?
+    let lowestCloudBaseFeet: Double?
     let ceilingFeet: Double?
     let category: FlightCategory
     let runway: String?
@@ -1125,7 +2168,7 @@ private struct PlanningWeather {
     init(
         sample: EDFZWeatherSample?,
         elevationFeet: Double,
-        showsRunway: Bool
+        runwayICAO: String? = nil
     ) {
         direction = sample?.windDirectionDegrees
         speed = sample?.windSpeedKnots
@@ -1135,14 +2178,17 @@ private struct PlanningWeather {
         pressureMbar = sample?.pressureMSLHPA
         self.elevationFeet = elevationFeet
         visibilityMeters = sample?.visibilityMeters
+        lowCloudCoverPercent = sample?.lowCloudCoverPercent
+        lowestCloudBaseFeet = sample?.lowestCloudBaseFeetAGL
         ceilingFeet = sample?.ceilingFeetAGL
         category = sample?.category ?? .unavailable
-        if showsRunway,
+        if let runwayICAO,
            let direction,
            let speed,
            speed >= 0.5
         {
             runway = EDFZRunway.activeRunway(
+                for: runwayICAO,
                 windFromDegrees: direction,
                 speedKnots: speed
             )
@@ -1160,6 +2206,8 @@ private struct PlanningWeather {
         pressureMbar = day?.pressureMSLHPA
         self.elevationFeet = elevationFeet
         visibilityMeters = day?.visibilityMeters
+        lowCloudCoverPercent = day?.lowCloudCoverPercent
+        lowestCloudBaseFeet = day?.lowestCloudBaseFeetAGL
         ceilingFeet = day?.ceilingFeetAGL
         category = day?.category ?? .unavailable
         runway = nil
@@ -1171,9 +2219,18 @@ private struct PlanningWeatherCard: View {
     let sunriseText: String?
     let sunsetText: String?
 
+    @AppStorage(UnitSystemSettingsKey.displaySystem)
+    private var displayUnitSystemRaw = DisplayUnitSystem.eu.rawValue
+
+    private var usesTwelveHourFormat: Bool {
+        DisplayUnitSystem(rawValue: displayUnitSystemRaw) == .us
+    }
+
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 3) {
             HStack(spacing: 6) {
+                WindFlowIndicator(weather: weather)
+
                 Text(
                     AviationWindText.format(
                         direction: weather.direction,
@@ -1184,6 +2241,12 @@ private struct PlanningWeatherCard: View {
             }
             .font(.system(size: 14, weight: .bold, design: .rounded))
             .foregroundStyle(FlybookColor.navy)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(FlybookColor.navy.opacity(0.45), lineWidth: 1)
+            )
 
             HStack(spacing: 7) {
                 Text(
@@ -1191,17 +2254,36 @@ private struct PlanningWeatherCard: View {
                         String(format: "%.0f°", $0)
                     } ?? "—"
                 )
-                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
 
                 Image(systemName: symbol)
                     .font(.system(size: 20, weight: .medium))
                     .symbolRenderingMode(.multicolor)
 
                 Text(description)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
                     .lineLimit(1)
             }
             .foregroundStyle(FlybookColor.navy)
+
+            Text(metarCloudAndVisibility)
+                .font(
+                    .system(
+                        size: 14,
+                        weight: .bold,
+                        design: .rounded
+                    )
+                )
+                .foregroundStyle(FlybookColor.navy)
+                .lineLimit(1)
+                .help(
+                    "ICON zeigt den modellierten niedrigen "
+                    + "Wolkenanteil. METAR zeigt dessen "
+                    + "Übertragung in Achtel-Bedeckung; "
+                    + "BKN/OVC definieren eine Ceiling."
+                )
+
+            TimeContextInfo(weather: weather)
 
             HStack(spacing: 7) {
                 Label(
@@ -1226,18 +2308,30 @@ private struct PlanningWeatherCard: View {
 
             if let sunriseText, let sunsetText {
                 HStack(spacing: 8) {
-                    Label(sunriseText, systemImage: "sunrise.fill")
-                    Label(sunsetText, systemImage: "sunset.fill")
+                    Label(
+                        TimeInput.displayClock(
+                            sunriseText,
+                            usesTwelveHourFormat: usesTwelveHourFormat
+                        ),
+                        systemImage: "sunrise.fill"
+                    )
+                    Label(
+                        TimeInput.displayClock(
+                            sunsetText,
+                            usesTwelveHourFormat: usesTwelveHourFormat
+                        ),
+                        systemImage: "sunset.fill"
+                    )
                 }
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(FlybookColor.muted)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.gray.opacity(0.08))
+                .fill(Color.gray.opacity(0.13))
         )
     }
 
@@ -1279,6 +2373,16 @@ private struct PlanningWeatherCard: View {
         }
     }
 
+    private var metarCloudAndVisibility: String {
+        AviationWeatherText.cloudAndVisibility(
+            lowCloudCoverPercent: weather.lowCloudCoverPercent,
+            lowestCloudBaseFeet: weather.lowestCloudBaseFeet,
+            visibilityMeters: weather.visibilityMeters,
+            unitSystem:
+                DisplayUnitSystem(rawValue: displayUnitSystemRaw) ?? .eu
+        )
+    }
+
     private var categoryReason: String? {
         guard weather.category != .vfr,
               weather.category != .unavailable
@@ -1316,32 +2420,87 @@ private struct PlanningWeatherCard: View {
 }
 
 private struct FlightTimePlanningRows: View {
+    let planningMode: FlightPlanningMode
+    let isOneWay: Bool
+    @Binding var intermediateAirportICAO: String
+    let airportOptions: [AirportReference]
     @Binding var outboundFlightDate: Date
     @Binding var returnFlightDate: Date
     @Binding var outboundStartText: String
     @Binding var desiredHomeArrivalText: String
+    @Binding var multiStopDepartureText: String
     @Binding var outboundStops: Int
     @Binding var returnStops: Int
     @Binding var outboundFlightAltitudeFeet: Int
     @Binding var returnFlightAltitudeFeet: Int
 
+    let outboundAltitudeOptions: [Int]
+    let returnAltitudeOptions: [Int]
     let flightTimes: FlightTimes
     let outboundRouteWind: RouteWind?
     let returnRouteWind: RouteWind?
+    let outboundBestLevelFeet: Int?
+    let returnBestLevelFeet: Int?
     let outboundEDFZForecast: EDFZForecast?
     let returnEDFZForecast: EDFZForecast?
+    let intermediateAirportForecast: EDFZForecast?
+    let destinationAirportForecast: EDFZForecast?
+    let destinationReturnForecast: EDFZForecast?
     let outboundDestinationPressureMbar: Int?
     let returnDestinationPressureMbar: Int?
     let outboundDestinationWeather: ForecastDay?
     let returnDestinationWeather: ForecastDay?
     let destination: Destination
     let origin: AirportReference
-    let directNM: Double
+    let outboundDirectNM: Double
+    let returnDirectNM: Double
+    @Binding var outboundTrackMiles: Double
+    @Binding var returnTrackMiles: Double
     let destinationTimeZone: TimeZone
     let timeDisplayMode: TimeDisplayMode
     let tankStopMinutes: Int
+    let preTakeoffGroundMinutes: Int
+    let postLandingGroundMinutes: Int
     let cruiseGroundSpeedKnots: Double
+    let climbPerformance: ClimbPerformance
+    let cruisePerformance: CruisePerformance
     let refreshWeather: () -> Void
+    let resetSchedule: () -> Void
+
+    private var destinationReference: AirportReference {
+        AirportReference(
+            icao: destination.icao,
+            name: destination.name,
+            latitude: destination.latitude ?? 0,
+            longitude: destination.longitude ?? 0,
+            elevationFeet: destination.elevationFeet,
+            timeZone: destinationTimeZone
+        )
+    }
+
+    private var intermediateAirport: AirportReference {
+        airportOptions.first {
+            $0.icao == intermediateAirportICAO
+        } ?? destinationReference
+    }
+
+    private var firstArrivalAirport: AirportReference {
+        planningMode == .multiStop
+            ? intermediateAirport
+            : destinationReference
+    }
+
+    private var secondDepartureAirport: AirportReference {
+        planningMode == .multiStop
+            ? intermediateAirport
+            : destinationReference
+    }
+
+    private var secondArrivalAirport: AirportReference {
+        planningMode == .multiStop
+            ? destinationReference
+            : origin
+    }
 
     private var displayTimeZone: TimeZone {
         timeDisplayMode == .utc
@@ -1351,28 +2510,42 @@ private struct FlightTimePlanningRows: View {
 
     private var outboundTravelMinutes: Int {
         FlightMath.adjustedMinutes(
-            directNM: directNM,
+            directNM: outboundDirectNM,
             stopCount: outboundStops,
             headwindKnots: outboundRouteWind?.outboundHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: origin.elevationFeet,
+            climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: outboundTrackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
     private var returnTravelMinutes: Int {
         FlightMath.adjustedMinutes(
-            directNM: directNM,
+            directNM: returnDirectNM,
             stopCount: returnStops,
-            headwindKnots: returnRouteWind?.returnHeadwindKnots,
+            headwindKnots: returnRouteWind?.outboundHeadwindKnots,
             tankStopMinutes: tankStopMinutes,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: destination.elevationFeet,
+            climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: returnTrackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
     private var outboundStartInstant: Date? {
-        FlightDateTime.instant(
+        return FlightDateTime.instant(
             date: outboundFlightDate,
             timeText: outboundStartText,
             timeZone: displayTimeZone
@@ -1386,15 +2559,63 @@ private struct FlightTimePlanningRows: View {
     }
 
     private var homeArrivalInstant: Date? {
-        FlightDateTime.instant(
+        if planningMode == .multiStop {
+            return returnDepartureInstant?.addingTimeInterval(
+                TimeInterval(returnTravelMinutes * 60)
+            )
+        }
+        return FlightDateTime.instant(
             date: returnFlightDate,
             timeText: desiredHomeArrivalText,
             timeZone: displayTimeZone
         )
     }
 
+    private var automaticMultiStopDepartureInstant: Date? {
+        guard let outboundArrivalInstant else { return nil }
+        let rawDeparture = outboundArrivalInstant.addingTimeInterval(
+            TimeInterval(tankStopMinutes * 60)
+        )
+        let roundedTimestamp =
+            ceil(rawDeparture.timeIntervalSince1970 / 300) * 300
+        return Date(timeIntervalSince1970: roundedTimestamp)
+    }
+
+    private var multiStopDepartureTimeZone: TimeZone {
+        timeDisplayMode == .utc
+            ? TimeZone(secondsFromGMT: 0)!
+            : secondDepartureAirport.timeZone
+    }
+
+    private var multiStopDepartureBinding: Binding<String> {
+        Binding(
+            get: {
+                guard multiStopDepartureText.isEmpty else {
+                    return multiStopDepartureText
+                }
+                return FlightDateTime.clock(
+                    instant: automaticMultiStopDepartureInstant,
+                    timeZone: multiStopDepartureTimeZone
+                )
+            },
+            set: { multiStopDepartureText = $0 }
+        )
+    }
+
     private var returnDepartureInstant: Date? {
-        homeArrivalInstant?.addingTimeInterval(
+        if planningMode == .multiStop {
+            if !multiStopDepartureText.isEmpty,
+               let manualDeparture = FlightDateTime.instant(
+                    date: returnFlightDate,
+                    timeText: multiStopDepartureText,
+                    timeZone: multiStopDepartureTimeZone
+               )
+            {
+                return manualDeparture
+            }
+            return automaticMultiStopDepartureInstant
+        }
+        return homeArrivalInstant?.addingTimeInterval(
             TimeInterval(-returnTravelMinutes * 60)
         )
     }
@@ -1407,15 +2628,85 @@ private struct FlightTimePlanningRows: View {
         returnEDFZForecast?.sample(nearestTo: homeArrivalInstant)
     }
 
+    private var intermediateArrivalSample: EDFZWeatherSample? {
+        intermediateAirportForecast?.sample(
+            nearestTo: outboundArrivalInstant
+        )
+    }
+
+    private var intermediateDepartureSample: EDFZWeatherSample? {
+        intermediateAirportForecast?.sample(
+            nearestTo: returnDepartureInstant
+        )
+    }
+
+    private var destinationArrivalSample: EDFZWeatherSample? {
+        destinationReturnForecast?.sample(
+            nearestTo: homeArrivalInstant
+        )
+    }
+
+    private var destinationOutboundArrivalSample: EDFZWeatherSample? {
+        destinationAirportForecast?.sample(
+            nearestTo: outboundArrivalInstant
+        )
+    }
+
+    private var destinationReturnDepartureSample: EDFZWeatherSample? {
+        destinationReturnForecast?.sample(
+            nearestTo: returnDepartureInstant
+        )
+    }
+
+    private var firstArrivalWeather: PlanningWeather {
+        if planningMode == .multiStop {
+            return PlanningWeather(
+                sample: intermediateArrivalSample,
+                elevationFeet: firstArrivalAirport.elevationFeet,
+                runwayICAO: firstArrivalAirport.icao
+            )
+        }
+        return PlanningWeather(
+            sample: destinationOutboundArrivalSample,
+            elevationFeet: firstArrivalAirport.elevationFeet,
+            runwayICAO: firstArrivalAirport.icao
+        )
+    }
+
+    private var secondDepartureWeather: PlanningWeather {
+        if planningMode == .multiStop {
+            return PlanningWeather(
+                sample: intermediateDepartureSample,
+                elevationFeet: secondDepartureAirport.elevationFeet,
+                runwayICAO: secondDepartureAirport.icao
+            )
+        }
+        return PlanningWeather(
+            sample: destinationReturnDepartureSample,
+            elevationFeet: secondDepartureAirport.elevationFeet,
+            runwayICAO: secondDepartureAirport.icao
+        )
+    }
+
+    private var secondArrivalWeather: PlanningWeather {
+        PlanningWeather(
+            sample: planningMode == .multiStop
+                ? destinationArrivalSample
+                : homeArrivalAirportSample,
+            elevationFeet: secondArrivalAirport.elevationFeet,
+            runwayICAO: secondArrivalAirport.icao
+        )
+    }
+
     private func runway(
         for sample: EDFZWeatherSample?
     ) -> String? {
-        guard origin.icao == "EDFZ" else { return nil }
         guard let direction = sample?.windDirectionDegrees,
               let speed = sample?.windSpeedKnots,
               speed >= 0.5
         else { return "—" }
         return EDFZRunway.activeRunway(
+            for: origin.icao,
             windFromDegrees: direction,
             speedKnots: speed
         )
@@ -1433,27 +2724,27 @@ private struct FlightTimePlanningRows: View {
     private var outboundArrivalCondition: LightCondition {
         SolarCalculator.lightCondition(
             at: outboundArrivalInstant,
-            latitude: destination.latitude,
-            longitude: destination.longitude,
-            timeZone: destinationTimeZone
+            latitude: firstArrivalAirport.latitude,
+            longitude: firstArrivalAirport.longitude,
+            timeZone: firstArrivalAirport.timeZone
         )
     }
 
     private var returnDepartureCondition: LightCondition {
         SolarCalculator.lightCondition(
             at: returnDepartureInstant,
-            latitude: destination.latitude,
-            longitude: destination.longitude,
-            timeZone: destinationTimeZone
+            latitude: secondDepartureAirport.latitude,
+            longitude: secondDepartureAirport.longitude,
+            timeZone: secondDepartureAirport.timeZone
         )
     }
 
     private var homeArrivalCondition: LightCondition {
         SolarCalculator.lightCondition(
             at: homeArrivalInstant,
-            latitude: origin.latitude,
-            longitude: origin.longitude,
-            timeZone: origin.timeZone
+            latitude: secondArrivalAirport.latitude,
+            longitude: secondArrivalAirport.longitude,
+            timeZone: secondArrivalAirport.timeZone
         )
     }
 
@@ -1493,14 +2784,17 @@ private struct FlightTimePlanningRows: View {
         for instant: Date,
         in timeZone: TimeZone
     ) -> Date {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        var components = calendar.dateComponents(
+        var airportCalendar = Calendar(identifier: .gregorian)
+        airportCalendar.timeZone = timeZone
+        var components = airportCalendar.dateComponents(
             [.year, .month, .day],
             from: instant
         )
         components.hour = 12
-        return calendar.date(from: components) ?? instant
+        components.minute = 0
+        components.second = 0
+        components.timeZone = Calendar.current.timeZone
+        return Calendar.current.date(from: components) ?? instant
     }
 
     private func setOutboundToNow() {
@@ -1530,33 +2824,48 @@ private struct FlightTimePlanningRows: View {
         )
     }
 
+    private func synchronizeMultiStopDepartureDate() {
+        guard planningMode == .multiStop else { return }
+        returnFlightDate = outboundFlightDate
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             FlightPlanningLine(
-                directionTitle: "HINFLUG",
+                directionTitle:
+                    planningMode == .multiStop
+                    ? "1. LEG"
+                    : "HINFLUG",
                 flightDate: $outboundFlightDate,
                 showsRefreshButton: true,
                 refreshWeather: refreshWeather,
+                resetSchedule: resetSchedule,
                 setNow: setOutboundToNow,
                 showsETOPSHeader: true,
                 stopCount: $outboundStops,
                 flightAltitudeFeet:
                     $outboundFlightAltitudeFeet,
+                altitudeOptions: outboundAltitudeOptions,
                 travelMinutes: outboundTravelMinutes,
-                directNM: directNM,
+                directNM: outboundDirectNM,
+                trackMiles: $outboundTrackMiles,
                 headwindKnots: outboundRouteWind?.outboundHeadwindKnots,
+                bestLevelFeet: outboundBestLevelFeet,
                 tankStopMinutes: tankStopMinutes,
+                preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                postLandingGroundMinutes: postLandingGroundMinutes,
                 cruiseGroundSpeedKnots:
                     cruiseGroundSpeedKnots,
+                climbDeparturePressureAltitudeFeet: origin.elevationFeet,
+                climbTargetPressureAltitudeFeet: Double(outboundFlightAltitudeFeet),
+                climbPerformance: climbPerformance,
+                cruisePerformance: cruisePerformance,
                 leadingWeather: PlanningWeather(
                     sample: outboundAirportSample,
                     elevationFeet: origin.elevationFeet,
-                    showsRunway: origin.icao == "EDFZ"
+                    runwayICAO: origin.icao
                 ),
-                trailingWeather: PlanningWeather(
-                    day: outboundDestinationWeather,
-                    elevationFeet: destination.elevationFeet
-                ),
+                trailingWeather: firstArrivalWeather,
                 leadingSunriseText:
                     sunTexts(
                         at: outboundStartInstant,
@@ -1574,126 +2883,166 @@ private struct FlightTimePlanningRows: View {
                 trailingSunriseText:
                     sunTexts(
                         at: outboundArrivalInstant,
-                        latitude: destination.latitude,
-                        longitude: destination.longitude,
-                        timeZone: destinationTimeZone
+                        latitude: firstArrivalAirport.latitude,
+                        longitude: firstArrivalAirport.longitude,
+                        timeZone: firstArrivalAirport.timeZone
                     ).0,
                 trailingSunsetText:
                     sunTexts(
                         at: outboundArrivalInstant,
-                        latitude: destination.latitude,
-                        longitude: destination.longitude,
-                        timeZone: destinationTimeZone
+                        latitude: firstArrivalAirport.latitude,
+                        longitude: firstArrivalAirport.longitude,
+                        timeZone: firstArrivalAirport.timeZone
                     ).1,
+                leadingTitle: "ABFLUG \(origin.icao)",
+                leadingRunway: runway(for: outboundAirportSample),
+                trailingTitle:
+                    "ANKUNFT \(firstArrivalAirport.icao)",
+                trailingRunway: firstArrivalWeather.runway,
+                trailingAirportSelection: nil,
+                airportOptions: airportOptions,
                 leading: {
                     EditableFlightTimeField(
                         title: "ABFLUG \(origin.icao)",
                         text: $outboundStartText,
                         symbol: "airplane.departure",
                         lightCondition:
-                            outboundStartCondition,
-                        runway: runway(for: outboundAirportSample)
+                            outboundStartCondition
                     )
                 },
                 trailing: {
                     CalculatedFlightTime(
-                        title: "ANKUNFT \(destination.icao)",
                         value: FlightDateTime.clock(
                             instant: outboundArrivalInstant,
                             timeZone: timeDisplayMode == .utc
                                 ? TimeZone(secondsFromGMT: 0)!
-                                : destinationTimeZone
+                                : firstArrivalAirport.timeZone
                         ),
                         symbol: "airplane.arrival",
                         lightCondition:
-                            outboundArrivalCondition,
-                        runway: nil
+                            outboundArrivalCondition
                     )
                 }
             )
 
-            Divider()
-                .padding(.vertical, 14)
+            if !isOneWay {
+                Divider()
+                    .padding(.vertical, 6)
 
-            FlightPlanningLine(
-                directionTitle: "RÜCKFLUG",
+                FlightPlanningLine(
+                directionTitle:
+                    planningMode == .multiStop
+                    ? "2. LEG"
+                    : "RÜCKFLUG",
                 flightDate: $returnFlightDate,
                 showsRefreshButton: false,
                 refreshWeather: refreshWeather,
+                resetSchedule: resetSchedule,
                 setNow: setReturnToNow,
                 showsETOPSHeader: true,
                 stopCount: $returnStops,
                 flightAltitudeFeet:
                     $returnFlightAltitudeFeet,
+                altitudeOptions: returnAltitudeOptions,
                 travelMinutes: returnTravelMinutes,
-                directNM: directNM,
-                headwindKnots: returnRouteWind?.returnHeadwindKnots,
+                directNM: returnDirectNM,
+                trackMiles: $returnTrackMiles,
+                headwindKnots: returnRouteWind?.outboundHeadwindKnots,
+                bestLevelFeet: returnBestLevelFeet,
                 tankStopMinutes: tankStopMinutes,
+                preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+                postLandingGroundMinutes: postLandingGroundMinutes,
                 cruiseGroundSpeedKnots:
                     cruiseGroundSpeedKnots,
-                leadingWeather: PlanningWeather(
-                    day: returnDestinationWeather,
-                    elevationFeet: destination.elevationFeet
-                ),
-                trailingWeather: PlanningWeather(
-                    sample: homeArrivalAirportSample,
-                    elevationFeet: origin.elevationFeet,
-                    showsRunway: origin.icao == "EDFZ"
-                ),
+                climbDeparturePressureAltitudeFeet: secondDepartureAirport.elevationFeet,
+                climbTargetPressureAltitudeFeet: Double(returnFlightAltitudeFeet),
+                climbPerformance: climbPerformance,
+                cruisePerformance: cruisePerformance,
+                leadingWeather: secondDepartureWeather,
+                trailingWeather: secondArrivalWeather,
                 leadingSunriseText:
                     sunTexts(
                         at: returnDepartureInstant,
-                        latitude: destination.latitude,
-                        longitude: destination.longitude,
-                        timeZone: destinationTimeZone
+                        latitude: secondDepartureAirport.latitude,
+                        longitude: secondDepartureAirport.longitude,
+                        timeZone: secondDepartureAirport.timeZone
                     ).0,
                 leadingSunsetText:
                     sunTexts(
                         at: returnDepartureInstant,
-                        latitude: destination.latitude,
-                        longitude: destination.longitude,
-                        timeZone: destinationTimeZone
+                        latitude: secondDepartureAirport.latitude,
+                        longitude: secondDepartureAirport.longitude,
+                        timeZone: secondDepartureAirport.timeZone
                     ).1,
                 trailingSunriseText:
                     sunTexts(
                         at: homeArrivalInstant,
-                        latitude: origin.latitude,
-                        longitude: origin.longitude,
-                        timeZone: origin.timeZone
+                        latitude: secondArrivalAirport.latitude,
+                        longitude: secondArrivalAirport.longitude,
+                        timeZone: secondArrivalAirport.timeZone
                     ).0,
                 trailingSunsetText:
                     sunTexts(
                         at: homeArrivalInstant,
-                        latitude: origin.latitude,
-                        longitude: origin.longitude,
-                        timeZone: origin.timeZone
+                        latitude: secondArrivalAirport.latitude,
+                        longitude: secondArrivalAirport.longitude,
+                        timeZone: secondArrivalAirport.timeZone
                     ).1,
+                leadingTitle:
+                    "ABFLUG \(secondDepartureAirport.icao)",
+                leadingRunway: secondDepartureWeather.runway,
+                trailingTitle:
+                    "ANKUNFT \(secondArrivalAirport.icao)",
+                trailingRunway: secondArrivalWeather.runway,
+                trailingAirportSelection: nil,
+                airportOptions: airportOptions,
                 leading: {
-                    CalculatedFlightTime(
-                        title: "ABFLUG \(destination.icao)",
-                        value: FlightDateTime.clock(
-                            instant: returnDepartureInstant,
-                            timeZone: timeDisplayMode == .utc
-                                ? TimeZone(secondsFromGMT: 0)!
-                                : destinationTimeZone
-                        ),
-                        symbol: "airplane.departure",
-                        lightCondition:
-                            returnDepartureCondition,
-                        runway: nil
-                    )
+                    if planningMode == .multiStop {
+                        EditableFlightTimeField(
+                            title:
+                                "ABFLUG \(secondDepartureAirport.icao)",
+                            text: multiStopDepartureBinding,
+                            symbol: "airplane.departure",
+                            lightCondition: returnDepartureCondition
+                        )
+                    } else {
+                        CalculatedFlightTime(
+                            value: FlightDateTime.clock(
+                                instant: returnDepartureInstant,
+                                timeZone: timeDisplayMode == .utc
+                                    ? TimeZone(secondsFromGMT: 0)!
+                                    : secondDepartureAirport.timeZone
+                            ),
+                            symbol: "airplane.departure",
+                            lightCondition:
+                                returnDepartureCondition
+                        )
+                    }
                 },
                 trailing: {
-                    EditableFlightTimeField(
-                        title: "ANKUNFT \(origin.icao)",
-                        text: $desiredHomeArrivalText,
-                        symbol: "airplane.arrival",
-                        lightCondition:
-                            homeArrivalCondition,
-                        runway: runway(for: homeArrivalAirportSample)
-                    )
+                    if planningMode == .multiStop {
+                        CalculatedFlightTime(
+                            value: FlightDateTime.clock(
+                                instant: homeArrivalInstant,
+                                timeZone: timeDisplayMode == .utc
+                                    ? TimeZone(secondsFromGMT: 0)!
+                                    : secondArrivalAirport.timeZone
+                            ),
+                            symbol: "airplane.arrival",
+                            lightCondition: homeArrivalCondition
+                        )
+                    } else {
+                        EditableFlightTimeField(
+                            title: "ANKUNFT \(origin.icao)",
+                            text: $desiredHomeArrivalText,
+                            symbol: "airplane.arrival",
+                            lightCondition:
+                                homeArrivalCondition
+                        )
+                    }
                 }
-            )
+                )
+            }
         }
         .onChange(of: outboundStartText) { newValue in
             let filtered = TimeInput.filtered(newValue)
@@ -1708,6 +3057,34 @@ private struct FlightTimePlanningRows: View {
             if filtered != newValue {
                 desiredHomeArrivalText = filtered
             }
+        }
+        .onChange(of: multiStopDepartureText) { newValue in
+            let filtered = TimeInput.filtered(newValue)
+
+            if filtered != newValue {
+                multiStopDepartureText = filtered
+            }
+        }
+        .onChange(of: planningMode) { _ in
+            synchronizeMultiStopDepartureDate()
+        }
+        .onChange(of: intermediateAirportICAO) { _ in
+            synchronizeMultiStopDepartureDate()
+        }
+        .onChange(of: outboundFlightDate) { _ in
+            synchronizeMultiStopDepartureDate()
+        }
+        .onChange(of: outboundStartText) { _ in
+            synchronizeMultiStopDepartureDate()
+        }
+        .onChange(of: outboundTravelMinutes) { _ in
+            synchronizeMultiStopDepartureDate()
+        }
+        .onChange(of: tankStopMinutes) { _ in
+            synchronizeMultiStopDepartureDate()
+        }
+        .onAppear {
+            synchronizeMultiStopDepartureDate()
         }
     }
 }
@@ -1747,7 +3124,9 @@ private struct TimeContextInfo: View {
 
     private var densityAltitudeText: String {
         densityAltitude.map {
-            String(format: "DA %.0f ft", $0)
+            let roundedAltitude =
+                ($0 / 100).rounded(.toNearestOrAwayFromZero) * 100
+            return String(format: "DA %.0f ft", roundedAltitude)
         } ?? "DA —"
     }
 
@@ -1756,7 +3135,7 @@ private struct TimeContextInfo: View {
         if densityAltitude >= 5000 {
             return Color.red.opacity(0.82)
         }
-        if densityAltitude >= 2000 {
+        if densityAltitude >= 2500 {
             return Color.yellow.opacity(0.62)
         }
         return .clear
@@ -1771,14 +3150,22 @@ private struct TimeContextInfo: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            HStack(spacing: 10) {
-                Label(
-                    pressureText,
-                    systemImage: "gauge.with.dots.needle.33percent"
-                )
+            HStack(spacing: 5) {
+                HStack(spacing: 0) {
+                    Image(
+                        systemName:
+                            "gauge.with.dots.needle.33percent"
+                    )
+                    Text(pressureText)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
                 Text(densityAltitudeText)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(densityAltitudeForeground)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: true, vertical: false)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(
@@ -1798,9 +3185,9 @@ private struct WindFlowIndicator: View {
 
     var body: some View {
         Image(systemName: "arrow.up")
-            .font(.system(size: 30, weight: .semibold))
+            .font(.system(size: 18, weight: .semibold))
             .foregroundStyle(FlybookColor.navy)
-        .frame(width: 48, height: 48)
+        .frame(width: 22, height: 22)
         .rotationEffect(
             .degrees((weather.direction ?? 180) + 180)
         )
@@ -1817,21 +3204,37 @@ private struct FlightPlanningLine<
     @Binding var flightDate: Date
     let showsRefreshButton: Bool
     let refreshWeather: () -> Void
+    let resetSchedule: () -> Void
     let setNow: () -> Void
     let showsETOPSHeader: Bool
     @Binding var stopCount: Int
     @Binding var flightAltitudeFeet: Int
+    let altitudeOptions: [Int]
     let travelMinutes: Int
     let directNM: Double
+    @Binding var trackMiles: Double
     let headwindKnots: Double?
+    let bestLevelFeet: Int?
     let tankStopMinutes: Int
+    let preTakeoffGroundMinutes: Int
+    let postLandingGroundMinutes: Int
     let cruiseGroundSpeedKnots: Double
+    let climbDeparturePressureAltitudeFeet: Double
+    let climbTargetPressureAltitudeFeet: Double
+    let climbPerformance: ClimbPerformance
+    let cruisePerformance: CruisePerformance
     let leadingWeather: PlanningWeather
     let trailingWeather: PlanningWeather
     let leadingSunriseText: String?
     let leadingSunsetText: String?
     let trailingSunriseText: String?
     let trailingSunsetText: String?
+    let leadingTitle: String
+    let leadingRunway: String?
+    let trailingTitle: String
+    let trailingRunway: String?
+    let trailingAirportSelection: Binding<String>?
+    let airportOptions: [AirportReference]
 
     @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
     private var greenYellowMinutes =
@@ -1849,22 +3252,43 @@ private struct FlightPlanningLine<
             directNM: directNM,
             stopCount: stopCount,
             headwindKnots: headwindKnots,
-            tankStopMinutes: tankStopMinutes
+            tankStopMinutes: tankStopMinutes,
+            cruiseGroundSpeedKnots:
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: climbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: trackMiles,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
+    }
+
+    private func altitudeLabel(_ altitudeFeet: Int) -> String {
+        if altitudeFeet >= 5000 {
+            return String(
+                format: "FL%03d",
+                Int(round(Double(altitudeFeet) / 100.0))
+            )
+        }
+        return altitudeFeet.formatted(
+            .number.grouping(.automatic)
+        ) + " ft"
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 5) {
             StopCountSelector(selection: $stopCount)
                 .frame(width: 98, height: 108)
-                .padding(.top, 165)
+                .padding(.top, 158)
 
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 HStack(spacing: 8) {
                     Text(directionTitle)
                         .font(
                             .system(
-                                size: 14,
+                                size: 18,
                                 weight: .bold,
                                 design: .monospaced
                             )
@@ -1878,93 +3302,131 @@ private struct FlightPlanningLine<
                     )
                     .labelsHidden()
                     .datePickerStyle(.field)
-                    .controlSize(.small)
-                    .frame(width: 116)
+                    .font(.system(size: 16, weight: .semibold))
+                    .controlSize(.regular)
+                    .frame(width: 128)
 
                     Button("Heute") {
                         flightDate =
                             Calendar.current.startOfDay(for: Date())
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .font(.system(size: 15, weight: .semibold))
+                    .controlSize(.regular)
 
                     Button("Jetzt", action: setNow)
                         .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .font(.system(size: 15, weight: .semibold))
+                        .controlSize(.regular)
 
                     Spacer(minLength: 0)
                 }
 
-                HStack(spacing: 4) {
-                    ZStack {
-                        PlanningWeatherCard(
-                            weather: leadingWeather,
-                            sunriseText: leadingSunriseText,
-                            sunsetText: leadingSunsetText
+                HStack(alignment: .top, spacing: 22) {
+                    FlightLocationHeader(
+                        title: leadingTitle,
+                        runway: leadingRunway
+                    )
+
+                    if let trailingAirportSelection {
+                        VStack(spacing: 3) {
+                            Text("ANKUNFT")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(FlybookColor.muted)
+
+                            Picker(
+                                "Zwischenstopp",
+                                selection: trailingAirportSelection
+                            ) {
+                                ForEach(airportOptions) { airport in
+                                    Text("\(airport.icao) · \(airport.name)")
+                                        .tag(airport.icao)
+                                }
+                            }
+                            .labelsHidden()
+                            .controlSize(.small)
+                            .frame(width: 174)
+                        }
+                        .frame(width: 174)
+                    } else {
+                        FlightLocationHeader(
+                            title: trailingTitle,
+                            runway: trailingRunway
                         )
-                        .frame(width: 142, height: 132)
-
-                        WindFlowIndicator(weather: leadingWeather)
-                            .offset(x: -96)
                     }
-                    .frame(width: 174)
-
-                    Color.clear
-                        .frame(width: 18)
-
-                    ZStack {
-                        PlanningWeatherCard(
-                            weather: trailingWeather,
-                            sunriseText: trailingSunriseText,
-                            sunsetText: trailingSunsetText
-                        )
-                        .frame(width: 142, height: 132)
-
-                        WindFlowIndicator(weather: trailingWeather)
-                            .offset(x: 96)
-                    }
-                    .frame(width: 174)
                 }
 
-                HStack(alignment: .top, spacing: 4) {
+                HStack(alignment: .center, spacing: 4) {
                     VStack(spacing: 5) {
-                        TimeContextInfo(
-                            weather: leadingWeather
-                        )
                         leading
                     }
-                    .frame(width: 174, alignment: .top)
+                    .frame(width: 174)
 
                     Image(systemName: "arrow.right")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
                         .frame(width: 18, height: 43)
-                        .padding(.top, 27)
 
                     VStack(spacing: 5) {
-                        TimeContextInfo(
-                            weather: trailingWeather
-                        )
                         trailing
                     }
-                    .frame(width: 174, alignment: .top)
+                    .frame(width: 174)
+                }
+                .frame(height: 43)
+                .overlay(alignment: .trailing) {
+                    TravelDurationBadge(minutes: travelMinutes)
+                        .frame(width: 70, height: 43)
+                        .offset(x: 75)
                 }
 
-                HStack(spacing: 10) {
+                HStack(spacing: 4) {
+                    PlanningWeatherCard(
+                        weather: leadingWeather,
+                        sunriseText: leadingSunriseText,
+                        sunsetText: leadingSunsetText
+                    )
+                    .frame(width: 142, height: 164)
+                    .frame(width: 174)
+
+                    Color.clear
+                        .frame(width: 18)
+
+                    PlanningWeatherCard(
+                        weather: trailingWeather,
+                        sunriseText: trailingSunriseText,
+                        sunsetText: trailingSunsetText
+                    )
+                    .frame(width: 142, height: 164)
+                    .frame(width: 174)
+                }
+
+                HStack(spacing: 8) {
+                    Text(
+                        bestLevelFeet.map {
+                            String(format: "Best Level: FL%03d", Int(round(Double($0) / 100.0)))
+                        } ?? "Best Level: —"
+                    )
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(FlybookColor.blue)
+                    .frame(width: 140, alignment: .leading)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
                     Picker(
                         "Flughöhe",
                         selection: $flightAltitudeFeet
                     ) {
                         ForEach(
-                            [3000, 5000, 7000, 9000],
+                            altitudeOptions,
                             id: \.self
                         ) { altitude in
-                            Text("\(altitude) ft").tag(altitude)
+                            Text(altitudeLabel(altitude)).tag(altitude)
                         }
                     }
                     .labelsHidden()
-                    .controlSize(.small)
-                    .frame(width: 96)
+                    .font(.system(size: 15, weight: .semibold))
+                    .controlSize(.regular)
+                    .frame(width: 100)
 
                     if let headwindKnots {
                         WindInfluenceLabel(
@@ -1974,16 +3436,10 @@ private struct FlightPlanningLine<
                 }
 
             }
-            .frame(width: 402)
+            .frame(width: 420)
 
-            VStack(spacing: 4) {
-                Text("REISEZEIT")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(FlybookColor.muted)
-                TravelDurationBadge(minutes: travelMinutes)
-                    .frame(width: 70, height: 58)
-            }
-            .padding(.top, 186)
+            Color.clear
+                .frame(width: 52, height: 1)
 
             VStack(spacing: 5) {
                 Text("ETOPS-\nPIPI")
@@ -2010,27 +3466,544 @@ private struct FlightPlanningLine<
                         )
                     )
                     .frame(width: 16, height: 16)
+
+                Divider().frame(width: 48)
+
+                TrackMilesEditor(trackMiles: $trackMiles)
             }
-            .frame(width: 54)
+            .frame(width: 64)
             .help("Farbe aus der Dauer des einzelnen Fluglegs")
         }
+        .fixedSize(horizontal: false, vertical: true)
         .overlay(alignment: .topLeading) {
             if showsRefreshButton {
-                Button(action: refreshWeather) {
-                    Image(systemName: "arrow.clockwise")
+                VStack(spacing: 8) {
+                    Button(action: refreshWeather) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 21, weight: .bold))
+                            .frame(width: 38, height: 32)
+                    }
+                    .help("Wetterdaten jetzt aktualisieren")
+
+                    Button(action: resetSchedule) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 17, weight: .bold))
+                            Text("Reset")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        .frame(width: 38, height: 38)
+                    }
+                    .help("Datum und Uhrzeiten auf Standard zurücksetzen")
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("Wetterdaten jetzt aktualisieren")
+                .controlSize(.regular)
             }
         }
     }
 }
 
+private struct TrackMilesEditor: View {
+    @Binding var trackMiles: Double
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text("TRACK\nNM")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+                .multilineTextAlignment(.center)
+
+            Text(String(format: "%.0f", trackMiles))
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundStyle(FlybookColor.navy)
+
+            HStack(spacing: 3) {
+                Button {
+                    trackMiles = nextLowerFive(from: trackMiles)
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 15, weight: .bold))
+                        .frame(width: 28, height: 24)
+                        .contentShape(Rectangle())
+                }
+                Button {
+                    trackMiles = nextHigherFive(from: trackMiles)
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 15, weight: .bold))
+                        .frame(width: 28, height: 24)
+                        .contentShape(Rectangle())
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+        }
+        .help("Track Miles aus einem externen Flugplan übernehmen")
+    }
+
+    private func nextLowerFive(from value: Double) -> Double {
+        let lower = floor(value / 5) * 5
+        if abs(value - lower) < 0.001 {
+            return max(0, lower - 5)
+        }
+        return max(0, lower)
+    }
+
+    private func nextHigherFive(from value: Double) -> Double {
+        let upper = ceil(value / 5) * 5
+        if abs(value - upper) < 0.001 {
+            return upper + 5
+        }
+        return upper
+    }
+}
+
+private struct MainzReservationView: View {
+    @Binding var reservationFrom: Date
+    @Binding var reservationUntil: Date
+    let actualBlockMinutes: Int
+
+    private var breakdown: ReservationBreakdown {
+        ReservationBreakdown.calculate(
+            from: reservationFrom,
+            until: reservationUntil
+        )
+    }
+
+    private var actualBlockHours: Double {
+        Double(actualBlockMinutes) / 60
+    }
+
+    private var requirementIsMet: Bool {
+        actualBlockHours + 0.000_1
+            >= breakdown.requiredBlockHours
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack {
+                Text("RESERVIERUNG MAINZ")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+                Spacer()
+                Text("08:00–20:00")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+            }
+
+            HStack(spacing: 12) {
+                reservationPicker(
+                    title: "VON",
+                    selection: $reservationFrom
+                )
+                reservationPicker(
+                    title: "BIS",
+                    selection: $reservationUntil
+                )
+            }
+
+            Divider()
+
+            reservationResult(
+                title: "MO–FR",
+                reservedHours: breakdown.weekdayHours,
+                percentage: 10,
+                requiredHours: breakdown.weekdayRequiredBlockHours
+            )
+            reservationResult(
+                title: "SA/SO",
+                reservedHours: breakdown.weekendHours,
+                percentage: 20,
+                requiredHours: breakdown.weekendRequiredBlockHours
+            )
+
+            Divider()
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("ERFORDERLICHE BLOCKZEIT")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(FlybookColor.muted)
+                    Text(decimalHours(breakdown.requiredBlockHours))
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("TATSÄCHLICHE BLOCKZEIT")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(FlybookColor.muted)
+                    Text(decimalHours(actualBlockHours))
+                        .font(.system(size: 21, weight: .bold))
+                        .foregroundStyle(
+                            requirementIsMet ? Color.green : Color.red
+                        )
+                }
+            }
+
+            if reservationUntil <= reservationFrom {
+                Text("„Bis“ muss nach „Von“ liegen.")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.red)
+            } else {
+                Text(
+                    requirementIsMet
+                        ? "Mindestnutzung erfüllt"
+                        : "Mindestblockzeit unterschritten"
+                )
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(
+                    requirementIsMet ? Color.green : Color.red
+                )
+            }
+        }
+    }
+
+    private func reservationPicker(
+        title: String,
+        selection: Binding<Date>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+            DatePicker(
+                title,
+                selection: selection,
+                displayedComponents: [.date, .hourAndMinute]
+            )
+            .labelsHidden()
+            .datePickerStyle(.field)
+            .controlSize(.small)
+            .environment(\.timeZone, DestinationTimeZone.edfz)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func reservationResult(
+        title: String,
+        reservedHours: Double,
+        percentage: Int,
+        requiredHours: Double
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+                .frame(width: 48, alignment: .leading)
+            Text("Reserviert \(decimalHours(reservedHours))")
+            Spacer()
+            Text("\(percentage)% → \(decimalHours(requiredHours)) Block")
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(FlybookColor.navy)
+    }
+
+    private func decimalHours(_ hours: Double) -> String {
+        let rounded =
+            (hours * 10).rounded(.toNearestOrAwayFromZero) / 10
+        return rounded.formatted(
+            .number
+                .locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(1))
+        ) + " h"
+    }
+}
+
+private struct ReservationBreakdown {
+    let weekdayHours: Double
+    let weekendHours: Double
+
+    var weekdayRequiredBlockHours: Double {
+        weekdayHours * 0.10
+    }
+
+    var weekendRequiredBlockHours: Double {
+        weekendHours * 0.20
+    }
+
+    var requiredBlockHours: Double {
+        weekdayRequiredBlockHours + weekendRequiredBlockHours
+    }
+
+    static func calculate(
+        from start: Date,
+        until end: Date
+    ) -> ReservationBreakdown {
+        guard end > start else {
+            return ReservationBreakdown(
+                weekdayHours: 0,
+                weekendHours: 0
+            )
+        }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DestinationTimeZone.edfz
+        var day = calendar.startOfDay(for: start)
+        let finalDay = calendar.startOfDay(for: end)
+        var weekdaySeconds: TimeInterval = 0
+        var weekendSeconds: TimeInterval = 0
+
+        while day <= finalDay {
+            guard
+                let activeStart = calendar.date(
+                    bySettingHour: 8,
+                    minute: 0,
+                    second: 0,
+                    of: day
+                ),
+                let activeEnd = calendar.date(
+                    bySettingHour: 20,
+                    minute: 0,
+                    second: 0,
+                    of: day
+                )
+            else { break }
+
+            let overlapStart = max(start, activeStart)
+            let overlapEnd = min(end, activeEnd)
+            if overlapEnd > overlapStart {
+                let seconds =
+                    overlapEnd.timeIntervalSince(overlapStart)
+                let weekday = calendar.component(
+                    .weekday,
+                    from: day
+                )
+                if weekday == 1 || weekday == 7 {
+                    weekendSeconds += seconds
+                } else {
+                    weekdaySeconds += seconds
+                }
+            }
+
+            guard let nextDay = calendar.date(
+                byAdding: .day,
+                value: 1,
+                to: day
+            ) else { break }
+            day = nextDay
+        }
+
+        return ReservationBreakdown(
+            weekdayHours: weekdaySeconds / 3600,
+            weekendHours: weekendSeconds / 3600
+        )
+    }
+}
+
+struct ReservationManagerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(CalculationSettingsKey.reservationFromTimestamp)
+    private var fromTimestamp = Date().timeIntervalSince1970
+    @AppStorage(CalculationSettingsKey.reservationUntilTimestamp)
+    private var untilTimestamp =
+        Date().addingTimeInterval(12 * 60 * 60).timeIntervalSince1970
+    @AppStorage(CalculationSettingsKey.calculatedBlockMinutes)
+    private var actualBlockMinutes = 0
+
+    private var fromBinding: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSince1970: fromTimestamp) },
+            set: { fromTimestamp = $0.timeIntervalSince1970 }
+        )
+    }
+
+    private var untilBinding: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSince1970: untilTimestamp) },
+            set: { untilTimestamp = $0.timeIntervalSince1970 }
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("RESERVIERUNGSMANAGER")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+                Spacer()
+                Button("Schließen") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+            }
+
+            FlybookCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("SCHNELLAUSWAHL")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(FlybookColor.muted)
+
+                    HStack(spacing: 18) {
+                        quickControls(
+                            title: "VON",
+                            binding: fromBinding
+                        )
+                        Divider()
+                        quickControls(
+                            title: "BIS",
+                            binding: untilBinding
+                        )
+                    }
+                }
+            }
+
+            FlybookCard {
+                MainzReservationView(
+                    reservationFrom: fromBinding,
+                    reservationUntil: untilBinding,
+                    actualBlockMinutes: actualBlockMinutes
+                )
+            }
+        }
+        .padding(22)
+        .frame(width: 760, height: 570)
+        .background(FlybookColor.background)
+    }
+
+    private func quickControls(
+        title: String,
+        binding: Binding<Date>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+
+            HStack {
+                Button("Heute") {
+                    binding.wrappedValue = settingDay(
+                        of: binding.wrappedValue,
+                        offset: 0
+                    )
+                }
+                Button("Morgen") {
+                    binding.wrappedValue = settingDay(
+                        of: binding.wrappedValue,
+                        offset: 1
+                    )
+                }
+                Button("− Tag") {
+                    binding.wrappedValue = adding(
+                        .day,
+                        value: -1,
+                        to: binding.wrappedValue
+                    )
+                }
+                Button("+ Tag") {
+                    binding.wrappedValue = adding(
+                        .day,
+                        value: 1,
+                        to: binding.wrappedValue
+                    )
+                }
+            }
+
+            HStack {
+                Button("− 60 min") {
+                    binding.wrappedValue = adding(
+                        .minute,
+                        value: -60,
+                        to: binding.wrappedValue
+                    )
+                }
+                Button("− 15") {
+                    binding.wrappedValue = adding(
+                        .minute,
+                        value: -15,
+                        to: binding.wrappedValue
+                    )
+                }
+                Button("+ 15") {
+                    binding.wrappedValue = adding(
+                        .minute,
+                        value: 15,
+                        to: binding.wrappedValue
+                    )
+                }
+                Button("+ 60 min") {
+                    binding.wrappedValue = adding(
+                        .minute,
+                        value: 60,
+                        to: binding.wrappedValue
+                    )
+                }
+            }
+
+            HStack(spacing: 5) {
+                ForEach([8, 11, 14, 17, 20], id: \.self) { hour in
+                    Button(String(format: "%02d:00", hour)) {
+                        binding.wrappedValue = settingTime(
+                            of: binding.wrappedValue,
+                            hour: hour
+                        )
+                    }
+                }
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func adding(
+        _ component: Calendar.Component,
+        value: Int,
+        to date: Date
+    ) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DestinationTimeZone.edfz
+        return calendar.date(
+            byAdding: component,
+            value: value,
+            to: date
+        ) ?? date
+    }
+
+    private func settingTime(
+        of date: Date,
+        hour: Int
+    ) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DestinationTimeZone.edfz
+        return calendar.date(
+            bySettingHour: hour,
+            minute: 0,
+            second: 0,
+            of: date
+        ) ?? date
+    }
+
+    private func settingDay(of date: Date, offset: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = DestinationTimeZone.edfz
+        let targetDay = calendar.date(
+            byAdding: .day,
+            value: offset,
+            to: calendar.startOfDay(for: Date())
+        ) ?? Date()
+        let time = calendar.dateComponents(
+            [.hour, .minute],
+            from: date
+        )
+        return calendar.date(
+            bySettingHour: time.hour ?? 8,
+            minute: time.minute ?? 0,
+            second: 0,
+            of: targetDay
+        ) ?? targetDay
+    }
+}
+
 private struct CalculationTotalRow: View {
+    let includesReturn: Bool
+    let outboundReserveNotConsumed: Bool
     let outboundStopCount: Int
     let returnStopCount: Int
-    let directNM: Double
+    let outboundDirectNM: Double
+    let returnDirectNM: Double
+    let outboundTrackMilesNM: Double
+    let returnTrackMilesNM: Double
     let outboundHeadwindKnots: Double?
     let returnHeadwindKnots: Double?
     let hourlyRateEUR: Double
@@ -2039,32 +4012,56 @@ private struct CalculationTotalRow: View {
     let outboundFlightDate: Date
     let returnFlightDate: Date
     let cruiseGroundSpeedKnots: Double
+    let outboundClimbDeparturePressureAltitudeFeet: Double
+    let outboundClimbTargetPressureAltitudeFeet: Double
+    let returnClimbDeparturePressureAltitudeFeet: Double
+    let returnClimbTargetPressureAltitudeFeet: Double
+    let climbPerformance: ClimbPerformance
+    let cruisePerformance: CruisePerformance
     let fuelConsumptionPerHour: Double
     let reserveMinutes: Int
     let usableFuel: Double
+    let fuelUnit: FuelDisplayUnit
+    let preTakeoffGroundMinutes: Int
+    let postLandingGroundMinutes: Int
     let prepaymentDiscount15To29Enabled: Bool
     let prepaymentDiscount30PlusEnabled: Bool
+    let minimumRequiredBlockHours: Double
 
     private var outboundMinutes: Int {
         FlightMath.adjustedBlockMinutes(
-            directNM: directNM,
+            directNM: outboundDirectNM,
             stopCount: outboundStopCount,
             headwindKnots: outboundHeadwindKnots,
-            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots
+            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: outboundClimbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: outboundClimbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: outboundTrackMilesNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
     private var returnMinutes: Int {
         FlightMath.adjustedBlockMinutes(
-            directNM: directNM,
+            directNM: returnDirectNM,
             stopCount: returnStopCount,
             headwindKnots: returnHeadwindKnots,
-            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots
+            cruiseGroundSpeedKnots: cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: returnClimbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: returnClimbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: returnTrackMilesNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
     private var totalMinutes: Int {
-        outboundMinutes + returnMinutes
+        outboundMinutes + (includesReturn ? returnMinutes : 0)
     }
 
     private func weekday(_ date: Date) -> Bool {
@@ -2106,69 +4103,83 @@ private struct CalculationTotalRow: View {
             * Double(reserveMinutes)
             / 60.0
 
-        return blockFuel + reserveFuel
+        return blockFuel
+            + (outboundReserveNotConsumed ? 0 : reserveFuel)
     }
 
     private var totalCost: Double {
         legCost(minutes: outboundMinutes, date: outboundFlightDate)
-        + legCost(minutes: returnMinutes, date: returnFlightDate)
+        + (
+            includesReturn
+                ? legCost(minutes: returnMinutes, date: returnFlightDate)
+                : 0
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        HStack(spacing: 6) {
             Text("GESAMT")
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
+                .frame(width: 78, alignment: .leading)
 
-            HStack(spacing: 10) {
-                totalBox(
-                    title: "BLOCKZEIT GESAMT",
-                    value: String(
-                        format: "%d:%02d",
-                        totalMinutes / 60,
-                        totalMinutes % 60
-                    )
-                )
+            totalBox(
+                value: decimalHours(totalMinutes),
+                valueColor:
+                    Double(totalMinutes) / 60
+                        < minimumRequiredBlockHours
+                    ? .red
+                    : FlybookColor.navy
+            )
 
-                totalBox(
-                    title: "BENÖTIGTER KRAFTSTOFF",
-                    value: String(
-                        format: "%.1f",
-                        totalRequiredFuel
-                    )
-                )
+            totalBox(
+                value:
+                    "\(Int(ceil(fuelUnit.fromLiters(totalRequiredFuel)))) "
+                    + fuelUnit.symbol
+            )
 
-                totalBox(
-                    title: "CHARTERKOSTEN GESAMT",
-                    value: totalCost.formatted(
-                        .currency(code: "EUR")
-                            .locale(Locale(identifier: "de_DE"))
-                            .precision(.fractionLength(2))
-                    )
+            totalBox(
+                value: totalCost
+                    .rounded(.toNearestOrAwayFromZero)
+                    .formatted(
+                    .currency(code: "EUR")
+                        .locale(Locale(identifier: "de_DE"))
+                        .precision(.fractionLength(0))
                 )
-            }
+            )
         }
     }
 
-    private func totalBox(title: String, value: String) -> some View {
+    private func decimalHours(_ minutes: Int) -> String {
+        let hours = Double(minutes) / 60.0
+        let commerciallyRounded =
+            (hours * 10).rounded(.toNearestOrAwayFromZero) / 10
+        return commerciallyRounded.formatted(
+            .number
+                .locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(1))
+        ) + " h"
+    }
+
+    private func totalBox(
+        value: String,
+        valueColor: Color = FlybookColor.navy
+    ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(FlybookColor.muted)
             Text(value)
                 .font(
                     .system(
-                        size: 24,
+                        size: 20,
                         weight: .bold,
                         design: .monospaced
                     )
                 )
-                .foregroundStyle(FlybookColor.navy)
+                .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
+        .frame(width: 96, alignment: .leading)
+        .padding(7)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(FlybookColor.blue.opacity(0.12))
@@ -2180,6 +4191,7 @@ private struct CalculationRow: View {
     let title: String
     let stopCount: Int
     let directNM: Double
+    let trackMilesNM: Double
     let headwindKnots: Double?
     let tankStopMinutes: Int
     let hourlyRateEUR: Double
@@ -2187,11 +4199,19 @@ private struct CalculationRow: View {
     let weekdayDiscountEnabled: Bool
     let flightDate: Date
     let cruiseGroundSpeedKnots: Double
+    let climbDeparturePressureAltitudeFeet: Double
+    let climbTargetPressureAltitudeFeet: Double
+    let climbPerformance: ClimbPerformance
+    let cruisePerformance: CruisePerformance
     let fuelConsumptionPerHour: Double
     let reserveMinutes: Int
     let usableFuel: Double
+    let fuelUnit: FuelDisplayUnit
+    let preTakeoffGroundMinutes: Int
+    let postLandingGroundMinutes: Int
     let prepaymentDiscount15To29Enabled: Bool
     let prepaymentDiscount30PlusEnabled: Bool
+    var reserveNotConsumed: Binding<Bool>? = nil
 
     private var blockMinutes: Int {
         FlightMath.adjustedBlockMinutes(
@@ -2199,7 +4219,14 @@ private struct CalculationRow: View {
             stopCount: stopCount,
             headwindKnots: headwindKnots,
             cruiseGroundSpeedKnots:
-                cruiseGroundSpeedKnots
+                cruiseGroundSpeedKnots,
+            climbDeparturePressureAltitudeFeet: climbDeparturePressureAltitudeFeet,
+            climbTargetPressureAltitudeFeet: climbTargetPressureAltitudeFeet,
+            climbPerformance: climbPerformance,
+            cruisePerformance: cruisePerformance,
+            trackMilesNM: trackMilesNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
@@ -2258,11 +4285,14 @@ private struct CalculationRow: View {
     }
 
     private var blockTimeText: String {
-        String(
-            format: "%d:%02d",
-            blockMinutes / 60,
-            blockMinutes % 60
-        )
+        let hours = Double(blockMinutes) / 60.0
+        let commerciallyRounded =
+            (hours * 10).rounded(.toNearestOrAwayFromZero) / 10
+        return commerciallyRounded.formatted(
+            .number
+                .locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(1))
+        ) + " h"
     }
 
     private var requiredFuel: Double {
@@ -2276,11 +4306,17 @@ private struct CalculationRow: View {
             * Double(reserveMinutes)
             / 60.0
 
-        return blockFuel + reserveFuel
+        return blockFuel
+            + (
+                reserveNotConsumed?.wrappedValue == true
+                    ? 0
+                    : reserveFuel
+            )
     }
 
     private var requiredFuelText: String {
-        String(format: "%.1f", requiredFuel)
+        "\(Int(ceil(fuelUnit.fromLiters(requiredFuel)))) "
+            + fuelUnit.symbol
     }
 
     private var fuelResultColor: Color {
@@ -2305,79 +4341,86 @@ private struct CalculationRow: View {
     }
 
     private var costText: String {
-        costEUR.formatted(
+        costEUR
+            .rounded(.toNearestOrAwayFromZero)
+            .formatted(
             .currency(code: "EUR")
                 .locale(Locale(identifier: "de_DE"))
-                .precision(.fractionLength(2))
+                .precision(.fractionLength(0))
         )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(FlybookColor.navy)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
                     Text(stopLabel)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(FlybookColor.muted)
-
-                    if prepaymentDiscount15To29Enabled {
-                        Text("25 % Vorauszahlungsrabatt")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.green)
-                    } else if prepaymentDiscount30PlusEnabled {
-                        Text("15 % Vorauszahlungsrabatt")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.green)
-                    }
-
-                    if discountApplies {
-                        Text("5 % Wochentagsrabatt")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.green)
-                    }
                 }
-            }
+                .frame(width: 78, alignment: .leading)
 
-            HStack(spacing: 10) {
-                valueBox(
-                    title: "BLOCKZEIT",
-                    value: blockTimeText
-                )
+                valueBox(value: blockTimeText)
 
                 valueBox(
-                    title: "BENÖTIGTER KRAFTSTOFF",
                     value: requiredFuelText,
                     valueColor: fuelResultColor
                 )
 
-                valueBox(
-                    title: "CHARTERKOSTEN",
-                    value: costText
+                VStack(alignment: .leading, spacing: 3) {
+                    valueBox(value: costText)
+
+                    if prepaymentDiscount15To29Enabled {
+                        discountText("25 % Vorauszahlungsrabatt")
+                    } else if prepaymentDiscount30PlusEnabled {
+                        discountText("15 % Vorauszahlungsrabatt")
+                    }
+
+                    if discountApplies {
+                        discountText("5 % Wochentagsrabatt")
+                    }
+                }
+                .frame(width: 110, alignment: .topLeading)
+                .frame(minHeight: 70, alignment: .topLeading)
+            }
+
+            if let reserveNotConsumed {
+                Toggle(
+                    "Hinflugreserve nicht verbraucht",
+                    isOn: reserveNotConsumed
                 )
+                .toggleStyle(.checkbox)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(FlybookColor.navy)
+                .padding(.leading, 84)
             }
         }
+        .frame(minHeight: 70, alignment: .top)
+    }
+
+    private func discountText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(Color.green)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
     }
 
     private func valueBox(
-        title: String,
         value: String,
         valueColor: Color = FlybookColor.navy
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(FlybookColor.muted)
-
             Text(value)
                 .font(
                     .system(
-                        size: 24,
+                        size: 20,
                         weight: .bold,
                         design: .monospaced
                     )
@@ -2386,12 +4429,32 @@ private struct CalculationRow: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
+        .frame(width: 96, alignment: .leading)
+        .padding(7)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.gray.opacity(0.08))
         )
+    }
+}
+
+private struct CalculationColumnHeaders: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Color.clear
+                .frame(width: 78, height: 1)
+
+            header("BLOCKZEIT")
+            header("KRAFTSTOFF")
+            header("KOSTEN")
+        }
+    }
+
+    private func header(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(FlybookColor.navy)
+            .frame(width: 110, alignment: .leading)
     }
 }
 
@@ -2411,11 +4474,12 @@ private struct WindInfluenceLabel: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 15, weight: .bold))
+            .font(.system(size: 17, weight: .bold))
             .foregroundStyle(
                 isHeadwind ? Color.red : Color.green
             )
             .lineLimit(1)
+            .minimumScaleFactor(0.75)
     }
 }
 
@@ -2501,6 +4565,17 @@ private struct FlightTimeBox: View {
     let lightCondition: LightCondition
     var editable = false
 
+    @AppStorage(UnitSystemSettingsKey.displaySystem)
+    private var displayUnitSystemRaw = DisplayUnitSystem.eu.rawValue
+
+    private var displayedValue: String {
+        TimeInput.displayClock(
+            value,
+            usesTwelveHourFormat:
+                DisplayUnitSystem(rawValue: displayUnitSystemRaw) == .us
+        )
+    }
+
     private var fillColor: Color {
         switch lightCondition {
         case .daylight, .unavailable:
@@ -2530,7 +4605,7 @@ private struct FlightTimeBox: View {
             Image(systemName: symbol)
                 .font(.system(size: 19, weight: .semibold))
 
-            Text(value)
+            Text(displayedValue)
                 .font(
                     .system(
                         size: 22,
@@ -2538,7 +4613,9 @@ private struct FlightTimeBox: View {
                         design: .monospaced
                     )
                 )
-                .frame(width: 82)
+                .frame(width: 96)
+                .minimumScaleFactor(0.72)
+                .lineLimit(1)
 
             if editable {
                 Image(systemName: "chevron.up.chevron.down")
@@ -2566,7 +4643,6 @@ private struct EditableFlightTimeField: View {
     @Binding var text: String
     let symbol: String
     let lightCondition: LightCondition
-    let runway: String?
 
     @State private var isTimeEditorPresented = false
     @State private var selectedHour = 9
@@ -2658,18 +4734,6 @@ private struct EditableFlightTimeField: View {
                 .frame(width: 230)
             }
 
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(FlybookColor.muted)
-
-            if let runway {
-                Divider()
-                    .frame(width: 160)
-                Label(runway, systemImage: "road.lanes")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(FlybookColor.navy)
-            }
-
         }
         .foregroundStyle(FlybookColor.navy)
     }
@@ -2683,20 +4747,24 @@ private enum AviationWindText {
         gust: Double?
     ) -> String {
         guard let direction, let speed else {
-            return "---/-- G--"
+            return "--- / --"
         }
-        var roundedDirection = Int(direction.rounded()) % 360
+        var roundedDirection =
+            (Int((direction / 10).rounded()) * 10) % 360
         if roundedDirection == 0 && direction > 0 {
             roundedDirection = 360
         }
         let roundedSpeed = max(0, Int(speed.rounded()))
         let roundedGust = max(0, Int((gust ?? 0).rounded()))
-        return String(
-            format: "%03d/%02d G%02d",
+        let steadyWind = String(
+            format: "%03d / %02d",
             roundedDirection,
-            roundedSpeed,
-            roundedGust
+            roundedSpeed
         )
+        guard let gust, gust - speed >= 10 else {
+            return steadyWind
+        }
+        return steadyWind + String(format: " G%02d", roundedGust)
     }
 }
 
@@ -2750,11 +4818,9 @@ private struct EDFZRunwayPressureRow: View {
 }
 
 private struct CalculatedFlightTime: View {
-    let title: String
     let value: String
     let symbol: String
     let lightCondition: LightCondition
-    let runway: String?
 
     var body: some View {
         VStack(spacing: 4) {
@@ -2765,19 +4831,29 @@ private struct CalculatedFlightTime: View {
             )
             .frame(width: 174, height: 43)
 
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(FlybookColor.muted)
-
-            if let runway {
-                Divider()
-                    .frame(width: 160)
-                Label(runway, systemImage: "road.lanes")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(FlybookColor.navy)
-            }
         }
         .foregroundStyle(FlybookColor.navy)
+    }
+}
+
+private struct FlightLocationHeader: View {
+    let title: String
+    let runway: String?
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+                .lineLimit(1)
+
+            Label(runway ?? " ", systemImage: "road.lanes")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+                .opacity(runway == nil ? 0 : 1)
+                .frame(height: 16)
+        }
+        .frame(width: 174)
     }
 }
 
@@ -2831,6 +4907,8 @@ private struct AirportMetric: View {
     let title: String
     let value: String
     var fuelStatus = false
+    var pricePerLiterEUR: Double? = nil
+    var referencePricePerLiterEUR: Double? = nil
 
     private var valueColor: Color {
         guard fuelStatus else { return FlybookColor.navy }
@@ -2840,6 +4918,42 @@ private struct AirportMetric: View {
         if normalized == "ja" || normalized == "yes" { return .green }
         if normalized == "nein" || normalized == "no" { return .red }
         return FlybookColor.navy
+    }
+
+    private var priceColor: Color {
+        guard let pricePerLiterEUR,
+              let referencePricePerLiterEUR
+        else { return FlybookColor.muted }
+        if abs(pricePerLiterEUR - referencePricePerLiterEUR) < 0.005 {
+            return FlybookColor.blue
+        }
+        return pricePerLiterEUR > referencePricePerLiterEUR
+            ? .red
+            : .green
+    }
+
+    private var priceText: String {
+        guard let pricePerLiterEUR else { return "— €/L" }
+        let formattedPrice = pricePerLiterEUR.formatted(
+            .currency(code: "EUR")
+                .locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(2))
+        ) + "/L"
+
+        guard let referencePricePerLiterEUR else {
+            return formattedPrice
+        }
+
+        let differenceCents =
+            Int(
+                ((pricePerLiterEUR - referencePricePerLiterEUR) * 100)
+                    .rounded()
+            )
+        if differenceCents == 0 {
+            return formattedPrice + " (±0 ct)"
+        }
+        let sign = differenceCents > 0 ? "+" : ""
+        return formattedPrice + " (\(sign)\(differenceCents) ct)"
     }
 
     var body: some View {
@@ -2853,6 +4967,14 @@ private struct AirportMetric: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.72)
+
+            if fuelStatus {
+                Text(priceText)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(priceColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
         }
         .foregroundStyle(FlybookColor.navy)
         .frame(maxWidth: .infinity)
@@ -3023,10 +5145,13 @@ private struct LiveWeatherColumn: View {
         let densityAltitude =
             pressureAltitude
             + 120.0 * (temperature - isaTemperature)
+        let roundedDensityAltitude =
+            (densityAltitude / 100)
+            .rounded(.toNearestOrAwayFromZero) * 100
 
         return String(
             format: "%.0f ft",
-            densityAltitude
+            roundedDensityAltitude
         )
     }
 

@@ -20,6 +20,20 @@
     "longitude": 10.7192222,
     "region_image": ""
   },
+  "EDXH": {
+    "display_name": "Helgoland",
+    "region_label": "Nordsee / Hochseeinsel",
+    "latitude": 54.1853,
+    "longitude": 7.9158,
+    "region_image": ""
+  },
+  "LIPV": {
+    "display_name": "Venedig-Lido",
+    "region_label": "Venedig / Adria",
+    "latitude": 45.4289,
+    "longitude": 12.3878,
+    "region_image": ""
+  },
   "EDDV": {
     "display_name": "Hannover",
     "region_label": "Niedersachsen",
@@ -64,6 +78,13 @@
   "EDWL": {
     "latitude": 53.742379,
     "longitude": 7.496345
+  },
+  "EDWJ": {
+    "display_name": "Juist",
+    "region_label": "Nordsee / Ostfriesische Inseln",
+    "latitude": 53.680667,
+    "longitude": 7.057833,
+    "region_image": ""
   },
   "EHAL": {
     "latitude": 53.453612,

@@ -8,6 +8,8 @@ struct EDFZWeatherSample: Hashable {
     let temperatureCelsius: Double?
     let weatherCode: Int?
     let visibilityMeters: Double?
+    let lowCloudCoverPercent: Double?
+    let lowestCloudBaseFeetAGL: Double?
     let ceilingFeetAGL: Double?
     let category: FlightCategory
     let pressureMSLHPA: Double?
@@ -32,17 +34,52 @@ struct EDFZForecast: Hashable {
 
 enum EDFZRunway {
     static func activeRunway(
+        for airportICAO: String,
+        windFromDegrees: Double,
+        speedKnots: Double
+    ) -> String? {
+        let runways: (
+            firstLabel: String,
+            firstHeading: Double,
+            secondLabel: String,
+            secondHeading: Double
+        )
+
+        switch airportICAO.uppercased() {
+        case "EDFZ", "EDKA", "EDWJ":
+            runways = ("07", 70, "25", 250)
+        case "EHMZ", "EDMZ":
+            runways = ("09", 87, "27", 267)
+        default:
+            return nil
+        }
+
+        guard speedKnots >= 0.5 else {
+            return "\(runways.firstLabel)/\(runways.secondLabel)"
+        }
+
+        let firstDifference = angularDifference(
+            windFromDegrees,
+            runways.firstHeading
+        )
+        let secondDifference = angularDifference(
+            windFromDegrees,
+            runways.secondHeading
+        )
+        return firstDifference <= secondDifference
+            ? runways.firstLabel
+            : runways.secondLabel
+    }
+
+    static func activeRunway(
         windFromDegrees: Double,
         speedKnots: Double
     ) -> String {
-        guard speedKnots >= 0.5 else { return "07/25" }
-        let difference = angularDifference(
-            windFromDegrees,
-            250.0
-        )
-        let component = speedKnots * cos(difference * .pi / 180.0)
-        if abs(component) < 0.05 { return "07/25" }
-        return component > 0 ? "25" : "07"
+        activeRunway(
+            for: "EDFZ",
+            windFromDegrees: windFromDegrees,
+            speedKnots: speedKnots
+        ) ?? "07/25"
     }
 
     private static func angularDifference(
@@ -64,14 +101,44 @@ actor EDFZWeatherService {
         plannedDate: Date,
         airport: AirportReference
     ) async throws -> EDFZForecast {
+        var displayedCalendar = Calendar(identifier: .gregorian)
+        displayedCalendar.timeZone = DestinationTimeZone.edfz
+        let displayedParts = displayedCalendar.dateComponents(
+            [.year, .month, .day],
+            from: plannedDate
+        )
+        guard
+            let year = displayedParts.year,
+            let month = displayedParts.month,
+            let dayOfMonth = displayedParts.day
+        else {
+            throw EDFZWeatherError.invalidURL
+        }
+        let startDay = String(
+            format: "%04d-%02d-%02d",
+            year,
+            month,
+            dayOfMonth
+        )
+        let followingDate =
+            displayedCalendar.date(
+                byAdding: .day,
+                value: 1,
+                to: plannedDate
+            ) ?? plannedDate
+        let followingParts = displayedCalendar.dateComponents(
+            [.year, .month, .day],
+            from: followingDate
+        )
+        let endDay = String(
+            format: "%04d-%02d-%02d",
+            followingParts.year ?? year,
+            followingParts.month ?? month,
+            followingParts.day ?? dayOfMonth
+        )
+
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = airport.timeZone
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = calendar.timeZone
-        formatter.dateFormat = "yyyy-MM-dd"
-        let day = formatter.string(from: plannedDate)
 
         var components = URLComponents(
             string: "https://api.open-meteo.com/v1/dwd-icon"
@@ -83,13 +150,13 @@ actor EDFZWeatherService {
                 name: "timezone",
                 value: airport.timeZone.identifier
             ),
-            URLQueryItem(name: "start_date", value: day),
-            URLQueryItem(name: "end_date", value: day),
+            URLQueryItem(name: "start_date", value: startDay),
+            URLQueryItem(name: "end_date", value: endDay),
             URLQueryItem(name: "models", value: "icon_seamless"),
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
-                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,weather_code,visibility,cloud_cover_low,pressure_msl"
+                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,dew_point_2m,weather_code,visibility,cloud_cover_low,pressure_msl"
             )
         ]
         guard let url = components?.url else {
@@ -111,10 +178,20 @@ actor EDFZWeatherService {
                 return nil
             }
             let visibility = value(decoded.hourly.visibility, index)
-            let ceiling = estimateCeiling(
-                lowCloudPercent: value(
-                    decoded.hourly.cloudCoverLow, index
+            let lowCloudCover = value(
+                decoded.hourly.cloudCoverLow, index
+            )
+            let cloudBase = estimatedCloudBaseFeet(
+                temperature: value(
+                    decoded.hourly.temperature2m, index
+                ),
+                dewPoint: value(
+                    decoded.hourly.dewPoint2m, index
                 )
+            )
+            let ceiling = estimateCeiling(
+                lowCloudPercent: lowCloudCover,
+                cloudBaseFeet: cloudBase
             )
             return EDFZWeatherSample(
                 validTime: time,
@@ -128,6 +205,8 @@ actor EDFZWeatherService {
                     ? decoded.hourly.weatherCode[index]
                     : nil,
                 visibilityMeters: visibility,
+                lowCloudCoverPercent: lowCloudCover,
+                lowestCloudBaseFeetAGL: cloudBase,
                 ceilingFeetAGL: ceiling,
                 category: flightCategory(
                     visibilityMeters: visibility,
@@ -140,13 +219,22 @@ actor EDFZWeatherService {
     }
 
     private func estimateCeiling(
-        lowCloudPercent: Double?
+        lowCloudPercent: Double?,
+        cloudBaseFeet: Double?
     ) -> Double? {
-        guard let lowCloudPercent else { return nil }
-        if lowCloudPercent >= 90 { return 800 }
-        if lowCloudPercent >= 75 { return 1800 }
-        if lowCloudPercent >= 50 { return 3000 }
-        return nil
+        guard let lowCloudPercent,
+              lowCloudPercent >= 62.5
+        else { return nil }
+        // Only BKN/OVC layers define a ceiling. SCT is not a ceiling.
+        return cloudBaseFeet
+    }
+
+    private func estimatedCloudBaseFeet(
+        temperature: Double?,
+        dewPoint: Double?
+    ) -> Double? {
+        guard let temperature, let dewPoint else { return nil }
+        return max(0, temperature - dewPoint) * 400
     }
 
     private func flightCategory(
@@ -180,6 +268,7 @@ private struct Hourly: Decodable {
     let windDirection10m: [Double?]
     let windGusts10m: [Double?]
     let temperature2m: [Double?]
+    let dewPoint2m: [Double?]
     let weatherCode: [Int?]
     let visibility: [Double?]
     let cloudCoverLow: [Double?]
@@ -191,6 +280,7 @@ private struct Hourly: Decodable {
         case windDirection10m = "wind_direction_10m"
         case windGusts10m = "wind_gusts_10m"
         case temperature2m = "temperature_2m"
+        case dewPoint2m = "dew_point_2m"
         case weatherCode = "weather_code"
         case visibility
         case cloudCoverLow = "cloud_cover_low"

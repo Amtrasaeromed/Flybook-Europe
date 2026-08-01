@@ -301,10 +301,11 @@ enum FlightDateTime {
             return nil
         }
 
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-
-        var parts = calendar.dateComponents(
+        // A DatePicker date represents the calendar day shown in the
+        // computer's current time zone. Read that semantic day first,
+        // then combine it with the selected airport's local clock.
+        let displayedCalendar = Calendar.current
+        var parts = displayedCalendar.dateComponents(
             [.year, .month, .day],
             from: date
         )
@@ -313,6 +314,8 @@ enum FlightDateTime {
         parts.second = 0
         parts.timeZone = timeZone
 
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
         return calendar.date(from: parts)
     }
 

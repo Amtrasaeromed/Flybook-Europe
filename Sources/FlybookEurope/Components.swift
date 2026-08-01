@@ -8,6 +8,71 @@ enum FlybookColor {
     static let background = Color(red: 0.985, green: 0.985, blue: 0.975)
 }
 
+enum DisplayUnitSystem: String, CaseIterable, Identifiable {
+    case eu = "EU"
+    case us = "US"
+
+    var id: String { rawValue }
+}
+
+enum UnitSystemSettingsKey {
+    static let displaySystem = "flybookDisplayUnitSystem"
+}
+
+enum AviationWeatherText {
+    static func cloudAndVisibility(
+        lowCloudCoverPercent: Double?,
+        lowestCloudBaseFeet: Double?,
+        visibilityMeters: Double?,
+        unitSystem: DisplayUnitSystem
+    ) -> String {
+        let cloud = cloudAmount(lowCloudCoverPercent)
+        let showsCloudBase = (lowCloudCoverPercent ?? 0) >= 12.5
+        let base = showsCloudBase
+            ? lowestCloudBaseFeet.map {
+                "\(Int(($0 / 100).rounded()) * 100)"
+            }
+            : nil
+        let cloudText = base.map { "\(cloud) \($0)" } ?? cloud
+
+        guard let visibilityMeters else {
+            return "\(cloudText) / —"
+        }
+
+        let visibilityText: String
+        switch unitSystem {
+        case .eu:
+            let kilometers = visibilityMeters / 1000
+            if kilometers >= 10 {
+                visibilityText = "10km+"
+            } else if kilometers >= 1 {
+                visibilityText = String(format: "%.0fkm", kilometers)
+            } else {
+                visibilityText = String(format: "%.1fkm", kilometers)
+            }
+        case .us:
+            let statuteMiles = visibilityMeters / 1609.344
+            if statuteMiles >= 10 {
+                visibilityText = "10SM+"
+            } else {
+                visibilityText = String(format: "%.1fSM", statuteMiles)
+            }
+        }
+        return "\(cloudText) / \(visibilityText)"
+    }
+
+    private static func cloudAmount(_ percent: Double?) -> String {
+        guard let percent else { return "—" }
+        switch percent {
+        case ..<12.5: return "SKC"
+        case ..<37.5: return "FEW"
+        case ..<62.5: return "SCT"
+        case ..<87.5: return "BKN"
+        default: return "OVC"
+        }
+    }
+}
+
 struct FlybookCard<Content: View>: View {
     @ViewBuilder let content: Content
 
@@ -98,13 +163,13 @@ struct TravelDurationBar: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("EMPFOHLENE REISEDAUER")
-                .font(.headline)
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
 
             GeometryReader { geometry in
-                let barHeight: CGFloat = 13
+                let barHeight: CGFloat = 10
                 let barCenterY: CGFloat =
                     barHeight / 2.0
 
@@ -142,7 +207,7 @@ struct TravelDurationBar: View {
                             .fill(FlybookColor.line)
                             .frame(
                                 width: 1,
-                                height: 28
+                                height: 22
                             )
                             .offset(
                                 x: geometry.size.width
@@ -163,14 +228,14 @@ struct TravelDurationBar: View {
                                 lineWidth: 2
                             )
                         )
-                        .frame(width: 18, height: 29)
+                        .frame(width: 16, height: 23)
                         .position(
                             x: markerX,
                             y: barCenterY
                         )
                 }
             }
-            .frame(height: 42)
+            .frame(height: 30)
 
             HStack(spacing: 0) {
                 Text("Tagestrip")

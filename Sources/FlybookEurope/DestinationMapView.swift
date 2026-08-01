@@ -7,6 +7,21 @@ enum DestinationMapPresentation {
     case airportAerial
 }
 
+private final class RouteAirportAnnotation: MKPointAnnotation {
+    enum Role {
+        case origin
+        case intermediate
+        case destination
+    }
+
+    let role: Role
+
+    init(role: Role) {
+        self.role = role
+        super.init()
+    }
+}
+
 final class YearlyCachedTileOverlay: MKTileOverlay {
     private let fileManager = FileManager.default
     private let cacheDirectory: URL
@@ -95,6 +110,9 @@ struct DestinationMapView: NSViewRepresentable {
     var originLatitude: Double? = nil
     var originLongitude: Double? = nil
     var originTitle: String? = nil
+    var intermediateLatitude: Double? = nil
+    var intermediateLongitude: Double? = nil
+    var intermediateTitle: String? = nil
     var presentation: DestinationMapPresentation = .europe
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -121,6 +139,56 @@ struct DestinationMapView: NSViewRepresentable {
                 return MKOverlayRenderer(overlay: overlay)
             }
             return MKTileOverlayRenderer(tileOverlay: tileOverlay)
+        }
+
+        func mapView(
+            _ mapView: MKMapView,
+            viewFor annotation: MKAnnotation
+        ) -> MKAnnotationView? {
+            guard let routeAnnotation =
+                annotation as? RouteAirportAnnotation
+            else { return nil }
+
+            let identifier = "route-airport-\(routeAnnotation.role)"
+            let marker =
+                mapView.dequeueReusableAnnotationView(
+                    withIdentifier: identifier
+                ) as? MKMarkerAnnotationView
+                ?? MKMarkerAnnotationView(
+                    annotation: routeAnnotation,
+                    reuseIdentifier: identifier
+                )
+            marker.annotation = routeAnnotation
+            marker.canShowCallout = true
+            marker.displayPriority = .required
+            marker.glyphTintColor = .white
+
+            switch routeAnnotation.role {
+            case .origin:
+                marker.markerTintColor = NSColor(
+                    red: 0.08,
+                    green: 0.31,
+                    blue: 0.52,
+                    alpha: 1
+                )
+                marker.glyphImage = NSImage(
+                    systemSymbolName: "house.fill",
+                    accessibilityDescription: "Abflugplatz"
+                )
+            case .intermediate:
+                marker.markerTintColor = .systemOrange
+                marker.glyphImage = NSImage(
+                    systemSymbolName: "circle.fill",
+                    accessibilityDescription: "Zwischenstopp"
+                )
+            case .destination:
+                marker.markerTintColor = .systemRed
+                marker.glyphImage = NSImage(
+                    systemSymbolName: "flag.fill",
+                    accessibilityDescription: "Zielflugplatz"
+                )
+            }
+            return marker
         }
     }
 
@@ -150,7 +218,9 @@ struct DestinationMapView: NSViewRepresentable {
             + "\(latitude ?? 999)-"
             + "\(longitude ?? 999)-"
             + "\(originLatitude ?? 999)-"
-            + "\(originLongitude ?? 999)"
+            + "\(originLongitude ?? 999)-"
+            + "\(intermediateLatitude ?? 999)-"
+            + "\(intermediateLongitude ?? 999)"
 
         guard
             context.coordinator.displayedLocationKey
@@ -193,7 +263,8 @@ struct DestinationMapView: NSViewRepresentable {
         )
 
         if presentation == .europe {
-            let destinationAnnotation = MKPointAnnotation()
+            let destinationAnnotation =
+                RouteAirportAnnotation(role: .destination)
             destinationAnnotation.coordinate = coordinate
             destinationAnnotation.title = title
             map.addAnnotation(destinationAnnotation)
@@ -203,12 +274,32 @@ struct DestinationMapView: NSViewRepresentable {
                     latitude: originLatitude,
                     longitude: originLongitude
                 )
-                let originAnnotation = MKPointAnnotation()
+                let originAnnotation =
+                    RouteAirportAnnotation(role: .origin)
                 originAnnotation.coordinate = originCoordinate
                 originAnnotation.title = originTitle
                 map.addAnnotation(originAnnotation)
 
-                var coordinates = [originCoordinate, coordinate]
+                var coordinates = [originCoordinate]
+
+                if let intermediateLatitude,
+                   let intermediateLongitude
+                {
+                    let intermediateCoordinate =
+                        CLLocationCoordinate2D(
+                            latitude: intermediateLatitude,
+                            longitude: intermediateLongitude
+                        )
+                    let intermediateAnnotation =
+                        RouteAirportAnnotation(role: .intermediate)
+                    intermediateAnnotation.coordinate =
+                        intermediateCoordinate
+                    intermediateAnnotation.title = intermediateTitle
+                    map.addAnnotation(intermediateAnnotation)
+                    coordinates.append(intermediateCoordinate)
+                }
+
+                coordinates.append(coordinate)
                 let route = MKPolyline(
                     coordinates: &coordinates,
                     count: coordinates.count

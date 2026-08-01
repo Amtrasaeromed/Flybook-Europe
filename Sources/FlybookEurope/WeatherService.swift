@@ -42,8 +42,10 @@ actor WeatherService {
             destination: destination,
             latitude: latitude,
             longitude: longitude,
+            endpoint: "dwd-icon",
             model: "icon_eu",
             modelLabel: "ICON-EU",
+            forecastDays: 8,
             targetInstants: targetInstants
         )
 
@@ -51,8 +53,21 @@ actor WeatherService {
             destination: destination,
             latitude: latitude,
             longitude: longitude,
+            endpoint: "dwd-icon",
             model: "icon_seamless",
             modelLabel: "ICON Seamless",
+            forecastDays: 8,
+            targetInstants: targetInstants
+        )
+
+        async let extendedRequest = fetch(
+            destination: destination,
+            latitude: latitude,
+            longitude: longitude,
+            endpoint: "forecast",
+            model: nil,
+            modelLabel: "Best Match",
+            forecastDays: 10,
             targetInstants: targetInstants
         )
 
@@ -65,18 +80,26 @@ actor WeatherService {
                 destination: destination,
                 latitude: latitude,
                 longitude: longitude,
+                endpoint: "dwd-icon",
                 model: "icon_d2",
                 modelLabel: "ICON-D2",
+                forecastDays: 3,
                 targetInstants: nearInstants
             )
         }
 
-        let euWeather = try await euRequest
-        let seamlessWeather = try await seamlessRequest
+        let euWeather = try? await euRequest
+        let seamlessWeather = try? await seamlessRequest
+        let extendedWeather = try await extendedRequest
+        let baseWeather =
+            [euWeather, seamlessWeather]
+                .compactMap { $0 }
+                .first { !$0.days.isEmpty }
+            ?? extendedWeather
 
         var merged = mergeWeather(
             d2: d2Weather,
-            eu: euWeather,
+            eu: baseWeather,
             targetInstants: targetInstants,
             d2Limit: d2Limit
         )
@@ -87,8 +110,11 @@ actor WeatherService {
             timezone: merged.timezone,
             days: merged.days,
             dailyForecast:
-                normalizedFiveDayForecast(
-                    seamlessWeather.dailyForecast
+                mergedDailyForecast(
+                    d2: d2Weather,
+                    eu: euWeather,
+                    seamless: seamlessWeather,
+                    extended: extendedWeather
                 )
         )
 
@@ -96,10 +122,81 @@ actor WeatherService {
         return merged
     }
 
-    private func normalizedFiveDayForecast(
-        _ source: [DailyForecast]
+    private func mergedDailyForecast(
+        d2: DestinationWeather?,
+        eu: DestinationWeather?,
+        seamless: DestinationWeather?,
+        extended: DestinationWeather
     ) -> [DailyForecast] {
-        Array(source.prefix(5))
+        let d2ByDate = dailyByDate(d2)
+        let euByDate = dailyByDate(eu)
+        let seamlessByDate = dailyByDate(seamless)
+
+        return Array(extended.dailyForecast.prefix(10))
+            .enumerated()
+            .map { index, fallbackDay in
+                let date = fallbackDay.localDate
+                if index < 2, let day = d2ByDate[date] {
+                    return completeDailyForecast(
+                        preferred: day,
+                        fallback: fallbackDay
+                    )
+                }
+                if index < 5, let day = euByDate[date] {
+                    return completeDailyForecast(
+                        preferred: day,
+                        fallback: fallbackDay
+                    )
+                }
+                if index < 8, let day = seamlessByDate[date] {
+                    return completeDailyForecast(
+                        preferred: day,
+                        fallback: fallbackDay
+                    )
+                }
+                return fallbackDay
+            }
+    }
+
+    private func completeDailyForecast(
+        preferred: DailyForecast,
+        fallback: DailyForecast
+    ) -> DailyForecast {
+        DailyForecast(
+            localDate: preferred.localDate,
+            weatherCode:
+                preferred.weatherCode ?? fallback.weatherCode,
+            morningWeatherCode:
+                preferred.morningWeatherCode
+                ?? fallback.morningWeatherCode,
+            middayWeatherCode:
+                preferred.middayWeatherCode
+                ?? fallback.middayWeatherCode,
+            eveningWeatherCode:
+                preferred.eveningWeatherCode
+                ?? fallback.eveningWeatherCode,
+            minimumTemperatureCelsius:
+                preferred.minimumTemperatureCelsius
+                ?? fallback.minimumTemperatureCelsius,
+            maximumTemperatureCelsius:
+                preferred.maximumTemperatureCelsius
+                ?? fallback.maximumTemperatureCelsius,
+            maximumSurfaceWindKnots:
+                preferred.maximumSurfaceWindKnots
+                ?? fallback.maximumSurfaceWindKnots,
+            model: preferred.model
+        )
+    }
+
+    private func dailyByDate(
+        _ weather: DestinationWeather?
+    ) -> [String: DailyForecast] {
+        Dictionary(
+            uniqueKeysWithValues:
+                (weather?.dailyForecast ?? []).map {
+                    ($0.localDate, $0)
+                }
+        )
     }
 
     private func mergeWeather(
@@ -205,25 +302,30 @@ actor WeatherService {
         destination: Destination,
         latitude: Double,
         longitude: Double,
-        model: String,
+        endpoint: String,
+        model: String?,
         modelLabel: String,
+        forecastDays: Int,
         targetInstants: [Date]
     ) async throws -> DestinationWeather {
         var components = URLComponents(
-            string: "https://api.open-meteo.com/v1/dwd-icon"
+            string: "https://api.open-meteo.com/v1/\(endpoint)"
         )
 
-        components?.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "latitude", value: String(latitude)),
             URLQueryItem(name: "longitude", value: String(longitude)),
             URLQueryItem(name: "timezone", value: "auto"),
-            URLQueryItem(name: "forecast_days", value: "8"),
-            URLQueryItem(name: "models", value: model),
+            URLQueryItem(
+                name: "forecast_days",
+                value: String(forecastDays)
+            ),
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
                 value: [
                     "temperature_2m",
+                    "dew_point_2m",
                     "precipitation_probability",
                     "weather_code",
                     "visibility",
@@ -254,6 +356,12 @@ actor WeatherService {
                 ].joined(separator: ",")
             )
         ]
+        if let model {
+            queryItems.append(
+                URLQueryItem(name: "models", value: model)
+            )
+        }
+        components?.queryItems = queryItems
 
         guard let url = components?.url else {
             throw WeatherError.invalidURL
@@ -316,15 +424,16 @@ actor WeatherService {
 
         let selectedInstants = Array(targetInstants.prefix(2))
 
-        let forecastDays: [ForecastDay] = try selectedInstants.enumerated().map {
+        let forecastDays: [ForecastDay] =
+            selectedInstants.enumerated().compactMap {
             offset,
-            targetInstant in
+            targetInstant -> ForecastDay? in
 
             guard let index = nearestIndex(
                 target: targetInstant,
                 values: parsedTimes
             ) else {
-                throw WeatherError.forecastTimeMissing
+                return nil
             }
 
             let targetDate = targetInstant
@@ -339,8 +448,20 @@ actor WeatherService {
                 at: index
             )
 
+            let cloudBase = estimatedCloudBaseFeet(
+                temperature: optionalValue(
+                    api.hourly.temperature2m,
+                    at: index
+                ),
+                dewPoint: optionalValue(
+                    api.hourly.dewPoint2m,
+                    at: index
+                )
+            )
+
             let ceiling = estimateCeiling(
-                lowCloudPercent: lowCloudCover
+                lowCloudPercent: lowCloudCover,
+                cloudBaseFeet: cloudBase
             )
 
             let dateKey = dateFormatter.string(from: targetDate)
@@ -372,6 +493,8 @@ actor WeatherService {
                     at: index
                 ),
                 visibilityMeters: visibility,
+                lowCloudCoverPercent: lowCloudCover,
+                lowestCloudBaseFeetAGL: cloudBase,
                 ceilingFeetAGL: ceiling,
                 precipitationProbability: optionalValue(
                     api.hourly.precipitationProbability,
@@ -410,9 +533,20 @@ actor WeatherService {
         }
 
         let dailyForecast = Array(
-            api.daily.time.indices.prefix(5)
+            api.daily.time.indices.prefix(15)
         ).map { index in
             let localDate = api.daily.time[index]
+            let maximumSurfaceWindKnots = api.hourly.time.indices
+                .filter {
+                    api.hourly.time[$0].hasPrefix(localDate)
+                }
+                .compactMap {
+                    optionalValue(
+                        api.hourly.windSpeed10m,
+                        at: $0
+                    )
+                }
+                .max()
 
             func weatherCode(at hour: Int) -> Int? {
                 let timestamp = String(
@@ -457,6 +591,8 @@ actor WeatherService {
                         api.daily.temperature2mMax,
                         at: index
                     ),
+                maximumSurfaceWindKnots:
+                    maximumSurfaceWindKnots,
                 model: modelLabel
             )
         }
@@ -592,25 +728,26 @@ actor WeatherService {
     }
 
     private func estimateCeiling(
-        lowCloudPercent: Double?
+        lowCloudPercent: Double?,
+        cloudBaseFeet: Double?
     ) -> Double? {
-        guard let lowCloudPercent else {
+        guard let lowCloudPercent,
+              lowCloudPercent >= 62.5
+        else {
             return nil
         }
 
-        if lowCloudPercent >= 90.0 {
-            return 800.0
-        }
+        // In METAR terms only BKN and OVC constitute a ceiling.
+        // FEW and SCT must never drive an MVFR/IFR category.
+        return cloudBaseFeet
+    }
 
-        if lowCloudPercent >= 75.0 {
-            return 1800.0
-        }
-
-        if lowCloudPercent >= 50.0 {
-            return 3000.0
-        }
-
-        return nil
+    private func estimatedCloudBaseFeet(
+        temperature: Double?,
+        dewPoint: Double?
+    ) -> Double? {
+        guard let temperature, let dewPoint else { return nil }
+        return max(0, temperature - dewPoint) * 400
     }
 
     private func flightCategory(
@@ -760,6 +897,7 @@ private struct APIResponse: Decodable {
 private struct Hourly: Decodable {
     let time: [String]
     let temperature2m: [Double?]
+    let dewPoint2m: [Double?]
     let precipitationProbability: [Double?]
     let weatherCode: [Int?]
     let visibility: [Double?]
@@ -781,6 +919,7 @@ private struct Hourly: Decodable {
     enum CodingKeys: String, CodingKey {
         case time
         case temperature2m = "temperature_2m"
+        case dewPoint2m = "dew_point_2m"
         case precipitationProbability = "precipitation_probability"
         case weatherCode = "weather_code"
         case visibility
@@ -818,4 +957,3 @@ private struct Daily: Decodable {
         case temperature2mMin = "temperature_2m_min"
     }
 }
-

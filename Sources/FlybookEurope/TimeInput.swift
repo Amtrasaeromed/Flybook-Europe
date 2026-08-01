@@ -68,4 +68,21 @@ enum TimeInput {
             normalized % 60
         )
     }
+
+    static func displayClock(
+        _ timeText: String,
+        usesTwelveHourFormat: Bool
+    ) -> String {
+        guard usesTwelveHourFormat,
+              let minutes = minutes(from: timeText)
+        else {
+            return timeText
+        }
+
+        let hour24 = minutes / 60
+        let minute = minutes % 60
+        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
+        let period = hour24 < 12 ? "AM" : "PM"
+        return String(format: "%d:%02d %@", hour12, minute, period)
+    }
 }
