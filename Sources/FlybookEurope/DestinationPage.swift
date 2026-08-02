@@ -2055,7 +2055,7 @@ private struct CompactDailyForecastTile: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(red: 0.94, green: 0.975, blue: 1.0))
+                .fill(Color.gray.opacity(0.13))
         )
     }
 
