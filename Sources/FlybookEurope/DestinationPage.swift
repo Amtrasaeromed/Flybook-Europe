@@ -140,10 +140,14 @@ struct DestinationPage: View {
 
     private var refuelLossEUR: Double? {
         guard refuelAtDestination else { return 0 }
-        guard let gross = destinationFuelPrice, let reference = homeReferencePrice else { return nil }
         let foreign = !["DE", "DEUTSCHLAND"].contains(refuelAirport.country.uppercased())
-        let reimbursable = foreign ? min(gross / (1 + destinationVATPercent / 100), reference) : min(gross, reference)
-        return max(0, (gross - reimbursable) * refuelLiters)
+        return CharterMath.refuelLoss(
+            grossPricePerLiter: destinationFuelPrice,
+            homeReferencePerLiter: homeReferencePrice,
+            liters: refuelLiters,
+            destinationVATPercent: destinationVATPercent,
+            isForeign: foreign
+        )
     }
 
     @AppStorage(AircraftSettingsKey.selectedAircraft)
@@ -1076,6 +1080,8 @@ struct DestinationPage: View {
                 Text(headerSubtitle)
                 .font(.system(size: 16))
                 .foregroundStyle(FlybookColor.navy)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
             }
 
             Spacer()
@@ -1641,7 +1647,7 @@ struct DestinationPage: View {
 
             }
         }
-        .frame(width: 1010, height: isOneWay ? 272 : 362)
+        .frame(width: 1010, height: isOneWay ? 240 : 300)
     }
 
     private var calculationRowSection: some View {
@@ -2602,7 +2608,7 @@ private struct PlanningWeatherCard: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.gray.opacity(0.13))
+                .fill(Color(red: 0.94, green: 0.975, blue: 1.0))
         )
     }
 
@@ -3613,252 +3619,144 @@ private struct FlightPlanningLine<
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 5) {
-            StopCountSelector(selection: $stopCount)
-                .frame(width: 98, height: 108)
-                .padding(.top, 158)
-
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Text(directionTitle)
-                        .font(
-                            .system(
-                                size: 18,
-                                weight: .bold,
-                                design: .monospaced
-                            )
-                        )
-                        .foregroundStyle(FlybookColor.navy)
-
-                    DatePicker(
-                        "",
-                        selection: $flightDate,
-                        displayedComponents: .date
-                    )
-                    .labelsHidden()
-                    .datePickerStyle(.field)
-                    .font(.system(size: 16, weight: .semibold))
-                    .controlSize(.regular)
-                    .frame(width: 128)
-
-                    Button("Heute") {
-                        flightDate =
-                            Calendar.current.startOfDay(for: Date())
-                    }
-                    .buttonStyle(.bordered)
-                    .font(.system(size: 15, weight: .semibold))
-                    .controlSize(.regular)
-
-                    Button("Jetzt", action: setNow)
-                        .buttonStyle(.bordered)
-                        .font(.system(size: 15, weight: .semibold))
-                        .controlSize(.regular)
-
-                    Spacer(minLength: 0)
-                }
-
-                HStack(alignment: .top, spacing: 22) {
-                    FlightLocationHeader(
-                        title: leadingTitle,
-                        runway: leadingRunway,
-                        crosswindWarning:
-                            leadingWeather.runwayCrosswindWarning
-                    )
-
-                    if let trailingAirportSelection {
-                        VStack(spacing: 3) {
-                            Text("ANKUNFT")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(FlybookColor.muted)
-
-                            Picker(
-                                "Zwischenstopp",
-                                selection: trailingAirportSelection
-                            ) {
-                                ForEach(airportOptions) { airport in
-                                    Text("\(airport.icao) · \(airport.name)")
-                                        .tag(airport.icao)
-                                }
-                            }
-                            .labelsHidden()
-                            .controlSize(.small)
-                            .frame(width: 174)
-                        }
-                        .frame(width: 174)
-                    } else {
-                        FlightLocationHeader(
-                            title: trailingTitle,
-                            runway: trailingRunway,
-                            crosswindWarning:
-                                trailingWeather.runwayCrosswindWarning
-                        )
-                    }
-
-                    if let refuelSelection {
-                        Button {
-                            refuelSelection.wrappedValue.toggle()
-                        } label: {
-                            Image(systemName: "fuelpump.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(refuelSelection.wrappedValue ? FlybookColor.blue : FlybookColor.muted)
-                        }
-                        .buttonStyle(.plain)
-                        .help(refuelSelection.wrappedValue ? "Betankung am Ziel ausgewählt" : "Am Ziel tanken")
-                    }
-                }
-
-                HStack(alignment: .center, spacing: 4) {
-                    VStack(spacing: 5) {
-                        leading
-                    }
-                    .frame(width: 174)
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(FlybookColor.muted)
-                        .frame(width: 18, height: 43)
-
-                    VStack(spacing: 5) {
-                        trailing
-                    }
-                    .frame(width: 174)
-                }
-                .frame(height: 43)
-                .overlay(alignment: .trailing) {
-                    TravelDurationBadge(minutes: travelMinutes)
-                        .frame(width: 70, height: 43)
-                        .offset(x: 75)
-                }
-
-                HStack(spacing: 4) {
-                    PlanningWeatherCard(
-                        weather: leadingWeather,
-                        civilDawnText: leadingCivilDawnText,
-                        sunriseText: leadingSunriseText,
-                        sunsetText: leadingSunsetText,
-                        civilDuskText: leadingCivilDuskText
-                    )
-                    .frame(width: 142, height: 184)
-                    .frame(width: 174)
-
-                    Color.clear
-                        .frame(width: 18)
-
-                    PlanningWeatherCard(
-                        weather: trailingWeather,
-                        civilDawnText: trailingCivilDawnText,
-                        sunriseText: trailingSunriseText,
-                        sunsetText: trailingSunsetText,
-                        civilDuskText: trailingCivilDuskText
-                    )
-                    .frame(width: 142, height: 184)
-                    .frame(width: 174)
-                }
-
-                HStack(spacing: 8) {
-                    Text(
-                        bestLevelFeet.map {
-                            String(format: "Best Level: FL%03d", Int(round(Double($0) / 100.0)))
-                        } ?? "Best Level: —"
-                    )
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(FlybookColor.blue)
-                    .frame(width: 140, alignment: .leading)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                    Picker(
-                        "Flughöhe",
-                        selection: $flightAltitudeFeet
-                    ) {
-                        ForEach(
-                            altitudeOptions,
-                            id: \.self
-                        ) { altitude in
-                            Text(altitudeLabel(altitude)).tag(altitude)
-                        }
-                    }
-                    .labelsHidden()
-                    .font(.system(size: 15, weight: .semibold))
-                    .controlSize(.regular)
-                    .frame(width: 100)
-
-                    if let headwindKnots {
-                        WindInfluenceLabel(
-                            headwindKnots: headwindKnots
-                        )
-                    }
-                }
-
-            }
-            .frame(width: 420)
-
-            Color.clear
-                .frame(width: 52, height: 1)
-
-            VStack(spacing: 5) {
-                Text("ETOPS-\nPIPI")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(FlybookColor.muted)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(-1)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(width: 54, height: 28)
-                Circle()
-                    .fill(
-                        ETOPSBand.color(
-                            for: selectedLegMinutes,
-                            greenYellowMinutes: greenYellowMinutes,
-                            orangeRedMinutes: orangeRedMinutes
-                        )
-                    )
-                    .overlay(
-                        Circle().stroke(
-                            FlybookColor.navy.opacity(0.35),
-                            lineWidth: 1
-                        )
-                    )
-                    .frame(width: 16, height: 16)
-
-                Divider().frame(width: 48)
-
-                TrackMilesEditor(trackMiles: $trackMiles)
-            }
-            .frame(width: 64)
-            .help("Farbe aus der Dauer des einzelnen Fluglegs")
+        VStack(spacing: 7) {
+            planningHeaderRow
+            planningTimeRow
+            planningWeatherRow
+            planningFooterRow
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .overlay(alignment: .bottomLeading) {
-            if showsRefreshButton {
-                HStack(spacing: 5) {
-                    Button(action: refreshWeather) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(width: 28, height: 26)
-                    }
-                    .help("Wetterdaten jetzt aktualisieren")
+        .frame(width: 622, alignment: .leading)
+    }
 
-                    Button(action: resetSchedule) {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(width: 28, height: 26)
-                    }
-                    .help("Datum und Uhrzeiten auf Standard zurücksetzen")
+    private var planningHeaderRow: some View {
+        HStack(alignment: .top, spacing: 0) {
+            Text(directionTitle)
+                .font(.system(size: 17, weight: .bold, design: .monospaced))
+                .foregroundStyle(FlybookColor.navy)
+                .frame(width: 128, alignment: .leading)
 
-                    Button(action: reverseRoute) {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.system(size: 16, weight: .bold))
-                            .frame(width: 28, height: 26)
+            FlightLocationHeader(title: leadingTitle, runway: leadingRunway, crosswindWarning: leadingWeather.runwayCrosswindWarning)
+                .frame(width: 174)
+
+            Color.clear.frame(width: 18, height: 1)
+
+            Group {
+                if let trailingAirportSelection {
+                    VStack(spacing: 3) {
+                        Text("ANKUNFT").font(.system(size: 11, weight: .bold)).foregroundStyle(FlybookColor.muted)
+                        Picker("Zwischenstopp", selection: trailingAirportSelection) {
+                            ForEach(airportOptions) { airport in
+                                Text("\(airport.icao) · \(airport.name)").tag(airport.icao)
+                            }
+                        }
+                        .labelsHidden().controlSize(.small).frame(width: 174)
                     }
-                    .help("Start- und Zielflugplatz vertauschen")
+                } else {
+                    FlightLocationHeader(title: trailingTitle, runway: trailingRunway, crosswindWarning: trailingWeather.runwayCrosswindWarning)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
             }
+            .frame(width: 174)
+
+            HStack(spacing: 12) {
+                if let refuelSelection {
+                    Button { refuelSelection.wrappedValue.toggle() } label: {
+                        Image(systemName: "fuelpump.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(refuelSelection.wrappedValue ? FlybookColor.blue : FlybookColor.muted)
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                    .help(refuelSelection.wrappedValue ? "Betankung am Ziel ausgewählt" : "Am Ziel tanken")
+                } else {
+                    Color.clear.frame(width: 30, height: 30)
+                }
+
+                VStack(spacing: 2) {
+                    Text("ETOPS-PIPI").font(.system(size: 10, weight: .bold)).foregroundStyle(FlybookColor.muted).lineLimit(1)
+                    Circle()
+                        .fill(ETOPSBand.color(for: selectedLegMinutes, greenYellowMinutes: greenYellowMinutes, orangeRedMinutes: orangeRedMinutes))
+                        .overlay(Circle().stroke(FlybookColor.navy.opacity(0.35), lineWidth: 1))
+                        .frame(width: 16, height: 16)
+                }
+            }
+            .frame(width: 128, height: 42)
         }
     }
+
+    private var planningTimeRow: some View {
+        HStack(alignment: .center, spacing: 0) {
+            DatePicker("", selection: $flightDate, displayedComponents: .date)
+                .labelsHidden().datePickerStyle(.field).controlSize(.small)
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 118)
+                .frame(width: 128, alignment: .leading)
+
+            leading.frame(width: 174, height: 43)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(FlybookColor.muted)
+                .frame(width: 18, height: 43)
+            trailing.frame(width: 174, height: 43)
+            TravelDurationBadge(minutes: travelMinutes)
+                .frame(width: 74, height: 43)
+                .frame(width: 128)
+        }
+    }
+
+    private var planningWeatherRow: some View {
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 8) {
+                Button("Heute") { flightDate = Calendar.current.startOfDay(for: Date()) }
+                Button("Jetzt", action: setNow)
+            }
+            .buttonStyle(.bordered).controlSize(.small)
+            .font(.system(size: 12, weight: .semibold))
+            .frame(width: 128, alignment: .leading)
+
+            PlanningWeatherCard(weather: leadingWeather, civilDawnText: leadingCivilDawnText, sunriseText: leadingSunriseText, sunsetText: leadingSunsetText, civilDuskText: leadingCivilDuskText)
+                .frame(width: 174, height: 184)
+            Color.clear.frame(width: 18, height: 1)
+            PlanningWeatherCard(weather: trailingWeather, civilDawnText: trailingCivilDawnText, sunriseText: trailingSunriseText, sunsetText: trailingSunsetText, civilDuskText: trailingCivilDuskText)
+                .frame(width: 174, height: 184)
+
+            VStack(spacing: 9) {
+                TrackMilesEditor(trackMiles: $trackMiles)
+                StopCountSelector(selection: $stopCount)
+                    .frame(width: 120, height: 108)
+            }
+            .frame(width: 128, alignment: .top)
+        }
+    }
+
+    private var planningFooterRow: some View {
+        HStack(spacing: 0) {
+            Group {
+                if showsRefreshButton {
+                    HStack(spacing: 4) {
+                        Button(action: refreshWeather) { Image(systemName: "arrow.clockwise") }.help("Wetterdaten aktualisieren")
+                        Button(action: resetSchedule) { Image(systemName: "arrow.counterclockwise") }.help("Datum und Uhrzeiten zurücksetzen")
+                        Button(action: reverseRoute) { Image(systemName: "arrow.left.arrow.right") }.help("Start und Ziel vertauschen")
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
+                }
+            }
+            .frame(width: 128, alignment: .leading)
+
+            HStack(spacing: 8) {
+                Text(bestLevelFeet.map { String(format: "Best Level: FL%03d", Int(round(Double($0) / 100.0))) } ?? "Best Level: —")
+                    .font(.system(size: 15, weight: .bold)).foregroundStyle(FlybookColor.blue)
+                    .lineLimit(1).minimumScaleFactor(0.75)
+                Picker("Flughöhe", selection: $flightAltitudeFeet) {
+                    ForEach(altitudeOptions, id: \.self) { altitude in Text(altitudeLabel(altitude)).tag(altitude) }
+                }
+                .labelsHidden().controlSize(.small).frame(width: 105)
+                if let headwindKnots { WindInfluenceLabel(headwindKnots: headwindKnots) }
+            }
+            .frame(width: 366, alignment: .center)
+            Color.clear.frame(width: 128, height: 1)
+        }
+    }
+
 }
 
 private struct TrackMilesEditor: View {
@@ -4396,8 +4294,13 @@ private struct DestinationRefuelCalculationRow: View {
     }
 
     private func changePrice(_ delta: Double) {
-        if manualPrice == nil { manualPrice = 2.80 }
-        else { manualPrice = max(0, (manualPrice! + delta) * 100).rounded() / 100 }
+        if manualPrice == nil {
+            manualPrice = knownPrice.map {
+                max(0, ($0 + delta) * 100).rounded() / 100
+            } ?? 2.80
+        } else {
+            manualPrice = max(0, (manualPrice! + delta) * 100).rounded() / 100
+        }
     }
 
     private func stepButtons(down: @escaping () -> Void, up: @escaping () -> Void) -> some View {
@@ -4567,7 +4470,7 @@ private struct CalculationTotalRow: View {
     }
 
     private func decimalHours(_ minutes: Int) -> String {
-        let commerciallyRounded = ceil(Double(max(0, minutes)) / 6.0) / 10.0
+        let commerciallyRounded = CharterMath.commercialDecimalHours(minutes: minutes)
         return commerciallyRounded.formatted(
             .number
                 .locale(Locale(identifier: "de_DE"))
@@ -4699,7 +4602,7 @@ private struct CalculationRow: View {
     }
 
     private var blockTimeText: String {
-        let commerciallyRounded = ceil(Double(max(0, blockMinutes)) / 6.0) / 10.0
+        let commerciallyRounded = CharterMath.commercialDecimalHours(minutes: blockMinutes)
         return commerciallyRounded.formatted(
             .number
                 .locale(Locale(identifier: "de_DE"))
