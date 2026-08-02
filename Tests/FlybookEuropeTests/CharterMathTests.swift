@@ -8,6 +8,14 @@ final class CharterMathTests: XCTestCase {
         XCTAssertEqual(CharterMath.commercialDecimalHours(minutes: 67), 1.2)
     }
 
+    func testCommercialCostUsesDisplayedRoundedBlockTime() {
+        XCTAssertEqual(
+            CharterMath.commercialCost(minutes: 67, hourlyRateEUR: 100),
+            120,
+            accuracy: 0.0001
+        )
+    }
+
     func testDomesticEDKALossForTenLiters() {
         let loss = CharterMath.refuelLoss(
             grossPricePerLiter: 2.69,
@@ -36,6 +44,16 @@ final class CharterMathTests: XCTestCase {
             homeReferencePerLiter: 2.59,
             liters: 70,
             destinationVATPercent: 21,
+            isForeign: true
+        ))
+    }
+
+    func testUnknownForeignVATProducesUnknownLoss() {
+        XCTAssertNil(CharterMath.refuelLoss(
+            grossPricePerLiter: 2.80,
+            homeReferencePerLiter: 2.59,
+            liters: 70,
+            destinationVATPercent: nil,
             isForeign: true
         ))
     }

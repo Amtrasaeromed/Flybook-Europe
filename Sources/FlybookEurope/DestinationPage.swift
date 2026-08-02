@@ -106,7 +106,9 @@ struct DestinationPage: View {
     }
 
     private var refuelAirport: Destination {
-        availableDestinations.first { $0.icao == planningDestination.icao } ?? destination
+        let arrivalICAO = firstLegDestination.icao
+        return availableDestinations.first { $0.icao == arrivalICAO }
+            ?? destination
     }
 
     private var destinationFuelPrice: Double? { manualRefuelPrice ?? price(preferredFuel, at: refuelAirport) }
@@ -133,9 +135,9 @@ struct DestinationPage: View {
         return values.min()
     }
 
-    private var destinationVATPercent: Double {
+    private var destinationVATPercent: Double? {
         let code = refuelAirport.country.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        return ["DE":19,"DEUTSCHLAND":19,"NL":21,"NIEDERLANDE":21,"DK":25,"DÄNEMARK":25,"CZ":21,"TSCHECHIEN":21,"FR":20,"FRANKREICH":20,"AT":20,"ÖSTERREICH":20,"CH":8.1,"SCHWEIZ":8.1,"SI":22,"SLOWENIEN":22,"HR":25,"KROATIEN":25,"IT":22,"ITALIEN":22][code] ?? 0
+        return ["DE":19,"DEUTSCHLAND":19,"NL":21,"NIEDERLANDE":21,"DK":25,"DÄNEMARK":25,"CZ":21,"TSCHECHIEN":21,"FR":20,"FRANKREICH":20,"AT":20,"ÖSTERREICH":20,"CH":8.1,"SCHWEIZ":8.1,"SI":22,"SLOWENIEN":22,"HR":25,"KROATIEN":25,"IT":22,"ITALIEN":22][code]
     }
 
     private var refuelLossEUR: Double? {
@@ -558,17 +560,21 @@ struct DestinationPage: View {
             applyAutomaticStopSelection()
         }
         .onChange(of: destination.icao) { _ in
+            resetRefuelEntry()
             resetAutomaticStops()
             normalizeFlightAltitudes()
         }
         .onChange(of: selectedOriginICAO) { _ in
+            resetRefuelEntry()
             normalizeFlightAltitudes()
         }
         .onChange(of: isRouteReversed) { _ in
+            resetRefuelEntry()
             resetAutomaticStops()
             normalizeFlightAltitudes()
         }
         .onChange(of: flightPlanningMode) { mode in
+            resetRefuelEntry()
             if mode == .roundTrip {
                 let today =
                     Calendar.current.startOfDay(for: Date())
@@ -601,6 +607,7 @@ struct DestinationPage: View {
             normalizeFlightAltitudes()
         }
         .onChange(of: intermediateICAO) { _ in
+            resetRefuelEntry()
             guard flightPlanningMode == .multiStop else { return }
             resetAutomaticStops()
             outboundTrackMilesOverride = nil
@@ -629,6 +636,9 @@ struct DestinationPage: View {
         .onChange(of: outboundStartInstant) { _ in
             synchronizeReservationWindow()
         }
+        .onChange(of: selectedAircraftRaw) { _ in
+            resetRefuelEntry()
+        }
         .onChange(of: reservationArrivalInstant) { _ in
             synchronizeReservationWindow()
         }
@@ -637,6 +647,12 @@ struct DestinationPage: View {
             storedCalculatedBlockMinutes = totalCalculatedBlockMinutes
             synchronizeReservationWindow()
         }
+    }
+
+    private func resetRefuelEntry() {
+        refuelAtDestination = false
+        refuelLiters = 70
+        manualRefuelPrice = nil
     }
 
     private var outboundStopsBinding: Binding<Int> {
@@ -2608,7 +2624,7 @@ private struct PlanningWeatherCard: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(red: 0.94, green: 0.975, blue: 1.0))
+                .fill(Color(nsColor: .controlBackgroundColor))
         )
     }
 
@@ -4407,7 +4423,7 @@ private struct CalculationTotalRow: View {
             weekdayDiscountEnabled && weekday(date)
                 ? baseRate * 0.95
                 : baseRate
-        return Double(minutes) / 60.0 * rate
+        return CharterMath.commercialCost(minutes: minutes, hourlyRateEUR: rate)
             * (1.0 + max(0, vatPercent) / 100.0)
     }
 
@@ -4581,8 +4597,10 @@ private struct CalculationRow: View {
     }
 
     private var costBeforeVATEUR: Double {
-        Double(blockMinutes) / 60.0
-            * netHourlyRateEUR
+        CharterMath.commercialCost(
+            minutes: blockMinutes,
+            hourlyRateEUR: netHourlyRateEUR
+        )
     }
 
     private var costEUR: Double {

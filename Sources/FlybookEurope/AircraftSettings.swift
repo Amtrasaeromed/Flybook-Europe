@@ -179,7 +179,9 @@ enum AircraftProfileStore {
 
     static func preferredFuel(for aircraft: AircraftType) -> AircraftFuelType {
         let raw = UserDefaults.standard.string(forKey: aircraft.preferredFuelKey)
-        return raw.flatMap(AircraftFuelType.init(rawValue:)) ?? aircraft.defaultPreferredFuel
+        let stored = raw.flatMap(AircraftFuelType.init(rawValue:))
+        if let stored, isApproved(stored, for: aircraft) { return stored }
+        return approvedFuels(for: aircraft).first ?? aircraft.defaultPreferredFuel
     }
 
     static func isApproved(_ fuel: AircraftFuelType, for aircraft: AircraftType) -> Bool {
@@ -352,6 +354,16 @@ private struct AircraftProfileEditor: View {
         convertedFuelBinding($fuelConsumptionPerHour)
     }
 
+    private var approvedFuelTypes: [AircraftFuelType] {
+        AircraftFuelType.allCases.filter { fuel in
+            switch fuel {
+            case .avgas: return avgasApproved
+            case .ul91: return ul91Approved
+            case .mogas: return mogasApproved
+            }
+        }
+    }
+
     init(aircraft: AircraftType) {
         self.aircraft = aircraft
 
@@ -424,7 +436,7 @@ private struct AircraftProfileEditor: View {
                                 Text("Bevorzugte Kraftstoffsorte")
                                 Spacer()
                                 Picker("Bevorzugte Kraftstoffsorte", selection: $preferredFuelRaw) {
-                                    ForEach(AircraftFuelType.allCases) { fuel in
+                                    ForEach(approvedFuelTypes) { fuel in
                                         Text(fuel.rawValue).tag(fuel.rawValue)
                                     }
                                 }
@@ -439,6 +451,9 @@ private struct AircraftProfileEditor: View {
                                 Toggle("UL91", isOn: $ul91Approved)
                                 Toggle("MOGAS", isOn: $mogasApproved)
                             }
+                            .onChange(of: avgasApproved) { _ in normalizeFuelSelection(changed: .avgas) }
+                            .onChange(of: ul91Approved) { _ in normalizeFuelSelection(changed: .ul91) }
+                            .onChange(of: mogasApproved) { _ in normalizeFuelSelection(changed: .mogas) }
                         }
                         .padding(8)
                     }
@@ -540,6 +555,20 @@ private struct AircraftProfileEditor: View {
                 }
             }
             .padding(10)
+        }
+    }
+
+    private func normalizeFuelSelection(changed fuel: AircraftFuelType) {
+        if approvedFuelTypes.isEmpty {
+            switch fuel {
+            case .avgas: avgasApproved = true
+            case .ul91: ul91Approved = true
+            case .mogas: mogasApproved = true
+            }
+        }
+        if !approvedFuelTypes.contains(where: { $0.rawValue == preferredFuelRaw }),
+           let first = approvedFuelTypes.first {
+            preferredFuelRaw = first.rawValue
         }
     }
 

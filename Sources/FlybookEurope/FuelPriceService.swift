@@ -118,7 +118,11 @@ actor MonthlyFuelPriceService {
         async let secondary = try? download(secondaryURL)
         let (primaryHTML, secondaryHTML) = await (primary, secondary)
         let first = primaryHTML.map(parse) ?? FuelPriceRecord()
-        let second = secondaryHTML.map(parse) ?? FuelPriceRecord()
+        // aviation-fuel-prices.com publishes the current airport price without
+        // the German source's nearby "Stand" field. Keep that source usable,
+        // while never accepting an undated loose match from spritpreisliste.de.
+        let second = secondaryHTML.map(parseCurrentAirportPage)
+            ?? FuelPriceRecord()
         let record = merged(first, fallback: second)
         guard record.avgas != nil || record.ul91 != nil || record.mogas != nil else {
             throw URLError(.cannotParseResponse)
@@ -151,15 +155,15 @@ actor MonthlyFuelPriceService {
             avgas: price(
                 in: text,
                 labels: ["100 LL Preis", "AVGAS 100 LL"]
-            ) ?? loosePrice(in: text, labels: ["AVGAS 100LL", "AVGAS100LL"]),
+            ),
             ul91: price(
                 in: text,
                 labels: ["UL91 Preis", "AVGAS UL91"]
-            ) ?? loosePrice(in: text, labels: ["UL91"]),
+            ),
             mogas: price(
                 in: text,
                 labels: ["Super+ Preis", "MOGAS Preis", "Super Plus"]
-            ) ?? loosePrice(in: text, labels: ["MOGAS", "Super+", "Super Plus"])
+            )
         )
     }
 
@@ -175,6 +179,21 @@ actor MonthlyFuelPriceService {
             return value
         }
         return nil
+    }
+
+    private func parseCurrentAirportPage(_ html: String) -> FuelPriceRecord {
+        let text = html
+            .replacingOccurrences(
+                of: "<[^>]+>",
+                with: " ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+        return FuelPriceRecord(
+            avgas: loosePrice(in: text, labels: ["AVGAS 100LL", "AVGAS100LL"]),
+            ul91: loosePrice(in: text, labels: ["AVGAS UL91", "UL91"]),
+            mogas: loosePrice(in: text, labels: ["MOGAS", "Super+", "Super Plus"])
+        )
     }
 
     private func price(
