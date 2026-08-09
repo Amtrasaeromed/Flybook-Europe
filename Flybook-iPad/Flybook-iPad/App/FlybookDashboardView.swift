@@ -31,6 +31,8 @@ struct FlybookDashboardView: View {
     @State private var intermediateStop2ICAO = ""
     @State private var showsRouteMap = false
     @StateObject private var routeWeather = IPadRouteWeatherRiskViewModel()
+    @StateObject private var airportWeather = IPadWeatherViewModel()
+    @StateObject private var routeWindModel = IPadRouteWindViewModel()
 
     private var homeAirport: Airport {
         airports.first(where: { $0.icao == "EDFZ" })
@@ -70,24 +72,61 @@ struct FlybookDashboardView: View {
     }
 
     private var routeBlockMinutes: Int {
-        let climbMinutes = Int(
-            (Double(max(0, selectedAltitudeFeet - 1_500)) / 1_000 * 1.2)
-                .rounded()
-        )
-        let legCount = intermediateStopCount + 1
-        return max(
-            8,
-            Int((routeDistanceNM / 109 * 60).rounded())
-                + (5 + climbMinutes) * legCount
+        IPadFlightMath.minutes(
+            directNM: directRouteDistanceNM,
+            stopCount: intermediateStopCount,
+            headwindKnots: routeWindModel.wind?.headwindKnots,
+            tankStopMinutes: 0,
+            altitudeFeet: selectedAltitudeFeet,
+            departureElevationFeet: flightDepartureAirport.elevationFeet,
+            performance: activeAircraftPerformance,
+            trackMilesNM: routeDistanceNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
     private var routeMinutes: Int {
-        routeBlockMinutes + intermediateStopCount * 60
+        IPadFlightMath.minutes(
+            directNM: directRouteDistanceNM,
+            stopCount: intermediateStopCount,
+            headwindKnots: routeWindModel.wind?.headwindKnots,
+            tankStopMinutes: tankStopMinutes,
+            altitudeFeet: selectedAltitudeFeet,
+            departureElevationFeet: flightDepartureAirport.elevationFeet,
+            performance: activeAircraftPerformance,
+            trackMilesNM: routeDistanceNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
+        )
     }
 
     private var etopsLegMinutes: Int {
-        Int((Double(routeBlockMinutes) / Double(intermediateStopCount + 1)).rounded())
+        IPadFlightMath.perLegMinutes(
+            totalMinutes: routeMinutes,
+            stopCount: intermediateStopCount,
+            tankStopMinutes: tankStopMinutes
+        )
+    }
+
+    private var activeAircraftPerformance: IPadAircraftPerformance {
+        IPadAircraftPerformanceStore.profile(named: activeAircraft)
+    }
+
+    private var tankStopMinutes: Int {
+        activeETOPSProfileValue(name: "tankStopMinutes", legacyKey: "flybookTankStopMinutes", fallback: 60)
+    }
+
+    private var preTakeoffGroundMinutes: Int {
+        activeETOPSProfileValue(name: "preTakeoffGroundMinutes", legacyKey: "flybookPreTakeoffGroundMinutes", fallback: 5)
+    }
+
+    private var postLandingGroundMinutes: Int {
+        activeETOPSProfileValue(name: "postLandingGroundMinutes", legacyKey: "flybookPostLandingGroundMinutes", fallback: 3)
+    }
+
+    private var reserveMinutes: Int {
+        activeETOPSProfileValue(name: "reserveMinutes", legacyKey: "flybookReserveMinutes", fallback: 45)
     }
 
     private var activeETOPSGreenYellowMinutes: Int {
@@ -227,21 +266,31 @@ struct FlybookDashboardView: View {
     }
 
     private var charterBlockHours: Double {
-        ceil((Double(routeBlockMinutes) / 60) * 10) / 10
+        IPadCharterMath.commercialHours(minutes: routeBlockMinutes)
     }
 
     private var charterFuelLiters: Int {
-        Int((charterBlockHours * 60).rounded())
+        let consumption = activeAircraftPerformance.cruise.fuelLitersPerHour(
+            at: Double(selectedAltitudeFeet)
+        ) ?? activeAircraftPerformance.fallbackFuelLitersPerHour
+        let required = Double(routeBlockMinutes + reserveMinutes) / 60 * consumption
+        return Int(ceil(required))
     }
 
     private var charterCostEUR: Int {
-        let hourlyRate: Double
-        switch activeAircraft {
-        case "DEUKS": hourlyRate = 145
-        case "DETIK": hourlyRate = 180
-        default: hourlyRate = 180
-        }
-        return Int((charterBlockHours * hourlyRate * 1.07).rounded())
+        let defaults = UserDefaults.standard
+        let weekday = (2...6).contains(Calendar.current.component(.weekday, from: outboundDeparture))
+        let weekdayEnabled = defaults.object(forKey: "flybookWeekdayDiscountEnabled") == nil
+            ? true : defaults.bool(forKey: "flybookWeekdayDiscountEnabled")
+        let prepaymentFactor = defaults.bool(forKey: "flybookPrepaymentDiscount15To29Enabled")
+            ? 0.75
+            : (defaults.bool(forKey: "flybookPrepaymentDiscount30PlusEnabled") ? 0.85 : 1)
+        let rate = activeAircraftPerformance.hourlyRateEUR
+            * prepaymentFactor
+            * (weekday && weekdayEnabled ? 0.95 : 1)
+        let vat = defaults.object(forKey: "flybookVATPercent") == nil
+            ? 7 : defaults.double(forKey: "flybookVATPercent")
+        return Int((charterBlockHours * rate * (1 + max(0, vat) / 100)).rounded())
     }
 
     private var routeWaypoints: [Airport] {
@@ -252,6 +301,10 @@ struct FlybookDashboardView: View {
         routeWaypoints.map(\.icao).joined(separator: "-")
             + "-\(Int(outboundDeparture.timeIntervalSince1970 / 900))"
             + "-\(routeMinutes)-\(selectedAltitudeFeet)"
+    }
+
+    private var flightDataRequestKey: String {
+        "\(flightDepartureAirport.icao)-\(flightArrivalAirport.icao)-\(Int(outboundDeparture.timeIntervalSince1970 / 900))-\(selectedAltitudeFeet)-\(activeAircraft)"
     }
 
     var body: some View {
@@ -319,6 +372,24 @@ struct FlybookDashboardView: View {
                 start: outboundDeparture,
                 end: outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60)),
                 cruiseAltitudeFeet: selectedAltitudeFeet
+            )
+        }
+        .task(id: flightDataRequestKey) {
+            let provisionalEnd = outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60))
+            await routeWindModel.load(
+                origin: flightDepartureAirport,
+                destination: flightArrivalAirport,
+                start: outboundDeparture,
+                end: provisionalEnd,
+                altitudeFeet: selectedAltitudeFeet
+            )
+            let calculatedEnd = outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60))
+            await airportWeather.load(
+                departureAirport: flightDepartureAirport,
+                arrivalAirport: flightArrivalAirport,
+                departure: outboundDeparture,
+                arrival: calculatedEnd,
+                overviewAirport: destination
             )
         }
     }
@@ -518,7 +589,7 @@ struct FlybookDashboardView: View {
             HStack {
                 SectionTitle(title: "5-TAGES-WETTER", systemName: "cloud.sun")
                 Spacer()
-                Text("ICON-SEAMLESS · NOCH NICHT VERBUNDEN")
+                Text(airportWeather.isLoading ? "WETTER WIRD GELADEN" : airportWeather.sourceLabel)
                     .font(.caption2.bold())
                     .foregroundStyle(.secondary)
             }
@@ -527,7 +598,9 @@ struct FlybookDashboardView: View {
                 VStack(spacing: 4) {
                     ForecastRiskBar(
                         title: "FOG RISK 06–22 UHR",
-                        systemName: "cloud.fog"
+                        systemName: "cloud.fog",
+                        days: airportWeather.days,
+                        kind: .fog
                     )
                     HStack(spacing: 8) {
                         ForEach(0..<5, id: \.self) { offset in
@@ -536,13 +609,17 @@ struct FlybookDashboardView: View {
                                     byAdding: .day,
                                     value: offset,
                                     to: .now
-                                ) ?? .now
+                                ) ?? .now,
+                                weather: airportWeather.days.indices.contains(offset)
+                                    ? airportWeather.days[offset] : nil
                             )
                         }
                     }
                     ForecastRiskBar(
                         title: "WIND 06–22 UHR",
-                        systemName: "wind"
+                        systemName: "wind",
+                        days: airportWeather.days,
+                        kind: .wind
                     )
                 }
             }
@@ -588,6 +665,9 @@ struct FlybookDashboardView: View {
                 departureAirport: flightDepartureAirport,
                 arrivalAirport: flightArrivalAirport,
                 routeRisks: routeWeather.segments,
+                routeHeadwindKnots: routeWindModel.wind?.headwindKnots,
+                departureWeatherSample: airportWeather.departureSample,
+                arrivalWeatherSample: airportWeather.arrivalSample,
                 onSwap: {
                     let previousDeparture = flightDepartureICAO
                     flightDepartureICAO = flightArrivalICAO
@@ -674,14 +754,17 @@ struct FlybookDashboardView: View {
     }
 
     private func estimatedBlockMinutes(routeDistanceNM: Double, stopCount: Int) -> Int {
-        let climbMinutes = Int(
-            (Double(max(0, selectedAltitudeFeet - 1_500)) / 1_000 * 1.2)
-                .rounded()
-        )
-        return max(
-            8,
-            Int((routeDistanceNM / 109 * 60).rounded())
-                + (5 + climbMinutes) * (stopCount + 1)
+        IPadFlightMath.minutes(
+            directNM: directRouteDistanceNM,
+            stopCount: stopCount,
+            headwindKnots: routeWindModel.wind?.headwindKnots,
+            tankStopMinutes: 0,
+            altitudeFeet: selectedAltitudeFeet,
+            departureElevationFeet: flightDepartureAirport.elevationFeet,
+            performance: activeAircraftPerformance,
+            trackMilesNM: routeDistanceNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
         )
     }
 
@@ -1129,7 +1212,8 @@ struct FlybookDashboardView: View {
                                     byAdding: .day,
                                     value: offset,
                                     to: .now
-                                ) ?? .now
+                                ) ?? .now,
+                                weather: nil
                             )
                         }
                     }
@@ -1603,6 +1687,9 @@ private struct EditableFlightLegCard: View {
     let departureAirport: Airport
     let arrivalAirport: Airport
     let routeRisks: [IPadRouteWeatherRisk]
+    let routeHeadwindKnots: Double?
+    let departureWeatherSample: EDFZWeatherSample?
+    let arrivalWeatherSample: EDFZWeatherSample?
     let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
 
@@ -1611,10 +1698,9 @@ private struct EditableFlightLegCard: View {
     }
 
     private var routeWind: (value: String, color: Color) {
-        let weather = DashboardWeatherPreview.snapshot(for: arrivalAirport)
-        let course = FlightGeometry.initialBearing(from: departureAirport, to: arrivalAirport)
-        let difference = (weather.windDirectionDegrees - course) * .pi / 180
-        let component = weather.windSpeedKnots * cos(difference)
+        guard let component = routeHeadwindKnots else {
+            return ("Streckenwind lädt", Color.dashboardBlue)
+        }
         if component > 0.5 {
             return ("Gegenwind \(Int(component.rounded())) kt", .red)
         }
@@ -1653,6 +1739,7 @@ private struct EditableFlightLegCard: View {
                             text: $departureICAO,
                             airports: airports,
                             airport: departureAirport,
+                            weatherSample: departureWeatherSample,
                             referenceDate: departure,
                             onSelect: { _ in }
                         )
@@ -1661,6 +1748,7 @@ private struct EditableFlightLegCard: View {
                             text: $arrivalICAO,
                             airports: airports,
                             airport: arrivalAirport,
+                            weatherSample: arrivalWeatherSample,
                             referenceDate: arrival,
                             onSelect: onArrivalSelected
                         )
@@ -1766,9 +1854,9 @@ private struct EditableFlightLegCard: View {
                 .frame(height: 188)
 
                 HStack(spacing: 0) {
-                    FlightWeatherMetrics(airport: departureAirport)
+                    FlightWeatherMetrics(airport: departureAirport, sample: departureWeatherSample)
                     Divider().frame(height: 42)
-                    FlightWeatherMetrics(airport: arrivalAirport)
+                    FlightWeatherMetrics(airport: arrivalAirport, sample: arrivalWeatherSample)
                 }
                 .frame(height: 55)
             }
@@ -1814,12 +1902,13 @@ private struct FlightAirportHalf: View {
     @Binding var text: String
     let airports: [Airport]
     let airport: Airport
+    let weatherSample: EDFZWeatherSample?
     let referenceDate: Date
     let onSelect: (Airport) -> Void
 
     private var mirrored: Bool { title == "ANKUNFT" }
     private var weather: DashboardWeatherSnapshot {
-        DashboardWeatherPreview.snapshot(for: airport)
+        DashboardWeatherPreview.snapshot(for: airport, sample: weatherSample)
     }
 
     var body: some View {
@@ -2153,7 +2242,44 @@ private struct DashboardWeatherSnapshot {
 }
 
 private enum DashboardWeatherPreview {
-    static func snapshot(for airport: Airport) -> DashboardWeatherSnapshot {
+    static func snapshot(
+        for airport: Airport,
+        sample: EDFZWeatherSample? = nil
+    ) -> DashboardWeatherSnapshot {
+        if let sample {
+            let temperature = sample.temperatureCelsius ?? 0
+            let pressure = sample.pressureMSLHPA ?? 1_013.25
+            let pressureAltitude = Double(airport.elevationFeet) + (1_013.25 - pressure) * 30
+            let isaTemperature = 15 - 2 * pressureAltitude / 1_000
+            let densityAltitude = pressureAltitude + 120 * (temperature - isaTemperature)
+            let cloudCover = sample.lowCloudCoverPercent ?? sample.totalCloudCoverPercent ?? 0
+            let clouds: String
+            switch cloudCover {
+            case ..<12.5: clouds = "SKC"
+            case ..<37.5: clouds = "FEW"
+            case ..<62.5: clouds = "SCT"
+            case ..<87.5: clouds = "BKN"
+            default: clouds = "OVC"
+            }
+            let visibility = sample.visibilityMeters.map {
+                $0 >= 9_999 ? "10+" : String(format: "%.1f", $0 / 1_000)
+            } ?? "—"
+            let base = sample.lowestCloudBaseFeetAGL.map {
+                Int($0.rounded()).formatted(.number.grouping(.automatic))
+            } ?? "—"
+            return .init(
+                category: sample.category.rawValue,
+                temperatureCelsius: Int(temperature.rounded()),
+                visibilityKilometers: visibility,
+                clouds: clouds,
+                cloudBaseFeet: base,
+                pressureHPA: Int(pressure.rounded()),
+                densityAltitudeFeet: Int(densityAltitude.rounded()),
+                windDirectionDegrees: sample.windDirectionDegrees ?? 0,
+                windSpeedKnots: sample.windSpeedKnots ?? 0,
+                gustKnots: sample.windGustKnots.map { Int($0.rounded()) }
+            )
+        }
         switch airport.icao {
         case "EDFZ":
             return .init(
@@ -2200,9 +2326,10 @@ private struct FlightCategoryBadge: View {
 
 private struct FlightWeatherMetrics: View {
     let airport: Airport
+    let sample: EDFZWeatherSample?
 
     private var weather: DashboardWeatherSnapshot {
-        DashboardWeatherPreview.snapshot(for: airport)
+        DashboardWeatherPreview.snapshot(for: airport, sample: sample)
     }
 
     var body: some View {
@@ -2415,8 +2542,11 @@ private struct PlanningMetric: View {
 }
 
 private struct ForecastRiskBar: View {
+    enum Kind { case fog, wind }
     let title: String
     let systemName: String
+    let days: [IPadDailyWeather]
+    let kind: Kind
 
     var body: some View {
         HStack(spacing: 6) {
@@ -2424,14 +2554,44 @@ private struct ForecastRiskBar: View {
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
                 .frame(width: 128, alignment: .leading)
-            ForEach(0..<5, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.gray.opacity(0.18))
-                    .frame(maxWidth: .infinity, minHeight: 14)
+            ForEach(0..<5, id: \.self) { dayIndex in
+                HStack(spacing: 0) {
+                    ForEach(0..<17, id: \.self) { hourIndex in
+                        Rectangle()
+                            .fill(color(day: dayIndex, hour: hourIndex))
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .frame(maxWidth: .infinity, minHeight: 14)
             }
-            Text("Daten ausstehend")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func color(day: Int, hour: Int) -> Color {
+        guard days.indices.contains(day) else { return Color.gray.opacity(0.18) }
+        switch kind {
+        case .fog:
+            guard days[day].hourlyFogRisk.indices.contains(hour),
+                  let score = days[day].hourlyFogRisk[hour] else { return Color.gray.opacity(0.18) }
+            switch FogRiskModel.classify(score: score) {
+            case .low: return .white
+            case .raised: return Color(red: 247 / 255, green: 201 / 255, blue: 211 / 255)
+            case .high: return Color(red: 230 / 255, green: 74 / 255, blue: 80 / 255)
+            case .veryHigh: return Color(red: 142 / 255, green: 77 / 255, blue: 159 / 255)
+            }
+        case .wind:
+            guard days[day].hourlyWindKnots.indices.contains(hour),
+                  let wind = days[day].hourlyWindKnots[hour] else { return Color(red: 0.92, green: 0.96, blue: 0.99) }
+            switch wind {
+            case ...3: return Color(red: 0.78, green: 0.94, blue: 0.80)
+            case ...6: return Color(red: 0.39, green: 0.78, blue: 0.47)
+            case ...9: return Color(red: 0.10, green: 0.50, blue: 0.22)
+            case ...12: return Color(red: 0.69, green: 0.86, blue: 0.98)
+            case ...15: return Color(red: 0.31, green: 0.61, blue: 0.88)
+            case ...18: return Color(red: 0.08, green: 0.29, blue: 0.66)
+            case ...24: return Color(red: 0.97, green: 0.55, blue: 0.45)
+            default: return .red
+            }
         }
     }
 }
@@ -2529,22 +2689,29 @@ private struct AirportEndpoint: View {
 
 private struct ForecastPlaceholderTile: View {
     let date: Date
+    let weather: IPadDailyWeather?
 
     var body: some View {
         VStack(spacing: 6) {
             Text(date.formatted(.dateTime.weekday(.abbreviated)))
                 .font(.caption.bold())
                 .foregroundStyle(Color.dashboardNavy)
-            Image(systemName: "cloud")
+            Image(systemName: weather?.symbolName ?? "cloud")
                 .font(.title3)
-                .foregroundStyle(.secondary)
-            Text("—° / —°")
+                .foregroundStyle(weather == nil ? Color.secondary : Color.dashboardBlue)
+            Text(temperatureText)
                 .font(.caption2.bold())
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var temperatureText: String {
+        guard let low = weather?.minimumTemperature,
+              let high = weather?.maximumTemperature else { return "—° / —°" }
+        return "\(low)° / \(high)°"
     }
 }
 
