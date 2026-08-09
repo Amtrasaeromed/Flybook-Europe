@@ -551,61 +551,27 @@ struct FlybookDashboardView: View {
 
     private var oneWayFlightSection: some View {
         VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
-            VStack(spacing: 3) {
-                ZStack {
-                    SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    HStack(spacing: 8) {
-                        Text("ABFLUG")
-                            .font(.caption.bold())
-                            .foregroundStyle(Color.dashboardNavy)
-                        DatePicker("Datum", selection: $outboundDeparture, displayedComponents: .date)
-                            .labelsHidden()
-                            .frame(width: 120)
-                        DatePicker("Startzeit", selection: $outboundDeparture, displayedComponents: .hourAndMinute)
-                            .labelsHidden()
-                            .frame(width: 82)
-                        departureTimeStepButton(systemName: "minus", minutes: -15)
-                        departureTimeStepButton(systemName: "plus", minutes: 15)
-                    }
-
-                    HStack {
-                        Spacer()
-                        Text("FLUGHÖHE")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.secondary)
-                        Menu {
-                            ForEach(altitudeOptions, id: \.self) { altitude in
-                                Button(dashboardAltitudeLabel(altitude)) {
-                                    selectedAltitudeFeet = altitude
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 7) {
-                                Text(dashboardAltitudeLabel(selectedAltitudeFeet))
-                                    .font(.system(size: 16, weight: .regular).monospacedDigit())
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                Image(systemName: "chevron.up.chevron.down")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(width: 126, height: 34)
-                            .background(Color.gray.opacity(0.12), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .frame(height: 34)
-
-                HStack(spacing: 6) {
+            ZStack {
+                SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 4) {
+                    Text("ABFLUG")
+                        .font(.caption.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+                    DatePicker("Datum", selection: $outboundDeparture, displayedComponents: .date)
+                        .labelsHidden()
+                        .frame(width: 112)
+                    DatePicker("Startzeit", selection: $outboundDeparture, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .frame(width: 78)
+                    departureTimeStepButton(systemName: "minus", minutes: -15)
+                    departureTimeStepButton(systemName: "plus", minutes: 15)
                     departureShortcut("Jetzt") { setDepartureNow() }
                     departureShortcut("Heute") { setDepartureDay(offset: 0) }
                     departureShortcut("Morgen") { setDepartureDay(offset: 1) }
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
             }
-            .frame(height: 66)
+            .frame(height: 42)
             EditableFlightLegCard(
                 airports: airports,
                 departureICAO: $flightDepartureICAO,
@@ -617,6 +583,7 @@ struct FlybookDashboardView: View {
                 etopsOrangeRedMinutes: activeETOPSOrangeRedMinutes,
                 distanceNM: routeDistanceNM,
                 selectedAltitudeFeet: $selectedAltitudeFeet,
+                altitudeOptions: altitudeOptions,
                 bestLevelFeet: bestLevelFeet,
                 departureAirport: flightDepartureAirport,
                 arrivalAirport: flightArrivalAirport,
@@ -630,7 +597,7 @@ struct FlybookDashboardView: View {
                     destinationICAO = airport.icao
                 }
             )
-            .frame(height: 270)
+            .frame(height: 294)
         }
     }
 
@@ -680,12 +647,6 @@ struct FlybookDashboardView: View {
               let standard = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day)
         else { return }
         outboundDeparture = offset == 0 && standard <= now ? now : standard
-    }
-
-    private func dashboardAltitudeLabel(_ altitude: Int) -> String {
-        altitude < 5_000
-            ? "\(altitude.formatted(.number.grouping(.automatic))) ft"
-            : String(format: "FL%03d", altitude / 100)
     }
 
     private struct AutomaticRoute {
@@ -1637,6 +1598,7 @@ private struct EditableFlightLegCard: View {
     let etopsOrangeRedMinutes: Int
     let distanceNM: Double
     @Binding var selectedAltitudeFeet: Int
+    let altitudeOptions: [Int]
     let bestLevelFeet: Int
     let departureAirport: Airport
     let arrivalAirport: Airport
@@ -1654,12 +1616,12 @@ private struct EditableFlightLegCard: View {
         let difference = (weather.windDirectionDegrees - course) * .pi / 180
         let component = weather.windSpeedKnots * cos(difference)
         if component > 0.5 {
-            return ("↓ \(Int(component.rounded())) kt", .red)
+            return ("Gegenwind \(Int(component.rounded())) kt", .red)
         }
         if component < -0.5 {
-            return ("↑ \(Int(abs(component).rounded())) kt", .green)
+            return ("Rückenwind \(Int(abs(component).rounded())) kt", .green)
         }
-        return ("→ 0 kt", Color.dashboardBlue)
+        return ("Wind neutral 0 kt", Color.dashboardBlue)
     }
 
     private var etopsBlockColor: Color {
@@ -1705,7 +1667,7 @@ private struct EditableFlightLegCard: View {
                     }
                     .zIndex(2)
 
-                    Color.clear.frame(height: 52)
+                    Color.clear.frame(height: 76)
                 }
 
                 UniformFlightMetricBox(
@@ -1713,14 +1675,14 @@ private struct EditableFlightLegCard: View {
                     value: departure.formatted(date: .omitted, time: .shortened)
                 )
                 .frame(width: 132)
-                .offset(x: -306, y: 55)
+                .offset(x: -306, y: 43)
 
                 UniformFlightMetricBox(
                     title: "ANKUNFT",
                     value: arrival.formatted(date: .omitted, time: .shortened)
                 )
                 .frame(width: 132)
-                .offset(x: 306, y: 55)
+                .offset(x: 306, y: 43)
 
                 UniformFlightMetricBox(
                     title: "REISEZEIT",
@@ -1730,7 +1692,7 @@ private struct EditableFlightLegCard: View {
                     solidBackground: true
                 )
                 .frame(width: 128)
-                .offset(y: 55)
+                .offset(y: 43)
 
                 RoundedRectangle(cornerRadius: 3)
                     .fill(etopsBlockColor)
@@ -1739,7 +1701,7 @@ private struct EditableFlightLegCard: View {
                             .stroke(Color.dashboardNavy.opacity(0.55), lineWidth: 0.8)
                     }
                     .frame(width: 68, height: 6)
-                    .offset(y: 29)
+                    .offset(y: 17)
                     .zIndex(5)
 
                 VStack(spacing: 1) {
@@ -1750,8 +1712,36 @@ private struct EditableFlightLegCard: View {
                         .font(.system(size: 17, weight: .bold).monospacedDigit())
                         .foregroundStyle(Color.dashboardNavy)
                 }
-                .frame(width: 78)
-                .offset(x: -111, y: 55)
+                .frame(width: 94)
+                .offset(x: -111, y: 43)
+
+                Menu {
+                    ForEach(altitudeOptions, id: \.self) { altitude in
+                        Button(altitudeLabel(altitude)) {
+                            selectedAltitudeFeet = altitude
+                        }
+                    }
+                } label: {
+                    VStack(spacing: 1) {
+                        Text("FLUGHÖHE")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 3) {
+                            Text(altitudeLabel(selectedAltitudeFeet))
+                                .font(.system(size: 17, weight: .bold).monospacedDigit())
+                                .foregroundStyle(Color.dashboardNavy)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 7, weight: .heavy))
+                                .foregroundStyle(Color.dashboardNavy.opacity(0.72))
+                        }
+                    }
+                    .frame(width: 94)
+                }
+                .buttonStyle(.plain)
+                .offset(x: 111, y: 43)
+                .accessibilityLabel("Flughöhe auswählen")
 
                 Button(action: onSwap) {
                     Image(systemName: "arrow.left.arrow.right")
@@ -1766,15 +1756,14 @@ private struct EditableFlightLegCard: View {
                 .accessibilityLabel("Abflug und Ankunft tauschen")
 
                 Text(routeWind.value)
-                    .font(.system(size: 13, weight: .heavy).monospacedDigit())
+                    .font(.system(size: 11, weight: .heavy).monospacedDigit())
                     .foregroundStyle(routeWind.color)
-                    .frame(width: 52, height: 52)
-                    .background(Color.white, in: Circle())
-                    .overlay { Circle().stroke(routeWind.color.opacity(0.75), lineWidth: 2) }
-                    .offset(x: 111, y: 55)
+                    .lineLimit(1)
+                    .frame(width: 128, height: 16)
+                    .offset(y: 78)
                     .zIndex(4)
                 }
-                .frame(height: 164)
+                .frame(height: 188)
 
                 HStack(spacing: 0) {
                     FlightWeatherMetrics(airport: departureAirport)
