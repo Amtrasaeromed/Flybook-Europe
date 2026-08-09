@@ -87,3 +87,7 @@ spiegelbildlich dar; Wind, Zielwechsel und Blockzeit liegen auf der Mittelachse.
 Die Zielauswahl akzeptiert eine direkte ICAO-Eingabe und zeigt ab drei Zeichen
 Vorschläge. Der dauerhaft sichtbare Zwischenstoppblock hält Auswahlfelder und
 0/1/2-Schalter in einem festen, einzeiligen Layout.
+Das Flugwetter übernimmt die Risikologik des Hauptprojekts und bewertet den
+Streckenkorridor in zehn farbcodierten Abschnitten. Sicht, Niederschlag,
+Gewitter/CAPE, Taupunktspreizung, tiefe Bewölkung und die Wolkenschicht an der
+gewählten Flughöhe fließen in die Einstufung ein.

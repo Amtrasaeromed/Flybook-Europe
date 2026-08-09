@@ -25,6 +25,7 @@ struct FlybookDashboardView: View {
     @State private var intermediateStopCount = 0
     @State private var intermediateStop1ICAO = ""
     @State private var intermediateStop2ICAO = ""
+    @StateObject private var routeWeather = IPadRouteWeatherRiskViewModel()
 
     private var homeAirport: Airport {
         airports.first(where: { $0.icao == "EDFZ" })
@@ -119,6 +120,16 @@ struct FlybookDashboardView: View {
         return Int((charterBlockHours * hourlyRate * 1.07).rounded())
     }
 
+    private var routeWaypoints: [Airport] {
+        [flightDepartureAirport] + selectedIntermediateAirports + [flightArrivalAirport]
+    }
+
+    private var routeWeatherRequestKey: String {
+        routeWaypoints.map(\.icao).joined(separator: "-")
+            + "-\(Int(outboundDeparture.timeIntervalSince1970 / 900))"
+            + "-\(routeMinutes)-\(selectedAltitudeFeet)"
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let canvasWidth = 820.0
@@ -170,6 +181,14 @@ struct FlybookDashboardView: View {
             if flightDepartureICAO == "EDFZ" {
                 flightArrivalICAO = newValue
             }
+        }
+        .task(id: routeWeatherRequestKey) {
+            await routeWeather.load(
+                waypoints: routeWaypoints,
+                start: outboundDeparture,
+                end: outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60)),
+                cruiseAltitudeFeet: selectedAltitudeFeet
+            )
         }
     }
 
@@ -438,7 +457,7 @@ struct FlybookDashboardView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .frame(height: 30)
+            .frame(height: 34)
             EditableFlightLegCard(
                 airports: airports,
                 departureICAO: $flightDepartureICAO,
@@ -472,8 +491,9 @@ struct FlybookDashboardView: View {
     private var airportWeatherSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                SectionTitle(title: "FLUGPLATZWETTER", systemName: "cloud.sun.rain")
+                SectionTitle(title: "FLUGWETTER", systemName: "cloud.sun.rain")
                 Spacer()
+                IPadRouteRiskDots(risks: routeWeather.segments)
                 Text("VORSCHAUDATEN")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(.orange)
@@ -558,8 +578,9 @@ struct FlybookDashboardView: View {
                     .labelsHidden()
                     .tint(Color.dashboardBlue)
             }
+            .frame(height: 27)
             DashboardCard {
-                VStack(spacing: 0) {
+                VStack(spacing: 3) {
                 HStack {
                     CharterColumnHeader("STRECKE NM")
                     CharterColumnHeader("BLOCKZEIT")
@@ -588,8 +609,10 @@ struct FlybookDashboardView: View {
                         .foregroundStyle(Color.dashboardNavy)
                 }
                 .padding(.horizontal, 4)
+                .frame(height: 29)
                 }
             }
+            .frame(height: 115)
         }
     }
 
@@ -1086,7 +1109,7 @@ private struct CharterValueBox: View {
         Text(value)
             .font(.headline.bold().monospacedDigit())
             .foregroundStyle(accent)
-            .frame(maxWidth: .infinity, minHeight: 46)
+            .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40)
             .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 12))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
@@ -1208,7 +1231,7 @@ private struct EditableFlightLegCard: View {
         let difference = (weather.windDirectionDegrees - course) * .pi / 180
         let component = weather.windSpeedKnots * cos(difference)
         if component > 0.5 {
-            return ("↓ \(Int(component.rounded())) kt", .orange)
+            return ("↓ \(Int(component.rounded())) kt", .red)
         }
         if component < -0.5 {
             return ("↑ \(Int(abs(component).rounded())) kt", .green)
@@ -1272,10 +1295,18 @@ private struct EditableFlightLegCard: View {
                 UniformFlightMetricBox(
                     title: "BLOCKZEIT",
                     value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))",
-                    boxTint: etopsBlockColor
+                    valueColor: Color.dashboardBlue,
+                    boxTint: Color.dashboardNavy,
+                    solidBackground: true
                 )
                 .frame(width: 128)
                 .offset(y: 55)
+
+                Circle()
+                    .fill(etopsBlockColor)
+                    .overlay { Circle().stroke(Color.dashboardNavy.opacity(0.45), lineWidth: 1) }
+                    .frame(width: 14, height: 14)
+                    .offset(x: 76, y: 55)
 
                 VStack(spacing: 1) {
                     Text("BEST LEVEL")
@@ -1324,6 +1355,7 @@ private struct UniformFlightMetricBox: View {
     let value: String
     var valueColor: Color = Color.dashboardBlue
     var boxTint: Color = Color.dashboardBlue
+    var solidBackground = false
 
     var body: some View {
         VStack(spacing: 1) {
@@ -1337,8 +1369,11 @@ private struct UniformFlightMetricBox: View {
                 .minimumScaleFactor(0.68)
         }
         .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
-        .background(boxTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
-        .overlay { RoundedRectangle(cornerRadius: 9).stroke(boxTint.opacity(0.65)) }
+        .background(solidBackground ? Color.white : boxTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(solidBackground ? Color.dashboardNavy : boxTint.opacity(0.65), lineWidth: solidBackground ? 1.5 : 1)
+        }
     }
 }
 
@@ -1462,7 +1497,7 @@ private struct RunwayRecommendationPanel: View {
                     Text(recommendation?.label ?? "—")
                 }
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.dashboardBlue)
+                .foregroundStyle(Color.dashboardNavy)
                 .frame(height: 18)
 
                 Text(metarWindText)
@@ -1471,11 +1506,11 @@ private struct RunwayRecommendationPanel: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
-                    .frame(width: 72, height: 38)
+                    .frame(width: 82, height: 40)
                     .background(metarBoxFill, in: RoundedRectangle(cornerRadius: 8))
                     .overlay { RoundedRectangle(cornerRadius: 8).stroke(metarBoxBorder, lineWidth: 1.3) }
             }
-            .offset(x: mirrored ? -102 : 102, y: -10)
+            .offset(x: mirrored ? -106 : 106, y: -9)
         }
         .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
         .accessibilityLabel("Runway \(airport.referenceRunway), bevorzugt \(recommendation?.label ?? "unbekannt")")
