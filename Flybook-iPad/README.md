@@ -21,9 +21,11 @@ funktionsfähige Version erhalten.
   einheitlich gestaltete Abflug-, Best-Level-, Flughöhen-, Blockzeit- und
   Ankunftsfelder
 - geografisch ausgerichtete Runways mit windabhängig hervorgehobenem Bahnende
-  und berechneten Gegen-/Querwindkomponenten
+  sowie dünnem Windpfeil, METAR-Windfeld und berechneten Gegen-/Querwindkomponenten
 - vorbereitete Flugplatzwetterzeile für Temperatur, Sicht, Wolken,
   Wolkenbasis, QNH und Dichtehöhe sowie ein eigener Zwischenstopp-Bereich
+- Zwischenstoppwahl für null, einen oder zwei reale beziehungsweise virtuelle
+  Stopps; Strecke, Blockzeit und Charterkalkulation reagieren auf die Route
 
 ## Öffnen und starten
 
