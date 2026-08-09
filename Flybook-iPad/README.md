@@ -26,6 +26,8 @@ funktionsfähige Version erhalten.
   Wolkenbasis, QNH und Dichtehöhe sowie ein eigener Zwischenstopp-Bereich
 - Zwischenstoppwahl für null, einen oder zwei reale beziehungsweise virtuelle
   Stopps; Strecke, Blockzeit und Charterkalkulation reagieren auf die Route
+- symmetrische Flugplatzhälften mit mittiger Runway-Grafik, durchgehender
+  Mittelachse sowie ETOPS-PIPI-Farbband für die Blockzeit
 
 ## Öffnen und starten
 

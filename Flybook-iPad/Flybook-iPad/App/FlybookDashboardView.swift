@@ -408,16 +408,26 @@ struct FlybookDashboardView: View {
                     Text("FLUGHÖHE")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Picker("Flughöhe", selection: $selectedAltitudeFeet) {
+                    Menu {
                         ForEach([1_500, 2_500, 3_500, 4_500, 5_000, 7_000, 9_000], id: \.self) { altitude in
-                            Text(dashboardAltitudeLabel(altitude)).tag(altitude)
+                            Button(dashboardAltitudeLabel(altitude)) {
+                                selectedAltitudeFeet = altitude
+                            }
                         }
+                    } label: {
+                        HStack(spacing: 7) {
+                            Text(dashboardAltitudeLabel(selectedAltitudeFeet))
+                                .font(.system(size: 16, weight: .regular).monospacedDigit())
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: 126, height: 34)
+                        .background(Color.gray.opacity(0.12), in: Capsule())
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .font(.caption.bold().monospacedDigit())
-                    .tint(Color.dashboardBlue)
-                    .frame(width: 112)
+                    .buttonStyle(.plain)
                 }
             }
             .frame(height: 30)
@@ -472,44 +482,61 @@ struct FlybookDashboardView: View {
 
     private var intermediateStopSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                SectionTitle(title: "ZWISCHENSTOPPS", systemName: "point.3.connected.trianglepath.dotted")
-                Spacer()
-                Picker("Anzahl Zwischenstopps", selection: $intermediateStopCount) {
-                    Text("0").tag(0)
-                    Text("1").tag(1)
-                    Text("2").tag(2)
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .frame(width: 120)
-            }
+            SectionTitle(title: "ZWISCHENSTOPPS", systemName: "point.3.connected.trianglepath.dotted")
             DashboardCard {
-                HStack(spacing: 10) {
-                    if intermediateStopCount == 0 {
-                        Text("Direktflug ohne Zwischenstopp")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
-                    } else {
+                HStack(spacing: 8) {
+                    Group {
+                        if intermediateStopCount >= 1 {
                         StopAirportPicker(
                             title: "STOP 1",
                             selection: $intermediateStop1ICAO,
                             airports: airports,
-                            excluding: [flightDepartureICAO, flightArrivalICAO, intermediateStop2ICAO]
+                            excluding: [flightDepartureICAO, flightArrivalICAO, intermediateStop2ICAO],
+                            origin: flightDepartureAirport,
+                            destination: flightArrivalAirport,
+                            stopCount: intermediateStopCount,
+                            stopIndex: 1
                         )
+                        } else {
+                            Text("Direktflug")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 220, alignment: .leading)
+
+                    Group {
                         if intermediateStopCount == 2 {
                             StopAirportPicker(
                                 title: "STOP 2",
                                 selection: $intermediateStop2ICAO,
                                 airports: airports,
-                                excluding: [flightDepartureICAO, flightArrivalICAO, intermediateStop1ICAO]
+                                excluding: [flightDepartureICAO, flightArrivalICAO, intermediateStop1ICAO],
+                                origin: flightDepartureAirport,
+                                destination: flightArrivalAirport,
+                                stopCount: intermediateStopCount,
+                                stopIndex: 2
                             )
+                        } else {
+                            Color.clear.frame(height: 1)
                         }
                     }
-                    Spacer()
+                    .frame(width: 220, alignment: .leading)
+
+                    Spacer(minLength: 0)
                     Text("Strecke \(Int(routeDistanceNM.rounded())) NM")
                         .font(.caption.bold().monospacedDigit())
                         .foregroundStyle(Color.dashboardBlue)
+                        .frame(width: 108, alignment: .trailing)
+
+                    Picker("Anzahl Zwischenstopps", selection: $intermediateStopCount) {
+                        Text("0").tag(0)
+                        Text("1").tag(1)
+                        Text("2").tag(2)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 120)
                 }
             }
         }
@@ -915,6 +942,19 @@ private struct StopAirportPicker: View {
     @Binding var selection: String
     let airports: [Airport]
     let excluding: [String]
+    let origin: Airport
+    let destination: Airport
+    let stopCount: Int
+    let stopIndex: Int
+
+    private var targetCoordinate: (latitude: Double, longitude: Double) {
+        let fraction = stopCount <= 1 ? 0.5 : (stopIndex == 1 ? 1.0 / 3.0 : 2.0 / 3.0)
+        return FlightGeometry.intermediateCoordinate(
+            from: origin,
+            to: destination,
+            fraction: fraction
+        )
+    }
 
     private var options: [Airport] {
         airports
@@ -922,7 +962,12 @@ private struct StopAirportPicker: View {
                 !excluding.contains(airport.icao)
                     && (airport.isTechStop || airport.runwayLengthMeters != nil)
             }
-            .sorted { $0.icao < $1.icao }
+            .sorted {
+                let lhsDistance = FlightGeometry.nauticalMiles(from: $0, to: targetCoordinate)
+                let rhsDistance = FlightGeometry.nauticalMiles(from: $1, to: targetCoordinate)
+                if abs(lhsDistance - rhsDistance) > 0.1 { return lhsDistance < rhsDistance }
+                return $0.icao < $1.icao
+            }
     }
 
     var body: some View {
@@ -939,7 +984,8 @@ private struct StopAirportPicker: View {
             .labelsHidden()
             .pickerStyle(.menu)
             .tint(Color.dashboardBlue)
-            .frame(width: 190, alignment: .leading)
+            .frame(width: 168, alignment: .leading)
+            .lineLimit(1)
         }
     }
 }
@@ -1068,90 +1114,119 @@ private struct EditableFlightLegCard: View {
         departure.addingTimeInterval(TimeInterval(durationMinutes * 60))
     }
 
-    private var routeWind: (title: String, value: String, color: Color) {
+    private var routeWind: (value: String, color: Color) {
         let weather = DashboardWeatherPreview.snapshot(for: arrivalAirport)
         let course = FlightGeometry.initialBearing(from: departureAirport, to: arrivalAirport)
         let difference = (weather.windDirectionDegrees - course) * .pi / 180
         let component = weather.windSpeedKnots * cos(difference)
         if component > 0.5 {
-            return ("WIND", "↓ \(Int(component.rounded())) kt", .orange)
+            return ("↓ \(Int(component.rounded())) kt", .orange)
         }
         if component < -0.5 {
-            return ("WIND", "↑ \(Int(abs(component).rounded())) kt", .green)
+            return ("↑ \(Int(abs(component).rounded())) kt", .green)
         }
-        return ("WIND", "→ 0 kt", Color.dashboardBlue)
+        return ("→ 0 kt", Color.dashboardBlue)
+    }
+
+    private var etopsBlockColor: Color {
+        if durationMinutes < 105 { return .green }
+        if durationMinutes < 127 { return .yellow }
+        if durationMinutes < 150 { return .orange }
+        return .red
     }
 
     var body: some View {
         DashboardCard {
-            VStack(spacing: 5) {
-                HStack(spacing: 0) {
-                    FlightAirportHalf(
-                        title: "ABFLUG",
-                        text: $departureICAO,
-                        airports: airports,
-                        airport: departureAirport,
-                        referenceDate: departure,
-                        onSelect: { _ in }
-                    )
+            ZStack {
+                Rectangle()
+                    .fill(Color.dashboardNavy.opacity(0.15))
+                    .frame(width: 1)
+                    .padding(.vertical, -2)
 
-                    Button(action: onSwap) {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 32, height: 32)
-                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 9))
-                    }
-                    .buttonStyle(.plain)
-                    .frame(width: 36)
-                    .accessibilityLabel("Abflug und Ankunft tauschen")
-
-                    FlightAirportHalf(
-                        title: "ANKUNFT",
-                        text: $arrivalICAO,
-                        airports: airports,
-                        airport: arrivalAirport,
-                        referenceDate: arrival,
-                        onSelect: onArrivalSelected
-                    )
-                }
-                .zIndex(2)
-
-                HStack(spacing: 0) {
-                    HStack(spacing: 6) {
-                        UniformFlightMetricBox(
+                VStack(spacing: 5) {
+                    HStack(spacing: 0) {
+                        FlightAirportHalf(
                             title: "ABFLUG",
-                            value: departure.formatted(date: .omitted, time: .shortened)
+                            text: $departureICAO,
+                            airports: airports,
+                            airport: departureAirport,
+                            referenceDate: departure,
+                            onSelect: { _ in }
                         )
-                        UniformFlightMetricBox(
-                            title: "BEST LEVEL",
-                            value: altitudeLabel(bestLevelFeet)
-                        )
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 8)
-
-                    Color.clear.frame(width: 36, height: 1)
-
-                    HStack(spacing: 6) {
-                        UniformFlightMetricBox(
+                        FlightAirportHalf(
                             title: "ANKUNFT",
-                            value: arrival.formatted(date: .omitted, time: .shortened)
-                        )
-                        UniformFlightMetricBox(
-                            title: "BLOCKZEIT",
-                            value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))",
-                            boxTint: .orange
-                        )
-                        UniformFlightMetricBox(
-                            title: routeWind.title,
-                            value: routeWind.value,
-                            valueColor: routeWind.color
+                            text: $arrivalICAO,
+                            airports: airports,
+                            airport: arrivalAirport,
+                            referenceDate: arrival,
+                            onSelect: onArrivalSelected
                         )
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 8)
+                    .zIndex(2)
+
+                    HStack(spacing: 0) {
+                        HStack {
+                            UniformFlightMetricBox(
+                                title: "ABFLUG",
+                                value: departure.formatted(date: .omitted, time: .shortened)
+                            )
+                            .frame(width: 132)
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.leading, 8)
+                        .padding(.trailing, 30)
+
+                        HStack(spacing: 7) {
+                            VStack(spacing: 1) {
+                                Text("BEST LEVEL")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                                Text(altitudeLabel(bestLevelFeet))
+                                    .font(.system(size: 17, weight: .bold).monospacedDigit())
+                                    .foregroundStyle(Color.dashboardNavy)
+                            }
+                            .frame(width: 74)
+
+                            UniformFlightMetricBox(
+                                title: "ANKUNFT",
+                                value: arrival.formatted(date: .omitted, time: .shortened)
+                            )
+                            .frame(width: 132)
+
+                            UniformFlightMetricBox(
+                                title: "BLOCKZEIT",
+                                value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))",
+                                boxTint: etopsBlockColor
+                            )
+                            .frame(width: 128)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.leading, 24)
+                        .padding(.trailing, 8)
+                    }
                 }
+
+                Button(action: onSwap) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 9))
+                }
+                .buttonStyle(.plain)
+                .offset(y: -48)
+                .zIndex(4)
+                .accessibilityLabel("Abflug und Ankunft tauschen")
+
+                Text(routeWind.value)
+                    .font(.system(size: 13, weight: .heavy).monospacedDigit())
+                    .foregroundStyle(routeWind.color)
+                    .frame(width: 52, height: 52)
+                    .background(Color.white, in: Circle())
+                    .overlay { Circle().stroke(routeWind.color.opacity(0.75), lineWidth: 2) }
+                    .offset(y: 52)
+                    .zIndex(4)
             }
         }
     }
@@ -1172,15 +1247,15 @@ private struct UniformFlightMetricBox: View {
     var body: some View {
         VStack(spacing: 1) {
             Text(title)
-                .font(.system(size: 7, weight: .bold))
+                .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.system(size: 15, weight: .bold).monospacedDigit())
+                .font(.system(size: 18, weight: .bold).monospacedDigit())
                 .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
         }
-        .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
+        .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52)
         .background(boxTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
         .overlay { RoundedRectangle(cornerRadius: 9).stroke(boxTint.opacity(0.65)) }
     }
@@ -1195,7 +1270,7 @@ private struct FlightAirportHalf: View {
     let onSelect: (Airport) -> Void
 
     var body: some View {
-        HStack(spacing: 7) {
+        ZStack {
             AirportICAOField(
                 title: title,
                 text: $text,
@@ -1203,12 +1278,15 @@ private struct FlightAirportHalf: View {
                 referenceDate: referenceDate,
                 onSelect: onSelect
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .offset(x: title == "ANKUNFT" ? 26 : 0)
+
             RunwayRecommendationPanel(
                 airport: airport,
                 weather: DashboardWeatherPreview.snapshot(for: airport)
             )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
         .padding(.horizontal, 8)
     }
 }
@@ -1247,8 +1325,8 @@ private struct RunwayRecommendationPanel: View {
     }
 
     var body: some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 4) {
+        ZStack {
+            VStack(spacing: 1) {
                 ZStack {
                     Circle()
                         .fill(Color.dashboardBackground)
@@ -1283,32 +1361,28 @@ private struct RunwayRecommendationPanel: View {
                     }
                 }
                 .frame(width: 90, height: 80)
-
-                VStack(spacing: 2) {
-                    Text("WIND")
-                        .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    Text(metarWindText)
-                        .font(.system(size: 9, weight: .heavy).monospacedDigit())
-                        .foregroundStyle(Color.dashboardNavy)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.7)
+                HStack(spacing: 8) {
+                    Text(headwindText)
+                        .foregroundStyle((recommendation?.headwind ?? 0) >= 0 ? .green : .red)
+                    Text("→ \(Int((recommendation?.crosswind ?? 0).rounded())) kt")
+                        .foregroundStyle(.orange)
                 }
-                .frame(width: 60, height: 42)
-                .background(windLimitColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8))
-                .overlay { RoundedRectangle(cornerRadius: 8).stroke(windLimitColor.opacity(0.7)) }
+                .font(.system(size: 13, weight: .heavy).monospacedDigit())
+                .frame(width: 132, alignment: .center)
             }
 
-            HStack(spacing: 8) {
-                Text(headwindText)
-                    .foregroundStyle((recommendation?.headwind ?? 0) >= 0 ? .green : .red)
-                Text("→ \(Int((recommendation?.crosswind ?? 0).rounded())) kt")
-                    .foregroundStyle(.orange)
-            }
-            .font(.system(size: 12, weight: .heavy).monospacedDigit())
+            Text(metarWindText)
+                .font(.system(size: 10, weight: .heavy).monospacedDigit())
+                .foregroundStyle(Color.dashboardNavy)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
+                .frame(width: 72, height: 38)
+                .background(metarBoxFill, in: RoundedRectangle(cornerRadius: 8))
+                .overlay { RoundedRectangle(cornerRadius: 8).stroke(metarBoxBorder, lineWidth: 1.3) }
+                .offset(x: 102, y: -13)
         }
-        .frame(width: 158)
+        .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
         .accessibilityLabel("Runway \(airport.referenceRunway), bevorzugt \(recommendation?.label ?? "unbekannt")")
     }
 
@@ -1345,6 +1419,21 @@ private struct RunwayRecommendationPanel: View {
             return .orange
         }
         return .green
+    }
+
+    private var metarBoxFill: Color {
+        isNormalWind ? .white : windLimitColor.opacity(0.18)
+    }
+
+    private var metarBoxBorder: Color {
+        isNormalWind ? Color.gray.opacity(0.35) : windLimitColor.opacity(0.85)
+    }
+
+    private var isNormalWind: Bool {
+        let crosswind = recommendation?.crosswind ?? 0
+        return crosswind < 8
+            && weather.windSpeedKnots < 12
+            && (weather.gustKnots ?? 0) < 18
     }
 }
 
@@ -1619,7 +1708,7 @@ private struct AirportICAOField: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(width: 180, alignment: .leading)
+        .frame(width: 142, alignment: .leading)
         .overlay(alignment: .topLeading) {
             if isFocused, !matchingAirports.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -1945,6 +2034,45 @@ private enum FlightGeometry {
         let y = sin(deltaLongitude) * cos(lat2)
         let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLongitude)
         return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    static func nauticalMiles(
+        from origin: Airport,
+        to coordinate: (latitude: Double, longitude: Double)
+    ) -> Double {
+        let radiusNM = 3_440.065
+        let lat1 = origin.latitude * .pi / 180
+        let lat2 = coordinate.latitude * .pi / 180
+        let deltaLat = (coordinate.latitude - origin.latitude) * .pi / 180
+        let deltaLon = (coordinate.longitude - origin.longitude) * .pi / 180
+        let value = sin(deltaLat / 2) * sin(deltaLat / 2)
+            + cos(lat1) * cos(lat2) * sin(deltaLon / 2) * sin(deltaLon / 2)
+        return radiusNM * 2 * atan2(sqrt(value), sqrt(max(0, 1 - value)))
+    }
+
+    static func intermediateCoordinate(
+        from origin: Airport,
+        to destination: Airport,
+        fraction: Double
+    ) -> (latitude: Double, longitude: Double) {
+        let lat1 = origin.latitude * .pi / 180
+        let lon1 = origin.longitude * .pi / 180
+        let lat2 = destination.latitude * .pi / 180
+        let lon2 = destination.longitude * .pi / 180
+        let angular = 2 * asin(sqrt(
+            pow(sin((lat2 - lat1) / 2), 2)
+                + cos(lat1) * cos(lat2) * pow(sin((lon2 - lon1) / 2), 2)
+        ))
+        guard angular > 0.000_001 else { return (origin.latitude, origin.longitude) }
+        let a = sin((1 - fraction) * angular) / sin(angular)
+        let b = sin(fraction * angular) / sin(angular)
+        let x = a * cos(lat1) * cos(lon1) + b * cos(lat2) * cos(lon2)
+        let y = a * cos(lat1) * sin(lon1) + b * cos(lat2) * sin(lon2)
+        let z = a * sin(lat1) + b * sin(lat2)
+        return (
+            atan2(z, sqrt(x * x + y * y)) * 180 / .pi,
+            atan2(y, x) * 180 / .pi
+        )
     }
 }
 
