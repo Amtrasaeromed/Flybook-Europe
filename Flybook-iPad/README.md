@@ -15,6 +15,8 @@ funktionsfähige Version erhalten.
 - erstes Hauptdashboard mit Oneway-Flugplanung und Wetterbereichen
 - Hauptseite mit Zielnavigation, Airport-/Kraftstoffdaten, Oneway-Planung,
   Charterkalkulation und fester Symbol-Menüleiste
+- Kraftstoffpreise mit EDFZ-Referenzdifferenz und lokalem Datenstand
+- Flugplanung mit ICAO-Direkteingabe, Vorschlägen, Zieltausch und Levelwahl
 
 ## Öffnen und starten
 

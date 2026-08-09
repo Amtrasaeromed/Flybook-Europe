@@ -3,6 +3,8 @@ import SwiftUI
 struct FlybookDashboardView: View {
     let airports: [Airport]
     private let fuelCatalog = AirportFuelCatalog.load()
+    private let fuelPriceCatalog = AirportFuelPriceCatalog.load()
+    private let featureCatalog = AirportFeatureCatalog.load()
 
     @AppStorage("ipad.activeBase") private var activeBase = "LSV Mainz"
     @AppStorage("ipad.activeAircraft") private var activeAircraft = "DEZHS"
@@ -10,13 +12,16 @@ struct FlybookDashboardView: View {
     @AppStorage("ipad.destinationICAO") private var destinationICAO = "EDKA"
     @AppStorage("ipad.unitSystem") private var unitSystem = "EU"
 
-    @State private var outboundDeparture = Date.now.roundedToNextQuarterHour
+    @State private var outboundDeparture = Date.defaultFlightDeparture
     @State private var returnDeparture = Date.now
         .addingTimeInterval(4 * 60 * 60)
         .roundedToNextQuarterHour
     @State private var showsAirportPicker = false
     @State private var showsMigrationNotice = false
     @State private var includeLandingFees = false
+    @State private var flightDepartureICAO = "EDFZ"
+    @State private var flightArrivalICAO = ""
+    @State private var selectedAltitudeFeet = 7_000
 
     private var homeAirport: Airport {
         airports.first(where: { $0.icao == "EDFZ" })
@@ -30,11 +35,18 @@ struct FlybookDashboardView: View {
     }
 
     private var routeDistanceNM: Double {
-        FlightGeometry.nauticalMiles(from: homeAirport, to: destination)
+        FlightGeometry.nauticalMiles(
+            from: flightDepartureAirport,
+            to: flightArrivalAirport
+        )
     }
 
     private var routeMinutes: Int {
-        max(8, Int((routeDistanceNM / 109 * 60).rounded()) + 8)
+        let climbMinutes = Int(
+            (Double(max(0, selectedAltitudeFeet - 1_500)) / 1_000 * 1.2)
+                .rounded()
+        )
+        return max(8, Int((routeDistanceNM / 109 * 60).rounded()) + 5 + climbMinutes)
     }
 
     private var destinationAirports: [Airport] {
@@ -43,6 +55,24 @@ struct FlybookDashboardView: View {
 
     private var destinationFuel: AirportFuelAvailability {
         fuelCatalog.availability(for: destination.icao)
+    }
+
+    private var destinationFuelPrices: AirportFuelPrices {
+        fuelPriceCatalog.prices(for: destination.icao)
+    }
+
+    private var destinationFeatures: [AirportFeature] {
+        featureCatalog.features(for: destination.icao)
+    }
+
+    private var flightDepartureAirport: Airport {
+        airports.first(where: { $0.icao == flightDepartureICAO.uppercased() })
+            ?? homeAirport
+    }
+
+    private var flightArrivalAirport: Airport {
+        airports.first(where: { $0.icao == flightArrivalICAO.uppercased() })
+            ?? destination
     }
 
     private var charterBlockHours: Double {
@@ -105,20 +135,32 @@ struct FlybookDashboardView: View {
         } message: {
             Text("Die Oberfläche ist vorbereitet. Die bestehende Flybook-Funktion wird in einem der nächsten Migrationsschritte angebunden.")
         }
+        .onAppear {
+            if flightArrivalICAO.isEmpty {
+                flightArrivalICAO = destination.icao
+            }
+        }
+        .onChange(of: destinationICAO) { _, newValue in
+            if flightDepartureICAO == "EDFZ" {
+                flightArrivalICAO = newValue
+            }
+        }
     }
 
     private var fixedDashboard: some View {
         VStack(spacing: 9) {
             mainHeader
                 .frame(height: 72)
+            featureStrip
+                .frame(height: 42)
             airportInformationRow
-                .frame(height: 96)
+                .frame(height: 126)
             fiveDayOverview
-                .frame(height: 250, alignment: .top)
-            oneWayFlightSection
-                .frame(height: 190, alignment: .top)
-            charterCalculationSection
                 .frame(height: 238, alignment: .top)
+            oneWayFlightSection
+                .frame(height: 224, alignment: .top)
+            charterCalculationSection
+                .frame(height: 205, alignment: .top)
             Spacer(minLength: 0)
             bottomMenuBar
                 .frame(height: 62)
@@ -189,7 +231,50 @@ struct FlybookDashboardView: View {
                     selectDestination(offset: 1)
                 }
             }
+
+            Menu {
+                ForEach(["DEZHS", "DEUKS", "DETIK"], id: \.self) { aircraft in
+                    Button(aircraft) { activeAircraft = aircraft }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "airplane")
+                    Text(activeAircraft)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.bold())
+                }
+                .font(.caption.bold())
+                .foregroundStyle(Color.dashboardNavy)
+                .padding(.horizontal, 10)
+                .frame(height: 38)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.dashboardBlue.opacity(0.45), lineWidth: 1)
+                }
+            }
+            .offset(x: 154)
         }
+    }
+
+    private var featureStrip: some View {
+        HStack(spacing: 7) {
+            ForEach(destinationFeatures.prefix(6)) { feature in
+                Label(feature.title, systemImage: feature.symbol)
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.dashboardNavy)
+                    .padding(.horizontal, 10)
+                    .frame(height: 32)
+                    .background(Color.dashboardBlue.opacity(0.11), in: Capsule())
+            }
+            if destinationFeatures.isEmpty {
+                Text("Keine besonderen Flugplatzmerkmale hinterlegt")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .clipped()
     }
 
     private var airportInformationRow: some View {
@@ -204,15 +289,33 @@ struct FlybookDashboardView: View {
                         .foregroundStyle(Color.dashboardNavy)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                    Text(destination.runwaySurface.isEmpty ? "Belag unklar" : destination.runwaySurface)
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Divider().frame(height: 52)
-                FuelStatusCell(title: "AVGAS", status: destinationFuel.avgas)
-                Divider().frame(height: 52)
-                FuelStatusCell(title: "UL91", status: destinationFuel.ul91)
-                Divider().frame(height: 52)
-                FuelStatusCell(title: "MOGAS", status: destinationFuel.mogas)
+                Divider().frame(height: 84)
+                FuelStatusCell(
+                    title: "AVGAS",
+                    status: destinationFuel.avgas,
+                    price: destinationFuelPrices.avgas,
+                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.avgas
+                )
+                Divider().frame(height: 84)
+                FuelStatusCell(
+                    title: "UL91",
+                    status: destinationFuel.ul91,
+                    price: destinationFuelPrices.ul91,
+                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.ul91
+                )
+                Divider().frame(height: 84)
+                FuelStatusCell(
+                    title: "MOGAS",
+                    status: destinationFuel.mogas,
+                    price: destinationFuelPrices.mogas,
+                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.mogas
+                )
             }
         }
     }
@@ -228,7 +331,11 @@ struct FlybookDashboardView: View {
             }
 
             DashboardCard {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
+                    ForecastRiskBar(
+                        title: "FOG RISK 06–22 UHR",
+                        systemName: "cloud.fog"
+                    )
                     HStack(spacing: 8) {
                         ForEach(0..<5, id: \.self) { offset in
                             ForecastPlaceholderTile(
@@ -240,14 +347,10 @@ struct FlybookDashboardView: View {
                             )
                         }
                     }
-                    Divider()
-                    HStack {
-                        Label("FOG RISK 06–22 UHR", systemImage: "cloud.fog")
-                        Spacer()
-                        Text("Wetteranbindung folgt")
-                    }
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+                    ForecastRiskBar(
+                        title: "WIND 06–22 UHR",
+                        systemName: "wind"
+                    )
                 }
             }
         }
@@ -255,17 +358,26 @@ struct FlybookDashboardView: View {
 
     private var oneWayFlightSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionTitle(title: "FLUGPLANUNG · ONEWAY", systemName: "point.topleft.down.to.point.bottomright.curvepath")
-            FlightLegCard(
-                title: "HINFLUG",
-                departureAirport: homeAirport,
-                arrivalAirport: destination,
+            SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
+            EditableFlightLegCard(
+                airports: airports,
+                departureICAO: $flightDepartureICAO,
+                arrivalICAO: $flightArrivalICAO,
                 departure: $outboundDeparture,
                 durationMinutes: routeMinutes,
-                distanceNM: routeDistanceNM
+                distanceNM: routeDistanceNM,
+                selectedAltitudeFeet: $selectedAltitudeFeet,
+                bestLevelFeet: 7_000,
+                onSwap: {
+                    let previousDeparture = flightDepartureICAO
+                    flightDepartureICAO = flightArrivalICAO
+                    flightArrivalICAO = previousDeparture
+                },
+                onArrivalSelected: { airport in
+                    destinationICAO = airport.icao
+                }
             )
-            .frame(height: 154)
-            .clipped()
+            .frame(height: 190)
         }
     }
 
@@ -277,20 +389,13 @@ struct FlybookDashboardView: View {
                         .font(.headline.bold())
                         .foregroundStyle(Color.dashboardNavy)
 
-                    Menu {
-                        ForEach(["DEZHS", "DEUKS", "DETIK"], id: \.self) { aircraft in
-                            Button(aircraft) { activeAircraft = aircraft }
-                        }
-                    } label: {
-                        Text(activeAircraft)
-                            .font(.caption.bold())
-                            .foregroundStyle(Color.dashboardBlue)
-                    }
-
                     Spacer()
 
-                    Toggle("Landegebühren", isOn: $includeLandingFees)
+                    Text("Landegebühren")
                         .font(.caption.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+                    Toggle("", isOn: $includeLandingFees)
+                        .labelsHidden()
                         .tint(Color.dashboardBlue)
                 }
 
@@ -311,7 +416,7 @@ struct FlybookDashboardView: View {
                 Divider()
 
                 HStack {
-                    Text("GESAMT ONEWAY")
+                    Text("GESAMT HINFLUG")
                         .font(.subheadline.bold())
                         .foregroundStyle(Color.dashboardNavy)
                     Spacer()
@@ -602,6 +707,8 @@ private struct HeaderNavigationButton: View {
 private struct FuelStatusCell: View {
     let title: String
     let status: FuelAvailabilityStatus
+    let price: FuelPricePoint?
+    let referencePrice: FuelPricePoint?
 
     private var color: Color {
         switch status {
@@ -611,8 +718,23 @@ private struct FuelStatusCell: View {
         }
     }
 
+    private var priceText: String {
+        guard let price else { return "? €/L" }
+        let formatted = String(format: "%.2f", price.eurosPerLiter)
+            .replacingOccurrences(of: ".", with: ",")
+        guard let referencePrice else { return "\(formatted) €/L" }
+        let delta = price.eurosPerLiter - referencePrice.eurosPerLiter
+        let difference = String(format: "%+.2f", delta)
+            .replacingOccurrences(of: ".", with: ",")
+        return "\(formatted) €/L (\(difference))"
+    }
+
+    private var dateText: String {
+        "Stand \(price?.checkedAt ?? "unklar")"
+    }
+
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 3) {
             Label(title, systemImage: "fuelpump.fill")
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
@@ -624,6 +746,15 @@ private struct FuelStatusCell: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(color)
             }
+            Text(priceText)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Color.dashboardNavy)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            Text(dateText)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
     }
@@ -749,6 +880,243 @@ private struct SummaryMetric: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
+    }
+}
+
+private struct EditableFlightLegCard: View {
+    let airports: [Airport]
+    @Binding var departureICAO: String
+    @Binding var arrivalICAO: String
+    @Binding var departure: Date
+    let durationMinutes: Int
+    let distanceNM: Double
+    @Binding var selectedAltitudeFeet: Int
+    let bestLevelFeet: Int
+    let onSwap: () -> Void
+    let onArrivalSelected: (Airport) -> Void
+
+    private var arrival: Date {
+        departure.addingTimeInterval(TimeInterval(durationMinutes * 60))
+    }
+
+    var body: some View {
+        DashboardCard {
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("HINFLUG")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(width: 82, alignment: .leading)
+
+                    AirportICAOField(
+                        title: "ABFLUG",
+                        text: $departureICAO,
+                        airports: airports,
+                        onSelect: { _ in }
+                    )
+
+                    Image(systemName: "arrow.right")
+                        .font(.headline.bold())
+                        .foregroundStyle(.secondary)
+
+                    AirportICAOField(
+                        title: "ANKUNFT",
+                        text: $arrivalICAO,
+                        airports: airports,
+                        onSelect: onArrivalSelected
+                    )
+
+                    Button(action: onSwap) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.headline.bold())
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 34)
+                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Abflug und Ankunft tauschen")
+                }
+                .zIndex(2)
+
+                Divider()
+
+                HStack(spacing: 10) {
+                    DatePicker("Datum", selection: $departure, displayedComponents: .date)
+                        .labelsHidden()
+                        .frame(width: 126)
+                    DatePicker("Abflug", selection: $departure, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .frame(width: 88)
+
+                    Spacer(minLength: 2)
+
+                    PlanningMetric(
+                        title: "BLOCK",
+                        value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))"
+                    )
+                    PlanningMetric(
+                        title: "BEST LEVEL",
+                        value: "FL\(bestLevelFeet / 100)"
+                    )
+
+                    VStack(spacing: 2) {
+                        Text("FLUGHÖHE")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        Picker("Flughöhe", selection: $selectedAltitudeFeet) {
+                            ForEach([3_000, 5_000, 7_000, 9_000], id: \.self) { altitude in
+                                Text("FL\(altitude / 100)").tag(altitude)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .tint(Color.dashboardBlue)
+                        Text("Gegen-/Rückenwind — kt")
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .frame(width: 112)
+
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(arrival.formatted(date: .omitted, time: .shortened))
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(Color.dashboardNavy)
+                        Text("ANKUNFT")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 62, alignment: .trailing)
+                }
+            }
+        }
+    }
+}
+
+private struct AirportICAOField: View {
+    let title: String
+    @Binding var text: String
+    let airports: [Airport]
+    let onSelect: (Airport) -> Void
+
+    @FocusState private var isFocused: Bool
+
+    private var matchingAirports: [Airport] {
+        guard text.count >= 3 else { return [] }
+        let normalized = text.uppercased()
+        return Array(
+            airports.filter {
+                $0.icao.hasPrefix(normalized)
+                    || $0.name.localizedCaseInsensitiveContains(text)
+            }.prefix(3)
+        )
+    }
+
+    private var selectedAirport: Airport? {
+        airports.first { $0.icao == text.uppercased() }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 5) {
+                TextField("ICAO", text: $text)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .font(.headline.bold())
+                    .foregroundStyle(Color.dashboardBlue)
+                    .focused($isFocused)
+                    .frame(width: 58)
+                    .onChange(of: text) { _, value in
+                        let normalized = String(value.uppercased().prefix(4))
+                        if normalized != value { text = normalized }
+                    }
+
+                Text("RWY \(selectedAirport?.referenceRunway ?? "—")")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Color.dashboardNavy)
+                    .padding(.horizontal, 5)
+                    .frame(height: 20)
+                    .background(Color.dashboardBlue.opacity(0.12), in: Capsule())
+            }
+            Text(selectedAirport?.name ?? "Flugplatz wählen")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .topLeading) {
+            if isFocused, !matchingAirports.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(matchingAirports) { airport in
+                        Button {
+                            text = airport.icao
+                            onSelect(airport)
+                            isFocused = false
+                        } label: {
+                            Text("\(airport.icao) · \(airport.name)")
+                                .font(.caption.bold())
+                                .foregroundStyle(Color.dashboardNavy)
+                                .lineLimit(1)
+                                .padding(.horizontal, 8)
+                                .frame(width: 210, height: 30, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.dashboardBlue.opacity(0.35), lineWidth: 1)
+                }
+                .shadow(radius: 6)
+                .offset(y: 49)
+                .zIndex(10)
+            }
+        }
+    }
+}
+
+private struct PlanningMetric: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.bold().monospacedDigit())
+                .foregroundStyle(Color.dashboardNavy)
+        }
+        .frame(width: 58)
+    }
+}
+
+private struct ForecastRiskBar: View {
+    let title: String
+    let systemName: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Label(title, systemImage: systemName)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 128, alignment: .leading)
+            ForEach(0..<5, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.gray.opacity(0.18))
+                    .frame(maxWidth: .infinity, minHeight: 14)
+            }
+            Text("Daten ausstehend")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -954,6 +1322,17 @@ private enum FlightGeometry {
 }
 
 private extension Date {
+    static var defaultFlightDeparture: Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now) ?? .now
+        return calendar.date(
+            bySettingHour: 9,
+            minute: 0,
+            second: 0,
+            of: tomorrow
+        ) ?? tomorrow
+    }
+
     var roundedToNextQuarterHour: Date {
         let interval: TimeInterval = 15 * 60
         return Date(timeIntervalSince1970: ceil(timeIntervalSince1970 / interval) * interval)

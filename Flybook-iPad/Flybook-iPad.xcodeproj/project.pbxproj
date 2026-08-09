@@ -16,6 +16,9 @@
 		A10000000000000000000007 /* FlybookDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* FlybookDashboardView.swift */; };
 		A10000000000000000000008 /* fuels.csv in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* fuels.csv */; };
 		A10000000000000000000009 /* FuelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* FuelCatalog.swift */; };
+		A1000000000000000000000A /* fuel_prices.csv in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* fuel_prices.csv */; };
+		A1000000000000000000000B /* features.csv in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* features.csv */; };
+		A1000000000000000000000C /* AirportPresentationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* AirportPresentationCatalog.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +32,9 @@
 		B10000000000000000000008 /* FlybookDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlybookDashboardView.swift; sourceTree = "<group>"; };
 		B10000000000000000000009 /* fuels.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuels.csv; sourceTree = "<group>"; };
 		B1000000000000000000000A /* FuelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelCatalog.swift; sourceTree = "<group>"; };
+		B1000000000000000000000B /* fuel_prices.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuel_prices.csv; sourceTree = "<group>"; };
+		B1000000000000000000000C /* features.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = features.csv; sourceTree = "<group>"; };
+		B1000000000000000000000D /* AirportPresentationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportPresentationCatalog.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +83,7 @@
 				B10000000000000000000003 /* Airport.swift */,
 				B10000000000000000000004 /* CSVParser.swift */,
 				B1000000000000000000000A /* FuelCatalog.swift */,
+				B1000000000000000000000D /* AirportPresentationCatalog.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -86,6 +93,8 @@
 			children = (
 				B10000000000000000000005 /* airports.csv */,
 				B10000000000000000000009 /* fuels.csv */,
+				B1000000000000000000000B /* fuel_prices.csv */,
+				B1000000000000000000000C /* features.csv */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -158,6 +167,8 @@
 				A10000000000000000000006 /* Assets.xcassets in Resources */,
 				A10000000000000000000005 /* airports.csv in Resources */,
 				A10000000000000000000008 /* fuels.csv in Resources */,
+				A1000000000000000000000A /* fuel_prices.csv in Resources */,
+				A1000000000000000000000B /* features.csv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -174,6 +185,7 @@
 				A10000000000000000000001 /* FlybookIPadApp.swift in Sources */,
 				A10000000000000000000004 /* CSVParser.swift in Sources */,
 				A10000000000000000000009 /* FuelCatalog.swift in Sources */,
+				A1000000000000000000000C /* AirportPresentationCatalog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
