@@ -1432,14 +1432,22 @@ private struct RunwayRecommendationPanel: View {
         }
     }
 
-    private var recommendation: (label: String, heading: Double, headwind: Double, crosswind: Double)? {
+    private var recommendation: (
+        label: String,
+        heading: Double,
+        headwind: Double,
+        crosswind: Double,
+        crosswindComesFromRight: Bool
+    )? {
         runwayHeadings.map { end in
             let difference = shortestAngle(weather.windDirectionDegrees - end.heading) * .pi / 180
+            let signedCrosswind = weather.windSpeedKnots * sin(difference)
             return (
                 end.label,
                 end.heading,
                 weather.windSpeedKnots * cos(difference),
-                abs(weather.windSpeedKnots * sin(difference))
+                abs(signedCrosswind),
+                signedCrosswind > 0
             )
         }.max { $0.headwind < $1.headwind }
     }
@@ -1484,7 +1492,7 @@ private struct RunwayRecommendationPanel: View {
                 HStack(spacing: 8) {
                     Text(headwindText)
                         .foregroundStyle((recommendation?.headwind ?? 0) >= 0 ? .green : .red)
-                    Text("→ \(Int((recommendation?.crosswind ?? 0).rounded())) kt")
+                    Text(crosswindText)
                         .foregroundStyle(.orange)
                 }
                 .font(.system(size: 13, weight: .heavy).monospacedDigit())
@@ -1533,6 +1541,13 @@ private struct RunwayRecommendationPanel: View {
         return value >= 0
             ? "↓ \(Int(value.rounded())) kt"
             : "↑ \(Int(abs(value).rounded())) kt"
+    }
+
+    private var crosswindText: String {
+        let value = recommendation?.crosswind ?? 0
+        guard value >= 0.5 else { return "↔ 0 kt" }
+        let arrow = recommendation?.crosswindComesFromRight == true ? "←" : "→"
+        return "\(arrow) \(Int(value.rounded())) kt"
     }
 
     private var metarWindText: String {
