@@ -512,6 +512,7 @@ struct FlybookDashboardView: View {
                     selectDestination(offset: 1)
                 }
             }
+            .offset(y: 14)
 
             Menu {
                 ForEach(["DEZHS", "DEUKS", "DETIK"], id: \.self) { aircraft in
@@ -534,7 +535,7 @@ struct FlybookDashboardView: View {
                         .stroke(Color.dashboardBlue.opacity(0.45), lineWidth: 1)
                 }
             }
-            .offset(x: 154)
+            .offset(x: 154, y: 14)
         }
     }
 
