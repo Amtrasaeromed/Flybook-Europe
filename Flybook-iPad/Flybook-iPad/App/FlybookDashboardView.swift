@@ -240,7 +240,7 @@ struct FlybookDashboardView: View {
             fiveDayOverview
                 .frame(height: 194, alignment: .top)
             oneWayFlightSection
-                .frame(height: 274, alignment: .top)
+                .frame(height: 340, alignment: .top)
             intermediateStopSection
                 .frame(height: 52, alignment: .top)
             charterCalculationSection
@@ -456,49 +456,59 @@ struct FlybookDashboardView: View {
 
     private var oneWayFlightSection: some View {
         VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
-            ZStack {
-                SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 8) {
-                    Text("ABFLUG")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.dashboardNavy)
-                    DatePicker("Datum", selection: $outboundDeparture, displayedComponents: .date)
-                        .labelsHidden()
-                        .frame(width: 120)
-                    DatePicker("Startzeit", selection: $outboundDeparture, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                        .frame(width: 88)
-                }
-
-                HStack {
-                    Spacer()
-                    Text("FLUGHÖHE")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    Menu {
-                        ForEach(altitudeOptions, id: \.self) { altitude in
-                            Button(dashboardAltitudeLabel(altitude)) {
-                                selectedAltitudeFeet = altitude
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 7) {
-                            Text(dashboardAltitudeLabel(selectedAltitudeFeet))
-                                .font(.system(size: 16, weight: .regular).monospacedDigit())
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(width: 126, height: 34)
-                        .background(Color.gray.opacity(0.12), in: Capsule())
+            VStack(spacing: 3) {
+                ZStack {
+                    SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(spacing: 8) {
+                        Text("ABFLUG")
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.dashboardNavy)
+                        DatePicker("Datum", selection: $outboundDeparture, displayedComponents: .date)
+                            .labelsHidden()
+                            .frame(width: 120)
+                        DatePicker("Startzeit", selection: $outboundDeparture, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .frame(width: 88)
                     }
-                    .buttonStyle(.plain)
+
+                    HStack {
+                        Spacer()
+                        Text("FLUGHÖHE")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        Menu {
+                            ForEach(altitudeOptions, id: \.self) { altitude in
+                                Button(dashboardAltitudeLabel(altitude)) {
+                                    selectedAltitudeFeet = altitude
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Text(dashboardAltitudeLabel(selectedAltitudeFeet))
+                                    .font(.system(size: 16, weight: .regular).monospacedDigit())
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(width: 126, height: 34)
+                            .background(Color.gray.opacity(0.12), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
+                .frame(height: 34)
+
+                HStack(spacing: 6) {
+                    departureShortcut("Jetzt") { setDepartureNow() }
+                    departureShortcut("Heute") { setDepartureDay(offset: 0) }
+                    departureShortcut("Morgen") { setDepartureDay(offset: 1) }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
             }
-            .frame(height: 34)
+            .frame(height: 66)
             EditableFlightLegCard(
                 airports: airports,
                 departureICAO: $flightDepartureICAO,
@@ -520,8 +530,34 @@ struct FlybookDashboardView: View {
                     destinationICAO = airport.icao
                 }
             )
-            .frame(height: 236)
+            .frame(height: 270)
         }
+    }
+
+    private func departureShortcut(
+        _ title: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(title, action: action)
+            .font(.system(size: 10, weight: .bold))
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
+            .tint(Color.dashboardBlue)
+    }
+
+    private func setDepartureNow() {
+        outboundDeparture = Date()
+    }
+
+    private func setDepartureDay(offset: Int) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: flightDepartureAirport.timeZoneIdentifier) ?? .current
+        let now = Date()
+        guard let day = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: now)),
+              let standard = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day)
+        else { return }
+        outboundDeparture = offset == 0 && standard <= now ? now : standard
     }
 
     private func dashboardAltitudeLabel(_ altitude: Int) -> String {
@@ -1272,16 +1308,15 @@ private struct EditableFlightLegCard: View {
 
     var body: some View {
         DashboardCard {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
+                IPadRouteRiskBars(risks: routeRisks)
+                    .frame(maxWidth: .infinity, minHeight: 14, maxHeight: 14)
+
                 ZStack {
                 Rectangle()
                     .fill(Color.dashboardNavy.opacity(0.15))
                     .frame(width: 1)
                     .padding(.vertical, -2)
-
-                IPadRouteRiskBars(risks: routeRisks)
-                    .offset(y: -70)
-                    .zIndex(6)
 
                 VStack(spacing: 5) {
                     HStack(spacing: 0) {
@@ -1373,14 +1408,14 @@ private struct EditableFlightLegCard: View {
                     .offset(x: 111, y: 55)
                     .zIndex(4)
                 }
-                .frame(height: 157)
+                .frame(height: 164)
 
                 HStack(spacing: 0) {
                     FlightWeatherMetrics(airport: departureAirport)
                     Divider().frame(height: 42)
                     FlightWeatherMetrics(airport: arrivalAirport)
                 }
-                .frame(height: 52)
+                .frame(height: 55)
             }
         }
     }

@@ -99,3 +99,6 @@ Das verdichtete Hochformatlayout integriert die beiden Wetterdatengruppen und
 die zehn Korridorpunkte direkt in die Flugplanung. VFR/MVFR stehen
 spiegelbildlich an den ICAO-Feldern; die Zwischenstoppsteuerung bleibt ohne
 zusätzliche Überschrift als feste, einzeilige Bedienleiste sichtbar.
+Unter Datum und Abflugzeit stehen die aus dem Hauptprojekt übernommenen
+Schnellwahlen **Jetzt**, **Heute** und **Morgen**. Die zehn Korridorbalken
+besitzen innerhalb der vergrößerten Flugplanung eine eigene Zeile.
