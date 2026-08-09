@@ -325,7 +325,7 @@ struct FlybookDashboardView: View {
     }
 
     private var fiveDayOverview: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 SectionTitle(title: "5-TAGES-WETTER", systemName: "cloud.sun")
                 Spacer()
@@ -361,8 +361,20 @@ struct FlybookDashboardView: View {
     }
 
     private var oneWayFlightSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack {
+                SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    DatePicker("Datum", selection: $outboundDeparture, displayedComponents: .date)
+                        .labelsHidden()
+                        .frame(width: 120)
+                    DatePicker("Startzeit", selection: $outboundDeparture, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .frame(width: 88)
+                }
+            }
+            .frame(height: 30)
             EditableFlightLegCard(
                 airports: airports,
                 departureICAO: $flightDepartureICAO,
@@ -388,7 +400,7 @@ struct FlybookDashboardView: View {
     }
 
     private var airportWeatherSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 SectionTitle(title: "FLUGPLATZWETTER", systemName: "cloud.sun.rain")
                 Spacer()
@@ -426,7 +438,7 @@ struct FlybookDashboardView: View {
     }
 
     private var charterCalculationSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 SectionTitle(title: "CHARTERKALKULATION", systemName: "eurosign.circle")
                 Spacer()
@@ -942,6 +954,20 @@ private struct EditableFlightLegCard: View {
         departure.addingTimeInterval(TimeInterval(durationMinutes * 60))
     }
 
+    private var routeWind: (title: String, value: String, color: Color) {
+        let weather = DashboardWeatherPreview.snapshot(for: arrivalAirport)
+        let course = FlightGeometry.initialBearing(from: departureAirport, to: arrivalAirport)
+        let difference = (weather.windDirectionDegrees - course) * .pi / 180
+        let component = weather.windSpeedKnots * cos(difference)
+        if component > 0.5 {
+            return ("WIND", "Gegenwind \(Int(component.rounded())) kt", .orange)
+        }
+        if component < -0.5 {
+            return ("WIND", "Rückenwind \(Int(abs(component).rounded())) kt", .green)
+        }
+        return ("WIND", "Neutral 0 kt", Color.dashboardBlue)
+    }
+
     var body: some View {
         DashboardCard {
             VStack(spacing: 5) {
@@ -969,23 +995,20 @@ private struct EditableFlightLegCard: View {
                 .zIndex(2)
 
                 HStack(spacing: 6) {
-                    DatePicker("Datum", selection: $departure, displayedComponents: .date)
-                        .labelsHidden()
-                        .frame(width: 112)
-
-                    FlightTimeBox(
+                    UniformFlightMetricBox(
                         title: "ABFLUG",
-                        date: $departure,
-                        status: .unknown
+                        value: departure.formatted(date: .omitted, time: .shortened)
                     )
 
-                    AltitudeDisplayBox(
+                    UniformFlightMetricBox(
                         title: "BEST LEVEL",
                         value: altitudeLabel(bestLevelFeet)
                     )
 
-                    VStack(spacing: 1) {
-                        Text("FLUGHÖHE").font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary)
+                    VStack(spacing: 0) {
+                        Text("FLUGHÖHE")
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(.secondary)
                         Picker("Flughöhe", selection: $selectedAltitudeFeet) {
                             ForEach([1_500, 2_500, 3_500, 4_500, 5_000, 7_000, 9_000], id: \.self) { altitude in
                                 Text(altitudeLabel(altitude)).tag(altitude)
@@ -995,25 +1018,26 @@ private struct EditableFlightLegCard: View {
                         .pickerStyle(.menu)
                         .tint(Color.dashboardBlue)
                     }
-                    .frame(width: 92, height: 44)
-                    .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 9))
-
-                    VStack(spacing: 0) {
-                        Text("BLOCKZEIT")
-                            .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(.secondary)
-                        Text("\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))")
-                            .font(.title3.bold().monospacedDigit())
-                            .foregroundStyle(Color.dashboardBlue)
-                        Text("Gegen-/Rückenwind — kt")
-                            .font(.system(size: 6.5, weight: .bold))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    .frame(width: 112, height: 48)
+                    .font(.system(size: 15, weight: .bold).monospacedDigit())
+                    .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
                     .background(Color.dashboardBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+                    .overlay { RoundedRectangle(cornerRadius: 9).stroke(Color.dashboardBlue.opacity(0.55)) }
 
-                    ReadOnlyFlightTimeBox(title: "ANKUNFT", date: arrival, status: .unknown)
+                    UniformFlightMetricBox(
+                        title: "BLOCKZEIT",
+                        value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))"
+                    )
+
+                    UniformFlightMetricBox(
+                        title: "ANKUNFT",
+                        value: arrival.formatted(date: .omitted, time: .shortened)
+                    )
+
+                    UniformFlightMetricBox(
+                        title: routeWind.title,
+                        value: routeWind.value,
+                        valueColor: routeWind.color
+                    )
 
                     Button(action: onSwap) {
                         Image(systemName: "arrow.left.arrow.right")
@@ -1033,6 +1057,28 @@ private struct EditableFlightLegCard: View {
         altitude < 5_000
             ? "\(altitude.formatted(.number.grouping(.automatic))) ft"
             : String(format: "FL%03d", altitude / 100)
+    }
+}
+
+private struct UniformFlightMetricBox: View {
+    let title: String
+    let value: String
+    var valueColor: Color = Color.dashboardBlue
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(title)
+                .font(.system(size: 7, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 15, weight: .bold).monospacedDigit())
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+        }
+        .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
+        .background(Color.dashboardBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+        .overlay { RoundedRectangle(cornerRadius: 9).stroke(Color.dashboardBlue.opacity(0.55)) }
     }
 }
 
@@ -1716,6 +1762,15 @@ private enum FlightGeometry {
             + cos(lat1) * cos(lat2)
             * sin(deltaLon / 2) * sin(deltaLon / 2)
         return radiusNM * 2 * atan2(sqrt(value), sqrt(1 - value))
+    }
+
+    static func initialBearing(from origin: Airport, to destination: Airport) -> Double {
+        let lat1 = origin.latitude * .pi / 180
+        let lat2 = destination.latitude * .pi / 180
+        let deltaLongitude = (destination.longitude - origin.longitude) * .pi / 180
+        let y = sin(deltaLongitude) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLongitude)
+        return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
     }
 }
 
