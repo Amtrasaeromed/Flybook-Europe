@@ -20,6 +20,7 @@
 		A1000000000000000000000B /* features.csv in Resources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* features.csv */; };
 		A1000000000000000000000C /* AirportPresentationCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* AirportPresentationCatalog.swift */; };
 		A1000000000000000000000D /* IPadRouteWeatherRisk.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000E /* IPadRouteWeatherRisk.swift */; };
+		A1000000000000000000000E /* IPadRouteMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* IPadRouteMapView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		B1000000000000000000000C /* features.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = features.csv; sourceTree = "<group>"; };
 		B1000000000000000000000D /* AirportPresentationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportPresentationCatalog.swift; sourceTree = "<group>"; };
 		B1000000000000000000000E /* IPadRouteWeatherRisk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadRouteWeatherRisk.swift; sourceTree = "<group>"; };
+		B1000000000000000000000F /* IPadRouteMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadRouteMapView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +89,7 @@
 				B1000000000000000000000A /* FuelCatalog.swift */,
 				B1000000000000000000000D /* AirportPresentationCatalog.swift */,
 				B1000000000000000000000E /* IPadRouteWeatherRisk.swift */,
+				B1000000000000000000000F /* IPadRouteMapView.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -190,6 +193,7 @@
 				A10000000000000000000009 /* FuelCatalog.swift in Sources */,
 				A1000000000000000000000C /* AirportPresentationCatalog.swift in Sources */,
 				A1000000000000000000000D /* IPadRouteWeatherRisk.swift in Sources */,
+				A1000000000000000000000E /* IPadRouteMapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

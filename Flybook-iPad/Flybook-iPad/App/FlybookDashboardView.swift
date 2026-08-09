@@ -29,6 +29,7 @@ struct FlybookDashboardView: View {
     @State private var intermediateStopCount = 0
     @State private var intermediateStop1ICAO = ""
     @State private var intermediateStop2ICAO = ""
+    @State private var showsRouteMap = false
     @StateObject private var routeWeather = IPadRouteWeatherRiskViewModel()
 
     private var homeAirport: Airport {
@@ -83,6 +84,62 @@ struct FlybookDashboardView: View {
 
     private var routeMinutes: Int {
         routeBlockMinutes + intermediateStopCount * 60
+    }
+
+    private var etopsLegMinutes: Int {
+        Int((Double(routeBlockMinutes) / Double(intermediateStopCount + 1)).rounded())
+    }
+
+    private var routeMapWaypoints: [IPadRouteMapWaypoint] {
+        var result = [
+            IPadRouteMapWaypoint(
+                title: "\(flightDepartureAirport.icao) · \(flightDepartureAirport.name)",
+                latitude: flightDepartureAirport.latitude,
+                longitude: flightDepartureAirport.longitude,
+                role: .departure
+            )
+        ]
+
+        for index in 0..<intermediateStopCount {
+            let selectedICAO = index == 0 ? intermediateStop1ICAO : intermediateStop2ICAO
+            if let airport = airports.first(where: { $0.icao == selectedICAO }) {
+                result.append(
+                    IPadRouteMapWaypoint(
+                        title: "\(airport.icao) · \(airport.name)",
+                        latitude: airport.latitude,
+                        longitude: airport.longitude,
+                        role: .stop
+                    )
+                )
+            } else {
+                let fraction = intermediateStopCount == 1
+                    ? 0.5
+                    : (index == 0 ? 1.0 / 3.0 : 2.0 / 3.0)
+                let coordinate = FlightGeometry.intermediateCoordinate(
+                    from: flightDepartureAirport,
+                    to: flightArrivalAirport,
+                    fraction: fraction
+                )
+                result.append(
+                    IPadRouteMapWaypoint(
+                        title: "Virtueller Stop \(index + 1)",
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude,
+                        role: .virtualStop
+                    )
+                )
+            }
+        }
+
+        result.append(
+            IPadRouteMapWaypoint(
+                title: "\(flightArrivalAirport.icao) · \(flightArrivalAirport.name)",
+                latitude: flightArrivalAirport.latitude,
+                longitude: flightArrivalAirport.longitude,
+                role: .arrival
+            )
+        )
+        return result
     }
 
     private var altitudeOptions: [Int] {
@@ -198,6 +255,9 @@ struct FlybookDashboardView: View {
                 airports: airports.filter { $0.icao != "EDFZ" },
                 selectedICAO: $destinationICAO
             )
+        }
+        .fullScreenCover(isPresented: $showsRouteMap) {
+            IPadRouteMapSheet(waypoints: routeMapWaypoints)
         }
         .alert("Dieser Bereich folgt", isPresented: $showsMigrationNotice) {
             Button("OK", role: .cancel) {}
@@ -469,7 +529,9 @@ struct FlybookDashboardView: View {
                             .frame(width: 120)
                         DatePicker("Startzeit", selection: $outboundDeparture, displayedComponents: .hourAndMinute)
                             .labelsHidden()
-                            .frame(width: 88)
+                            .frame(width: 82)
+                        departureTimeStepButton(systemName: "minus", minutes: -15)
+                        departureTimeStepButton(systemName: "plus", minutes: 15)
                     }
 
                     HStack {
@@ -515,6 +577,7 @@ struct FlybookDashboardView: View {
                 arrivalICAO: $flightArrivalICAO,
                 departure: $outboundDeparture,
                 durationMinutes: routeMinutes,
+                etopsLegMinutes: etopsLegMinutes,
                 distanceNM: routeDistanceNM,
                 selectedAltitudeFeet: $selectedAltitudeFeet,
                 bestLevelFeet: bestLevelFeet,
@@ -544,6 +607,28 @@ struct FlybookDashboardView: View {
             .buttonBorderShape(.capsule)
             .controlSize(.small)
             .tint(Color.dashboardBlue)
+    }
+
+    private func departureTimeStepButton(systemName: String, minutes: Int) -> some View {
+        Button {
+            outboundDeparture = Calendar.current.date(
+                byAdding: .minute,
+                value: minutes,
+                to: outboundDeparture
+            ) ?? outboundDeparture
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .heavy))
+                .foregroundStyle(Color.dashboardBlue)
+                .frame(width: 27, height: 27)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(minutes < 0 ? "Startzeit 15 Minuten früher" : "Startzeit 15 Minuten später")
     }
 
     private func setDepartureNow() {
@@ -588,7 +673,8 @@ struct FlybookDashboardView: View {
                             title: "STOP 1",
                             selection: $intermediateStop1ICAO,
                             airports: airports,
-                            excluding: [flightDepartureICAO, flightArrivalICAO, intermediateStop2ICAO],
+                            excluding: [flightDepartureICAO, flightArrivalICAO]
+                                + (intermediateStopCount == 2 ? [intermediateStop2ICAO] : []),
                             origin: flightDepartureAirport,
                             destination: flightArrivalAirport,
                             stopCount: intermediateStopCount,
@@ -621,8 +707,21 @@ struct FlybookDashboardView: View {
                 .frame(width: 220, alignment: .leading)
 
                 Spacer(minLength: 0)
+
+                Button {
+                    showsRouteMap = true
+                } label: {
+                    Image(systemName: "globe.europe.africa.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 32)
+                        .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Streckenkarte öffnen")
             }
         }
+        .zIndex(12)
     }
 
     private var charterCalculationSection: some View {
@@ -1100,6 +1199,8 @@ private struct StopAirportPicker: View {
     let destination: Airport
     let stopCount: Int
     let stopIndex: Int
+    @State private var query = ""
+    @FocusState private var queryIsFocused: Bool
 
     private var targetCoordinate: (latitude: Double, longitude: Double) {
         let fraction = stopCount <= 1 ? 0.5 : (stopIndex == 1 ? 1.0 / 3.0 : 2.0 / 3.0)
@@ -1124,11 +1225,23 @@ private struct StopAirportPicker: View {
             }
     }
 
-    private var selectionLabel: String {
-        guard !selection.isEmpty,
-              let airport = airports.first(where: { $0.icao == selection })
-        else { return "Virtuell · Modellroute" }
-        return "\(airport.icao) · \(airport.name)"
+    private var suggestions: [Airport] {
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard term.count >= 3 else { return [] }
+        return Array(options.filter {
+            $0.icao.localizedCaseInsensitiveContains(term)
+                || $0.name.localizedCaseInsensitiveContains(term)
+        }.prefix(5))
+    }
+
+    private var showsSuggestions: Bool {
+        queryIsFocused && query.count >= 3 && !suggestions.isEmpty
+    }
+
+    private func choose(_ airport: Airport?) {
+        selection = airport?.icao ?? ""
+        query = airport?.icao ?? ""
+        queryIsFocused = false
     }
 
     var body: some View {
@@ -1136,27 +1249,92 @@ private struct StopAirportPicker: View {
             Text(title)
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
-            Menu {
-                Button("Virtuell · Modellroute") { selection = "" }
-                ForEach(options) { airport in
-                    Button("\(airport.icao) · \(airport.name)") {
-                        selection = airport.icao
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(selectionLabel)
+
+            ZStack(alignment: .topLeading) {
+                HStack(spacing: 0) {
+                    TextField("Virtuell / ICAO", text: $query)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color.dashboardNavy)
                         .lineLimit(1)
-                        .truncationMode(.tail)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 8, weight: .bold))
+                        .padding(.leading, 8)
+                        .focused($queryIsFocused)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            if let airport = suggestions.first { choose(airport) }
+                        }
+
+                    Menu {
+                        Button("Virtuell · Modellroute") { choose(nil) }
+                        ForEach(options) { airport in
+                            Button("\(airport.icao) · \(airport.name)") {
+                                choose(airport)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.dashboardBlue)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(Color.dashboardBlue)
-                .frame(width: 168, height: 28, alignment: .leading)
+                .frame(width: 172, height: 28)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.dashboardBlue.opacity(0.45), lineWidth: 1)
+                }
+
+                if showsSuggestions {
+                    VStack(spacing: 0) {
+                        ForEach(suggestions) { airport in
+                            Button {
+                                choose(airport)
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(airport.icao).fontWeight(.heavy)
+                                    Text(airport.name)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Spacer(minLength: 0)
+                                }
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.dashboardNavy)
+                                .padding(.horizontal, 8)
+                                .frame(width: 205, height: 28)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            if airport.id != suggestions.last?.id { Divider() }
+                        }
+                    }
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 9))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 9)
+                            .stroke(Color.dashboardBlue.opacity(0.42), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+                    .offset(y: 31)
+                    .zIndex(30)
+                }
             }
-            .buttonStyle(.plain)
+            .frame(width: 172, height: 28, alignment: .topLeading)
         }
+        .onAppear { query = selection }
+        .onChange(of: selection) { _, newValue in
+            if query.uppercased() != newValue.uppercased() { query = newValue }
+        }
+        .onChange(of: query) { _, newValue in
+            let normalized = newValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            if normalized.isEmpty {
+                selection = ""
+            } else if let airport = options.first(where: { $0.icao == normalized }) {
+                selection = airport.icao
+            }
+        }
+        .zIndex(showsSuggestions ? 30 : 1)
     }
 }
 
@@ -1272,6 +1450,7 @@ private struct EditableFlightLegCard: View {
     @Binding var arrivalICAO: String
     @Binding var departure: Date
     let durationMinutes: Int
+    let etopsLegMinutes: Int
     let distanceNM: Double
     @Binding var selectedAltitudeFeet: Int
     let bestLevelFeet: Int
@@ -1280,6 +1459,8 @@ private struct EditableFlightLegCard: View {
     let routeRisks: [IPadRouteWeatherRisk]
     let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
+    @AppStorage("etopsGreenYellowMinutes") private var etopsGreenYellowMinutes = 105
+    @AppStorage("etopsOrangeRedMinutes") private var etopsOrangeRedMinutes = 150
 
     private var arrival: Date {
         departure.addingTimeInterval(TimeInterval(durationMinutes * 60))
@@ -1300,9 +1481,12 @@ private struct EditableFlightLegCard: View {
     }
 
     private var etopsBlockColor: Color {
-        if durationMinutes < 105 { return .green }
-        if durationMinutes < 127 { return .yellow }
-        if durationMinutes < 150 { return .orange }
+        let greenYellow = max(30, etopsGreenYellowMinutes)
+        let orangeRed = max(greenYellow + 10, etopsOrangeRedMinutes)
+        let yellowOrange = greenYellow + (orangeRed - greenYellow) / 2
+        if etopsLegMinutes < greenYellow { return .green }
+        if etopsLegMinutes < yellowOrange { return .yellow }
+        if etopsLegMinutes < orangeRed { return .orange }
         return .red
     }
 
