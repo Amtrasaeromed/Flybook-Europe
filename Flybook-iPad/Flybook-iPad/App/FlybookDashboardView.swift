@@ -148,22 +148,26 @@ struct FlybookDashboardView: View {
     }
 
     private var fixedDashboard: some View {
-        VStack(spacing: 9) {
+        VStack(spacing: 6) {
             mainHeader
-                .frame(height: 72)
+                .frame(height: 64)
             featureStrip
-                .frame(height: 42)
+                .frame(height: 32)
             airportInformationRow
-                .frame(height: 126)
+                .frame(height: 104)
             fiveDayOverview
-                .frame(height: 238, alignment: .top)
+                .frame(height: 190, alignment: .top)
             oneWayFlightSection
                 .frame(height: 224, alignment: .top)
+            airportWeatherSection
+                .frame(height: 116, alignment: .top)
+            intermediateStopSection
+                .frame(height: 44, alignment: .top)
             charterCalculationSection
-                .frame(height: 205, alignment: .top)
+                .frame(height: 142, alignment: .top)
             Spacer(minLength: 0)
             bottomMenuBar
-                .frame(height: 62)
+                .frame(height: 54)
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
@@ -295,21 +299,21 @@ struct FlybookDashboardView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                Divider().frame(height: 84)
+                Divider().frame(height: 66)
                 FuelStatusCell(
                     title: "AVGAS",
                     status: destinationFuel.avgas,
                     price: destinationFuelPrices.avgas,
                     referencePrice: AirportFuelPriceCatalog.referenceEDFZ.avgas
                 )
-                Divider().frame(height: 84)
+                Divider().frame(height: 66)
                 FuelStatusCell(
                     title: "UL91",
                     status: destinationFuel.ul91,
                     price: destinationFuelPrices.ul91,
                     referencePrice: AirportFuelPriceCatalog.referenceEDFZ.ul91
                 )
-                Divider().frame(height: 84)
+                Divider().frame(height: 66)
                 FuelStatusCell(
                     title: "MOGAS",
                     status: destinationFuel.mogas,
@@ -321,7 +325,7 @@ struct FlybookDashboardView: View {
     }
 
     private var fiveDayOverview: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 SectionTitle(title: "5-TAGES-WETTER", systemName: "cloud.sun")
                 Spacer()
@@ -331,7 +335,7 @@ struct FlybookDashboardView: View {
             }
 
             DashboardCard {
-                VStack(spacing: 8) {
+                VStack(spacing: 4) {
                     ForecastRiskBar(
                         title: "FOG RISK 06–22 UHR",
                         systemName: "cloud.fog"
@@ -357,7 +361,7 @@ struct FlybookDashboardView: View {
     }
 
     private var oneWayFlightSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
             EditableFlightLegCard(
                 airports: airports,
@@ -368,6 +372,8 @@ struct FlybookDashboardView: View {
                 distanceNM: routeDistanceNM,
                 selectedAltitudeFeet: $selectedAltitudeFeet,
                 bestLevelFeet: 7_000,
+                departureAirport: flightDepartureAirport,
+                arrivalAirport: flightArrivalAirport,
                 onSwap: {
                     let previousDeparture = flightDepartureICAO
                     flightDepartureICAO = flightArrivalICAO
@@ -381,25 +387,53 @@ struct FlybookDashboardView: View {
         }
     }
 
-    private var charterCalculationSection: some View {
-        DashboardCard {
-            VStack(spacing: 10) {
-                HStack {
-                    Text("CHARTERKALKULATION")
-                        .font(.headline.bold())
-                        .foregroundStyle(Color.dashboardNavy)
-
-                    Spacer()
-
-                    Text("Landegebühren")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.dashboardNavy)
-                    Toggle("", isOn: $includeLandingFees)
-                        .labelsHidden()
-                        .tint(Color.dashboardBlue)
+    private var airportWeatherSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            SectionTitle(title: "FLUGPLATZWETTER", systemName: "cloud.sun.rain")
+            DashboardCard {
+                HStack(spacing: 0) {
+                    AirportWeatherColumn(airport: flightDepartureAirport)
+                    Divider().frame(height: 68)
+                    AirportWeatherColumn(airport: flightArrivalAirport)
                 }
+            }
+        }
+    }
 
-                HStack(spacing: 8) {
+    private var intermediateStopSection: some View {
+        HStack(spacing: 8) {
+            SectionTitle(title: "ZWISCHENSTOPPS", systemName: "point.3.connected.trianglepath.dotted")
+            Spacer()
+            Text("Keine Zwischenstopps")
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            Button { showsMigrationNotice = true } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3.bold())
+                    .foregroundStyle(Color.dashboardBlue)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.09)) }
+    }
+
+    private var charterCalculationSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                SectionTitle(title: "CHARTERKALKULATION", systemName: "eurosign.circle")
+                Spacer()
+                Text("Landegebühren")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.dashboardNavy)
+                Toggle("", isOn: $includeLandingFees)
+                    .labelsHidden()
+                    .tint(Color.dashboardBlue)
+            }
+            DashboardCard {
+                VStack(spacing: 5) {
+                HStack {
                     CharterColumnHeader("BLOCKZEIT")
                     CharterColumnHeader("KRAFTSTOFF")
                     CharterColumnHeader("LANDEGEBÜHR")
@@ -425,6 +459,7 @@ struct FlybookDashboardView: View {
                         .foregroundStyle(Color.dashboardNavy)
                 }
                 .padding(.horizontal, 4)
+                }
             }
         }
     }
@@ -892,6 +927,8 @@ private struct EditableFlightLegCard: View {
     let distanceNM: Double
     @Binding var selectedAltitudeFeet: Int
     let bestLevelFeet: Int
+    let departureAirport: Airport
+    let arrivalAirport: Airport
     let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
 
@@ -901,97 +938,290 @@ private struct EditableFlightLegCard: View {
 
     var body: some View {
         DashboardCard {
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
+            VStack(spacing: 5) {
+                HStack(spacing: 5) {
                     Text("HINFLUG")
-                        .font(.subheadline.bold())
+                        .font(.caption.bold())
                         .foregroundStyle(Color.dashboardNavy)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(width: 82, alignment: .leading)
+                        .frame(width: 56, alignment: .leading)
 
                     AirportICAOField(
                         title: "ABFLUG",
                         text: $departureICAO,
                         airports: airports,
+                        referenceDate: departure,
                         onSelect: { _ in }
                     )
 
+                    RunwayRecommendationPanel(airport: departureAirport)
+
                     Image(systemName: "arrow.right")
-                        .font(.headline.bold())
+                        .font(.caption.bold())
                         .foregroundStyle(.secondary)
 
                     AirportICAOField(
                         title: "ANKUNFT",
                         text: $arrivalICAO,
                         airports: airports,
+                        referenceDate: arrival,
                         onSelect: onArrivalSelected
                     )
 
+                    RunwayRecommendationPanel(airport: arrivalAirport)
+
                     Button(action: onSwap) {
                         Image(systemName: "arrow.left.arrow.right")
-                            .font(.headline.bold())
+                            .font(.caption.bold())
                             .foregroundStyle(.white)
-                            .frame(width: 38, height: 34)
-                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 10))
+                            .frame(width: 30, height: 30)
+                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 8))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Abflug und Ankunft tauschen")
                 }
                 .zIndex(2)
 
-                Divider()
-
-                HStack(spacing: 10) {
+                HStack(spacing: 6) {
                     DatePicker("Datum", selection: $departure, displayedComponents: .date)
                         .labelsHidden()
-                        .frame(width: 126)
-                    DatePicker("Abflug", selection: $departure, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                        .frame(width: 88)
+                        .frame(width: 112)
 
-                    Spacer(minLength: 2)
-
-                    PlanningMetric(
-                        title: "BLOCK",
-                        value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))"
+                    FlightTimeBox(
+                        title: "ABFLUG",
+                        date: $departure,
+                        status: .unknown
                     )
-                    PlanningMetric(
+
+                    AltitudeDisplayBox(
                         title: "BEST LEVEL",
-                        value: "FL\(bestLevelFeet / 100)"
+                        value: altitudeLabel(bestLevelFeet)
                     )
 
-                    VStack(spacing: 2) {
-                        Text("FLUGHÖHE")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.secondary)
+                    VStack(spacing: 1) {
+                        Text("FLUGHÖHE").font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary)
                         Picker("Flughöhe", selection: $selectedAltitudeFeet) {
-                            ForEach([3_000, 5_000, 7_000, 9_000], id: \.self) { altitude in
-                                Text("FL\(altitude / 100)").tag(altitude)
+                            ForEach([1_500, 2_500, 3_500, 4_500, 5_000, 7_000, 9_000], id: \.self) { altitude in
+                                Text(altitudeLabel(altitude)).tag(altitude)
                             }
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .tint(Color.dashboardBlue)
-                        Text("Gegen-/Rückenwind — kt")
+                    }
+                    .frame(width: 92, height: 44)
+                    .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 9))
+
+                    VStack(spacing: 0) {
+                        Text("BLOCKZEIT")
                             .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        Text("\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))")
+                            .font(.title3.bold().monospacedDigit())
+                            .foregroundStyle(Color.dashboardBlue)
+                        Text("Gegen-/Rückenwind — kt")
+                            .font(.system(size: 6.5, weight: .bold))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-                    .frame(width: 112)
+                    .frame(width: 112, height: 48)
+                    .background(Color.dashboardBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
 
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text(arrival.formatted(date: .omitted, time: .shortened))
-                            .font(.headline.monospacedDigit())
-                            .foregroundStyle(Color.dashboardNavy)
-                        Text("ANKUNFT")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(width: 62, alignment: .trailing)
+                    ReadOnlyFlightTimeBox(title: "ANKUNFT", date: arrival, status: .unknown)
                 }
             }
         }
+    }
+
+    private func altitudeLabel(_ altitude: Int) -> String {
+        altitude < 5_000
+            ? "\(altitude.formatted(.number.grouping(.automatic))) ft"
+            : String(format: "FL%03d", altitude / 100)
+    }
+}
+
+private struct RunwayRecommendationPanel: View {
+    let airport: Airport
+
+    private var runwayEnds: [String] {
+        airport.referenceRunway
+            .split(separator: "/")
+            .map { String($0.prefix(2)) }
+    }
+
+    private var runwayHeading: Double {
+        (Double(runwayEnds.first ?? "") ?? 0) * 10
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color.dashboardBackground)
+                    .overlay { Circle().stroke(Color.dashboardBlue.opacity(0.22)) }
+                Text("N")
+                    .font(.system(size: 6, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .offset(y: -27)
+                Capsule()
+                    .fill(Color.dashboardNavy.opacity(0.82))
+                    .frame(width: 54, height: 8)
+                    .overlay {
+                        Rectangle().fill(Color.white.opacity(0.8)).frame(width: 38, height: 1)
+                    }
+                    .rotationEffect(.degrees(runwayHeading))
+                Image(systemName: "arrow.down")
+                    .font(.system(size: 31, weight: .bold))
+                    .foregroundStyle(Color.orange.opacity(0.42))
+                    .rotationEffect(.degrees(45))
+                Text("?")
+                    .font(.system(size: 7, weight: .black))
+                    .foregroundStyle(.orange)
+                    .offset(x: 19, y: -19)
+
+                if runwayEnds.count == 2 {
+                    RunwayEndLabel(text: runwayEnds[0])
+                        .offset(runwayLabelOffset(heading: runwayHeading + 180))
+                    RunwayEndLabel(text: runwayEnds[1])
+                        .offset(runwayLabelOffset(heading: runwayHeading))
+                }
+            }
+            .frame(width: 64, height: 58)
+
+            HStack(spacing: 5) {
+                Text("↓ — kt").foregroundStyle(.green)
+                Text("→ — kt").foregroundStyle(.orange)
+            }
+            .font(.system(size: 6.5, weight: .bold))
+        }
+        .frame(width: 70)
+        .accessibilityLabel("Runway \(airport.referenceRunway), Winddaten ausstehend")
+    }
+
+    private func runwayLabelOffset(heading: Double) -> CGSize {
+        let radians = (heading - 90) * .pi / 180
+        return CGSize(width: cos(radians) * 25, height: sin(radians) * 25)
+    }
+}
+
+private struct RunwayEndLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 6.5, weight: .black).monospacedDigit())
+            .foregroundStyle(Color.dashboardNavy)
+            .padding(.horizontal, 3)
+            .frame(height: 13)
+            .background(Color.white, in: Capsule())
+            .overlay { Capsule().stroke(Color.dashboardBlue.opacity(0.35)) }
+    }
+}
+
+private enum OperationalStatus {
+    case open, closed, unknown
+
+    var tint: Color {
+        switch self {
+        case .open: return .green
+        case .closed: return .red
+        case .unknown: return Color.dashboardBlue
+        }
+    }
+}
+
+private struct FlightTimeBox: View {
+    let title: String
+    @Binding var date: Date
+    let status: OperationalStatus
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(title).font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary)
+            DatePicker(title, selection: $date, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+                .font(.subheadline.bold().monospacedDigit())
+        }
+        .frame(width: 84, height: 44)
+        .background(status.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+        .overlay { RoundedRectangle(cornerRadius: 9).stroke(status.tint.opacity(0.65)) }
+    }
+}
+
+private struct ReadOnlyFlightTimeBox: View {
+    let title: String
+    let date: Date
+    let status: OperationalStatus
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(title).font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary)
+            Text(date.formatted(date: .omitted, time: .shortened))
+                .font(.subheadline.bold().monospacedDigit())
+                .foregroundStyle(Color.dashboardNavy)
+        }
+        .frame(width: 78, height: 44)
+        .background(status.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
+        .overlay { RoundedRectangle(cornerRadius: 9).stroke(status.tint.opacity(0.65)) }
+    }
+}
+
+private struct AltitudeDisplayBox: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(title).font(.system(size: 7, weight: .bold)).foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption.bold().monospacedDigit())
+                .foregroundStyle(Color.dashboardBlue)
+        }
+        .frame(width: 82, height: 44)
+        .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 9))
+    }
+}
+
+private struct AirportWeatherColumn: View {
+    let airport: Airport
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 5) {
+                Circle().fill(Color.gray.opacity(0.55)).frame(width: 9, height: 9)
+                Text(airport.icao).font(.subheadline.bold()).foregroundStyle(Color.dashboardBlue)
+                Text(airport.name).font(.caption.bold()).foregroundStyle(Color.dashboardNavy).lineLimit(1)
+            }
+            HStack(spacing: 0) {
+                WeatherMetric(title: "TEMP", value: "— °C")
+                WeatherMetric(title: "SICHT", value: "— km")
+                WeatherMetric(title: "WOLKEN", value: "—")
+                WeatherMetric(title: "BASIS", value: "— ft")
+                WeatherMetric(title: "QNH", value: "—")
+                WeatherMetric(title: "DICHTEHÖHE", value: "— ft")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+    }
+}
+
+private struct WeatherMetric: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(title)
+                .font(.system(size: 6, weight: .bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(value)
+                .font(.system(size: 8, weight: .bold).monospacedDigit())
+                .foregroundStyle(Color.dashboardNavy)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -999,6 +1229,7 @@ private struct AirportICAOField: View {
     let title: String
     @Binding var text: String
     let airports: [Airport]
+    let referenceDate: Date
     let onSelect: (Airport) -> Void
 
     @FocusState private var isFocused: Bool
@@ -1019,36 +1250,36 @@ private struct AirportICAOField: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(title)
-                .font(.system(size: 8, weight: .bold))
+                .font(.system(size: 7, weight: .bold))
                 .foregroundStyle(.secondary)
             HStack(spacing: 5) {
+                Circle()
+                    .fill(Color.gray.opacity(0.55))
+                    .frame(width: 8, height: 8)
                 TextField("ICAO", text: $text)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
-                    .font(.headline.bold())
+                    .font(.subheadline.bold())
                     .foregroundStyle(Color.dashboardBlue)
                     .focused($isFocused)
-                    .frame(width: 58)
+                    .frame(width: 52)
                     .onChange(of: text) { _, value in
                         let normalized = String(value.uppercased().prefix(4))
                         if normalized != value { text = normalized }
                     }
-
-                Text("RWY \(selectedAirport?.referenceRunway ?? "—")")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(Color.dashboardNavy)
-                    .padding(.horizontal, 5)
-                    .frame(height: 20)
-                    .background(Color.dashboardBlue.opacity(0.12), in: Capsule())
             }
             Text(selectedAirport?.name ?? "Flugplatz wählen")
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 7.5, weight: .semibold))
+                .foregroundStyle(Color.dashboardNavy)
+                .lineLimit(1)
+            Text(DashboardSolarClock.display(for: selectedAirport, on: referenceDate))
+                .font(.system(size: 6.5, weight: .bold).monospacedDigit())
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: 126, alignment: .leading)
         .overlay(alignment: .topLeading) {
             if isFocused, !matchingAirports.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -1074,7 +1305,7 @@ private struct AirportICAOField: View {
                         .stroke(Color.dashboardBlue.opacity(0.35), lineWidth: 1)
                 }
                 .shadow(radius: 6)
-                .offset(y: 49)
+                .offset(y: 48)
                 .zIndex(10)
             }
         }
@@ -1248,13 +1479,60 @@ private struct DashboardCard<Content: View>: View {
 
     var body: some View {
         content
-            .padding(16)
+            .padding(11)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
             .overlay {
                 RoundedRectangle(cornerRadius: 18)
                     .stroke(Color.black.opacity(0.09), lineWidth: 1)
             }
+    }
+}
+
+private enum DashboardSolarClock {
+    static func display(for airport: Airport?, on date: Date) -> String {
+        guard let airport,
+              let sunrise = event(on: date, airport: airport, sunrise: true),
+              let sunset = event(on: date, airport: airport, sunrise: false)
+        else { return "☀ —  ·  ☾ —" }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = TimeZone(identifier: airport.timeZoneIdentifier) ?? .current
+        formatter.dateFormat = "HH:mm"
+        return "☀ \(formatter.string(from: sunrise))  ·  ☾ \(formatter.string(from: sunset))"
+    }
+
+    private static func event(on date: Date, airport: Airport, sunrise: Bool) -> Date? {
+        let timeZone = TimeZone(identifier: airport.timeZoneIdentifier) ?? .current
+        var localCalendar = Calendar(identifier: .gregorian)
+        localCalendar.timeZone = timeZone
+        let day = localCalendar.ordinality(of: .day, in: .year, for: date) ?? 1
+        let gamma = 2 * Double.pi / 365 * (Double(day) - 1)
+        let equation = 229.18 * (0.000075 + 0.001868 * cos(gamma) - 0.032077 * sin(gamma)
+            - 0.014615 * cos(2 * gamma) - 0.040849 * sin(2 * gamma))
+        let declination = 0.006918 - 0.399912 * cos(gamma) + 0.070257 * sin(gamma)
+            - 0.006758 * cos(2 * gamma) + 0.000907 * sin(2 * gamma)
+            - 0.002697 * cos(3 * gamma) + 0.00148 * sin(3 * gamma)
+        let latitude = airport.latitude * .pi / 180
+        let zenith = 90.833 * .pi / 180
+        let cosineHour = cos(zenith) / (cos(latitude) * cos(declination))
+            - tan(latitude) * tan(declination)
+        guard (-1.0...1.0).contains(cosineHour) else { return nil }
+        let hourAngle = acos(cosineHour) * 180 / .pi
+        let noonUTC = 720 - 4 * airport.longitude - equation
+        let minutesUTC = sunrise ? noonUTC - 4 * hourAngle : noonUTC + 4 * hourAngle
+
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let parts = localCalendar.dateComponents([.year, .month, .day], from: date)
+        guard let midnight = utcCalendar.date(from: DateComponents(
+            timeZone: TimeZone(secondsFromGMT: 0),
+            year: parts.year,
+            month: parts.month,
+            day: parts.day
+        )) else { return nil }
+        return midnight.addingTimeInterval(minutesUTC * 60)
     }
 }
 

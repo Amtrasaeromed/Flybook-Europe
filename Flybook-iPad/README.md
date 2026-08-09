@@ -17,6 +17,11 @@ funktionsfähige Version erhalten.
   Charterkalkulation und fester Symbol-Menüleiste
 - Kraftstoffpreise mit EDFZ-Referenzdifferenz und lokalem Datenstand
 - Flugplanung mit ICAO-Direkteingabe, Vorschlägen, Zieltausch und Levelwahl
+- kompakte Runway-/Windgrafiken für Start und Ziel, lokale Sonnenzeiten sowie
+  einheitlich gestaltete Abflug-, Best-Level-, Flughöhen-, Blockzeit- und
+  Ankunftsfelder
+- vorbereitete Flugplatzwetterzeile für Temperatur, Sicht, Wolken,
+  Wolkenbasis, QNH und Dichtehöhe sowie ein eigener Zwischenstopp-Bereich
 
 ## Öffnen und starten
 
