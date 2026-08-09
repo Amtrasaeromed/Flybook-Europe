@@ -91,3 +91,7 @@ Das Flugwetter übernimmt die Risikologik des Hauptprojekts und bewertet den
 Streckenkorridor in zehn farbcodierten Abschnitten. Sicht, Niederschlag,
 Gewitter/CAPE, Taupunktspreizung, tiefe Bewölkung und die Wolkenschicht an der
 gewählten Flughöhe fließen in die Einstufung ein.
+Die iPad-Flugplanung trennt Reisezeit und Charter-Blockzeit: Reisezeit enthält
+zusätzlich die Pausen geplanter Tankstopps, während Charter, Kraftstoff und die
+Blockzeitspalte nur die Zeit von Losrollen bis Anhalten summieren. Manuell
+wählbare Höhen und Best Level folgen der kursabhängigen VFR-Halbkreisflugregel.

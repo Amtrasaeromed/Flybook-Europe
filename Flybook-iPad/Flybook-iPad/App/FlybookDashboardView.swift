@@ -64,16 +64,44 @@ struct FlybookDashboardView: View {
         return directRouteDistanceNM * 1.05 + extra
     }
 
-    private var routeMinutes: Int {
+    private var routeBlockMinutes: Int {
         let climbMinutes = Int(
             (Double(max(0, selectedAltitudeFeet - 1_500)) / 1_000 * 1.2)
                 .rounded()
         )
+        let legCount = intermediateStopCount + 1
         return max(
             8,
             Int((routeDistanceNM / 109 * 60).rounded())
-                + 5 + climbMinutes + intermediateStopCount * 60
+                + (5 + climbMinutes) * legCount
         )
+    }
+
+    private var routeMinutes: Int {
+        routeBlockMinutes + intermediateStopCount * 60
+    }
+
+    private var altitudeOptions: [Int] {
+        let firstLegDestination = selectedIntermediateAirports.first ?? flightArrivalAirport
+        let course = FlightGeometry.initialBearing(
+            from: flightDepartureAirport,
+            to: firstLegDestination
+        )
+        if (180..<360).contains(course) {
+            return [2_500, 4_500, 6_500, 8_500]
+        }
+        return [2_500, 3_500, 5_500, 7_500, 9_500]
+    }
+
+    private var altitudeRuleKey: String {
+        let firstLegICAO = selectedIntermediateAirports.first?.icao ?? flightArrivalAirport.icao
+        return "\(flightDepartureAirport.icao)-\(firstLegICAO)"
+    }
+
+    private var bestLevelFeet: Int {
+        altitudeOptions.min {
+            abs($0 - 7_000) < abs($1 - 7_000)
+        } ?? 2_500
     }
 
     private var destinationAirports: [Airport] {
@@ -103,7 +131,7 @@ struct FlybookDashboardView: View {
     }
 
     private var charterBlockHours: Double {
-        ceil((Double(routeMinutes) / 60) * 10) / 10
+        ceil((Double(routeBlockMinutes) / 60) * 10) / 10
     }
 
     private var charterFuelLiters: Int {
@@ -176,11 +204,15 @@ struct FlybookDashboardView: View {
             if flightArrivalICAO.isEmpty {
                 flightArrivalICAO = destination.icao
             }
+            normalizeSelectedAltitude()
         }
         .onChange(of: destinationICAO) { _, newValue in
             if flightDepartureICAO == "EDFZ" {
                 flightArrivalICAO = newValue
             }
+        }
+        .onChange(of: altitudeRuleKey) { _, _ in
+            normalizeSelectedAltitude()
         }
         .task(id: routeWeatherRequestKey) {
             await routeWeather.load(
@@ -217,6 +249,13 @@ struct FlybookDashboardView: View {
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
+    }
+
+    private func normalizeSelectedAltitude() {
+        guard !altitudeOptions.contains(selectedAltitudeFeet) else { return }
+        selectedAltitudeFeet = altitudeOptions.min {
+            abs($0 - selectedAltitudeFeet) < abs($1 - selectedAltitudeFeet)
+        } ?? 2_500
     }
 
     private var mainHeader: some View {
@@ -436,7 +475,7 @@ struct FlybookDashboardView: View {
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.secondary)
                     Menu {
-                        ForEach([1_500, 2_500, 3_500, 4_500, 5_000, 7_000, 9_000], id: \.self) { altitude in
+                        ForEach(altitudeOptions, id: \.self) { altitude in
                             Button(dashboardAltitudeLabel(altitude)) {
                                 selectedAltitudeFeet = altitude
                             }
@@ -466,7 +505,7 @@ struct FlybookDashboardView: View {
                 durationMinutes: routeMinutes,
                 distanceNM: routeDistanceNM,
                 selectedAltitudeFeet: $selectedAltitudeFeet,
-                bestLevelFeet: 7_000,
+                bestLevelFeet: bestLevelFeet,
                 departureAirport: flightDepartureAirport,
                 arrivalAirport: flightArrivalAirport,
                 onSwap: {
@@ -490,13 +529,16 @@ struct FlybookDashboardView: View {
 
     private var airportWeatherSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            ZStack {
                 SectionTitle(title: "FLUGWETTER", systemName: "cloud.sun.rain")
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 IPadRouteRiskDots(risks: routeWeather.segments)
-                Text("VORSCHAUDATEN")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(.orange)
+                HStack {
+                    Spacer()
+                    Text("VORSCHAUDATEN")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.orange)
+                }
             }
             DashboardCard {
                 HStack(spacing: 0) {
@@ -1293,7 +1335,7 @@ private struct EditableFlightLegCard: View {
                 .offset(x: 306, y: 55)
 
                 UniformFlightMetricBox(
-                    title: "BLOCKZEIT",
+                    title: "REISEZEIT",
                     value: "\(durationMinutes / 60):\(String(format: "%02d", durationMinutes % 60))",
                     valueColor: Color.dashboardBlue,
                     boxTint: Color.dashboardNavy,
@@ -1302,11 +1344,15 @@ private struct EditableFlightLegCard: View {
                 .frame(width: 128)
                 .offset(y: 55)
 
-                Circle()
+                RoundedRectangle(cornerRadius: 3)
                     .fill(etopsBlockColor)
-                    .overlay { Circle().stroke(Color.dashboardNavy.opacity(0.45), lineWidth: 1) }
-                    .frame(width: 14, height: 14)
-                    .offset(x: 76, y: 55)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color.dashboardNavy.opacity(0.55), lineWidth: 0.8)
+                    }
+                    .frame(width: 68, height: 6)
+                    .offset(y: 29)
+                    .zIndex(5)
 
                 VStack(spacing: 1) {
                     Text("BEST LEVEL")
@@ -1327,7 +1373,7 @@ private struct EditableFlightLegCard: View {
                         .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 9))
                 }
                 .buttonStyle(.plain)
-                .offset(y: 0)
+                .offset(y: -12)
                 .zIndex(4)
                 .accessibilityLabel("Abflug und Ankunft tauschen")
 
@@ -1337,7 +1383,7 @@ private struct EditableFlightLegCard: View {
                     .frame(width: 52, height: 52)
                     .background(Color.white, in: Circle())
                     .overlay { Circle().stroke(routeWind.color.opacity(0.75), lineWidth: 2) }
-                    .offset(y: -58)
+                    .offset(x: 111, y: 55)
                     .zIndex(4)
             }
         }
