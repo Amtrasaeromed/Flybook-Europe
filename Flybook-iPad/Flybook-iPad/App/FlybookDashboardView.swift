@@ -1456,16 +1456,26 @@ private struct RunwayRecommendationPanel: View {
                 .frame(width: 132, alignment: .center)
             }
 
-            Text(metarWindText)
-                .font(.system(size: 12.5, weight: .heavy).monospacedDigit())
-                .foregroundStyle(Color.dashboardNavy)
-                .multilineTextAlignment(.center)
-                .lineLimit(1)
-                .minimumScaleFactor(0.62)
-                .frame(width: 72, height: 38)
-                .background(metarBoxFill, in: RoundedRectangle(cornerRadius: 8))
-                .overlay { RoundedRectangle(cornerRadius: 8).stroke(metarBoxBorder, lineWidth: 1.3) }
-                .offset(x: mirrored ? -102 : 102, y: -13)
+            VStack(spacing: 3) {
+                HStack(spacing: 4) {
+                    Image(systemName: "road.lanes")
+                    Text(recommendation?.label ?? "—")
+                }
+                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.dashboardBlue)
+                .frame(height: 18)
+
+                Text(metarWindText)
+                    .font(.system(size: 12.5, weight: .heavy).monospacedDigit())
+                    .foregroundStyle(Color.dashboardNavy)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+                    .frame(width: 72, height: 38)
+                    .background(metarBoxFill, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay { RoundedRectangle(cornerRadius: 8).stroke(metarBoxBorder, lineWidth: 1.3) }
+            }
+            .offset(x: mirrored ? -102 : 102, y: -10)
         }
         .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
         .accessibilityLabel("Runway \(airport.referenceRunway), bevorzugt \(recommendation?.label ?? "unbekannt")")
@@ -1544,10 +1554,10 @@ private struct RunwayEndLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: active ? 10 : 7, weight: .black).monospacedDigit())
+            .font(.system(size: 10, weight: .black).monospacedDigit())
             .foregroundStyle(active ? .white : Color.dashboardNavy)
-            .padding(.horizontal, active ? 6 : 4)
-            .frame(height: active ? 20 : 15)
+            .padding(.horizontal, 6)
+            .frame(height: 20)
             .background(active ? Color.dashboardBlue : Color.white, in: Capsule())
             .overlay { Capsule().stroke(Color.dashboardBlue.opacity(0.35)) }
     }
