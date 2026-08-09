@@ -7,10 +7,12 @@ funktionsfähige Version erhalten.
 ## Erster Migrationsstand
 
 - natives SwiftUI-App-Target für iPadOS 17 oder neuer
-- NavigationSplitView als iPad-Grundlayout
+- festes SwiftUI-Vollbilddashboard als iPad-Grundlayout
 - aktueller lokaler Flybook-Flugplatzbestand aus `airports.csv`
 - Flugplatzsuche und erste responsive Detailansicht
 - vorhandenes Flybook-App-Symbol und Farbwelt
+- Hochformat als feste Vollbildansicht ohne vertikales Seitenscrolling
+- erstes Hauptdashboard mit Setup, Hin-/Rückflug und Wetterbereichen
 
 ## Öffnen und starten
 

@@ -82,8 +82,8 @@ enum AirportCatalog {
     }
 }
 
-private extension Airport {
-    static let edfz = Airport(
+extension Airport {
+    static let fallbackEDFZ = Airport(
         icao: "EDFZ",
         name: "Mainz-Finthen",
         countryCode: "DE",
@@ -98,4 +98,6 @@ private extension Airport {
         runwaySurface: "Asphalt",
         airportFilter: "Heimatflugplatz"
     )
+
+    fileprivate static let edfz = fallbackEDFZ
 }
