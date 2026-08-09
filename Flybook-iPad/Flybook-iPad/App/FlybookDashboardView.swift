@@ -30,6 +30,7 @@ struct FlybookDashboardView: View {
     @State private var intermediateStop1ICAO = ""
     @State private var intermediateStop2ICAO = ""
     @State private var showsRouteMap = false
+    @State private var selectedPage: IPadDashboardPage = .home
     @StateObject private var routeWeather = IPadRouteWeatherRiskViewModel()
     @StateObject private var airportWeather = IPadWeatherViewModel()
     @StateObject private var routeWindModel = IPadRouteWindViewModel()
@@ -396,27 +397,43 @@ struct FlybookDashboardView: View {
 
     private var fixedDashboard: some View {
         VStack(spacing: 6) {
-            mainHeader
-                .frame(height: 64)
-                .zIndex(20)
-            featureStrip
-                .frame(height: 32)
-            airportInformationRow
-                .frame(height: 104)
-            fiveDayOverview
-                .frame(height: 194, alignment: .top)
-            oneWayFlightSection
-                .frame(height: 340, alignment: .top)
-            intermediateStopSection
-                .frame(height: 52, alignment: .top)
-            charterCalculationSection
-                .frame(height: 146, alignment: .top)
+            Group {
+                if selectedPage == .home {
+                    homeDashboardContent
+                } else {
+                    IPadMenuPageView(
+                        page: selectedPage,
+                        airports: airports,
+                        destination: destination,
+                        selectedDestinationICAO: $destinationICAO,
+                        activeBase: $activeBase,
+                        activeAircraft: $activeAircraft,
+                        activeUser: $activeUser,
+                        plannedDeparture: $outboundDeparture
+                    )
+                }
+            }
+            .frame(height: 1014, alignment: .top)
             Spacer(minLength: 0)
             bottomMenuBar
                 .frame(height: 54)
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
+    }
+
+    private var homeDashboardContent: some View {
+        VStack(spacing: 6) {
+            mainHeader
+                .frame(height: 64)
+                .zIndex(20)
+            featureStrip.frame(height: 32)
+            airportInformationRow.frame(height: 104)
+            fiveDayOverview.frame(height: 128, alignment: .top)
+            oneWayFlightSection.frame(height: 340, alignment: .top)
+            intermediateStopSection.frame(height: 52, alignment: .top)
+            charterCalculationSection.frame(height: 146, alignment: .top)
+        }
     }
 
     private func normalizeSelectedAltitude() {
@@ -597,8 +614,6 @@ struct FlybookDashboardView: View {
             DashboardCard {
                 VStack(spacing: 4) {
                     ForecastRiskBar(
-                        title: "FOG RISK 06–22 UHR",
-                        systemName: "cloud.fog",
                         days: airportWeather.days,
                         kind: .fog
                     )
@@ -616,8 +631,6 @@ struct FlybookDashboardView: View {
                         }
                     }
                     ForecastRiskBar(
-                        title: "WIND 06–22 UHR",
-                        systemName: "wind",
                         days: airportWeather.days,
                         kind: .wind
                     )
@@ -1002,19 +1015,33 @@ struct FlybookDashboardView: View {
 
     private var bottomMenuBar: some View {
         HStack(spacing: 0) {
-            BottomMenuButton(systemName: "house.fill", label: "Hauptseite", selected: true) {}
-            BottomMenuButton(systemName: "airplane.arrival", label: "Destination Finder") { showsMigrationNotice = true }
-            BottomMenuButton(systemName: "signpost.right.and.left", label: "Alternates") { showsMigrationNotice = true }
-            BottomMenuButton(systemName: "calendar.badge.clock", label: "Reservierungen") { showsMigrationNotice = true }
-            BottomMenuButton(systemName: "building.2", label: "Basis") { showsMigrationNotice = true }
-            BottomMenuButton(systemName: "airplane", label: "Flugzeug") { showsMigrationNotice = true }
-            BottomMenuButton(systemName: "gearshape", label: "Setup") { showsMigrationNotice = true }
+            menuButton(.home, systemName: "house.fill", label: "Hauptseite")
+            menuButton(.destinationFinder, systemName: "airplane.arrival", label: "Destination Finder")
+            menuButton(.alternates, systemName: "signpost.right.and.left", label: "Alternates")
+            menuButton(.reservations, systemName: "calendar.badge.clock", label: "Reservierungen")
+            menuButton(.base, systemName: "building.2", label: "Basis")
+            menuButton(.aircraft, systemName: "airplane", label: "Flugzeug")
+            menuButton(.setup, systemName: "gearshape", label: "Setup")
         }
         .padding(.horizontal, 6)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
         .overlay {
             RoundedRectangle(cornerRadius: 18)
                 .stroke(Color.black.opacity(0.09), lineWidth: 1)
+        }
+    }
+
+    private func menuButton(
+        _ page: IPadDashboardPage,
+        systemName: String,
+        label: String
+    ) -> some View {
+        BottomMenuButton(
+            systemName: systemName,
+            label: label,
+            selected: selectedPage == page
+        ) {
+            selectedPage = page
         }
     }
 
@@ -2543,17 +2570,11 @@ private struct PlanningMetric: View {
 
 private struct ForecastRiskBar: View {
     enum Kind { case fog, wind }
-    let title: String
-    let systemName: String
     let days: [IPadDailyWeather]
     let kind: Kind
 
     var body: some View {
-        HStack(spacing: 6) {
-            Label(title, systemImage: systemName)
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.secondary)
-                .frame(width: 128, alignment: .leading)
+        HStack(spacing: 8) {
             ForEach(0..<5, id: \.self) { dayIndex in
                 HStack(spacing: 0) {
                     ForEach(0..<17, id: \.self) { hourIndex in
@@ -2561,8 +2582,8 @@ private struct ForecastRiskBar: View {
                             .fill(color(day: dayIndex, hour: hourIndex))
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-                .frame(maxWidth: .infinity, minHeight: 14)
+                .clipShape(RoundedRectangle(cornerRadius: 1.5))
+                .frame(maxWidth: .infinity, minHeight: 5, maxHeight: 5)
             }
         }
     }
@@ -2692,13 +2713,18 @@ private struct ForecastPlaceholderTile: View {
     let weather: IPadDailyWeather?
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 5) {
             Text(date.formatted(.dateTime.weekday(.abbreviated)))
                 .font(.caption.bold())
                 .foregroundStyle(Color.dashboardNavy)
-            Image(systemName: weather?.symbolName ?? "cloud")
-                .font(.title3)
-                .foregroundStyle(weather == nil ? Color.secondary : Color.dashboardBlue)
+            HStack(spacing: 5) {
+                ForEach(Array(periodSymbols.enumerated()), id: \.offset) { _, symbol in
+                    Image(systemName: symbol)
+                        .symbolRenderingMode(.multicolor)
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 20, height: 22)
+                }
+            }
             Text(temperatureText)
                 .font(.caption2.bold())
                 .foregroundStyle(.secondary)
@@ -2706,6 +2732,11 @@ private struct ForecastPlaceholderTile: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var periodSymbols: [String] {
+        guard let weather else { return Array(repeating: "questionmark.circle", count: 3) }
+        return weather.periodSymbolNames
     }
 
     private var temperatureText: String {
@@ -2837,7 +2868,7 @@ private struct AirportPickerSheet: View {
     }
 }
 
-private enum FlightGeometry {
+enum FlightGeometry {
     static func nauticalMiles(from origin: Airport, to destination: Airport) -> Double {
         let radiusNM = 3_440.065
         let lat1 = origin.latitude * .pi / 180

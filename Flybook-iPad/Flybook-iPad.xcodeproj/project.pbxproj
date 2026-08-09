@@ -28,6 +28,7 @@
 		A10000000000000000000013 /* FlightPlanningCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000014 /* FlightPlanningCore.swift */; };
 		A10000000000000000000014 /* IPadWeatherViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* IPadWeatherViewModel.swift */; };
 		A10000000000000000000015 /* IPadRouteWind.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000016 /* IPadRouteWind.swift */; };
+		A10000000000000000000016 /* IPadMenuPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* IPadMenuPages.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 		B10000000000000000000014 /* FlightPlanningCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightPlanningCore.swift; sourceTree = "<group>"; };
 		B10000000000000000000015 /* IPadWeatherViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadWeatherViewModel.swift; sourceTree = "<group>"; };
 		B10000000000000000000016 /* IPadRouteWind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadRouteWind.swift; sourceTree = "<group>"; };
+		B10000000000000000000017 /* IPadMenuPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadMenuPages.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +93,7 @@
 				B10000000000000000000001 /* FlybookIPadApp.swift */,
 				B10000000000000000000002 /* ContentView.swift */,
 				B10000000000000000000008 /* FlybookDashboardView.swift */,
+				B10000000000000000000017 /* IPadMenuPages.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -222,6 +225,7 @@
 				A10000000000000000000013 /* FlightPlanningCore.swift in Sources */,
 				A10000000000000000000014 /* IPadWeatherViewModel.swift in Sources */,
 				A10000000000000000000015 /* IPadRouteWind.swift in Sources */,
+				A10000000000000000000016 /* IPadMenuPages.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

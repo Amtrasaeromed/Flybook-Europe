@@ -3,6 +3,7 @@ import Foundation
 struct IPadDailyWeather: Identifiable, Hashable {
     let date: Date
     let symbolName: String
+    let periodSymbolNames: [String]
     let minimumTemperature: Int?
     let maximumTemperature: Int?
     let maximumWindKnots: Int?
@@ -136,6 +137,9 @@ final class IPadWeatherViewModel: ObservableObject {
         return IPadDailyWeather(
             date: date,
             symbolName: representativeSymbol(codes: representative.compactMap(\.weatherCode)),
+            periodSymbolNames: [8, 14, 20].map { hour in
+                weatherSymbol(code: nearest(hour: hour)?.weatherCode)
+            },
             minimumTemperature: temperatures.min().map { Int($0.rounded()) },
             maximumTemperature: temperatures.max().map { Int($0.rounded()) },
             maximumWindKnots: hourlyWind.compactMap { $0 }.max().map { Int($0.rounded()) },
@@ -167,6 +171,22 @@ final class IPadWeatherViewModel: ObservableObject {
         case ..<3.5: return "cloud.fog.fill"
         case ..<5.5: return "cloud.rain.fill"
         default: return "cloud.bolt.rain.fill"
+        }
+    }
+
+    private static func weatherSymbol(code: Int?) -> String {
+        guard let code else { return "questionmark.circle" }
+        switch code {
+        case 0: return "sun.max.fill"
+        case 1, 2: return "cloud.sun.fill"
+        case 3: return "cloud.fill"
+        case 45, 48: return "cloud.fog.fill"
+        case 51...57: return "cloud.drizzle.fill"
+        case 61...67: return "cloud.rain.fill"
+        case 71...77, 85, 86: return "cloud.snow.fill"
+        case 80...82: return "cloud.heavyrain.fill"
+        case 95...99: return "cloud.bolt.rain.fill"
+        default: return "cloud.fill"
         }
     }
 }
