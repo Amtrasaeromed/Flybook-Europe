@@ -429,7 +429,7 @@ struct FlybookDashboardView: View {
                 .zIndex(20)
             featureStrip.frame(height: 32)
             airportInformationRow.frame(height: 104)
-            fiveDayOverview.frame(height: 128, alignment: .top)
+            fiveDayOverview.frame(height: 146, alignment: .top)
             oneWayFlightSection.frame(height: 340, alignment: .top)
             intermediateStopSection.frame(height: 52, alignment: .top)
             charterCalculationSection.frame(height: 146, alignment: .top)
@@ -581,21 +581,24 @@ struct FlybookDashboardView: View {
                     title: "AVGAS",
                     status: destinationFuel.avgas,
                     price: destinationFuelPrices.avgas,
-                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.avgas
+                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.avgas,
+                    availabilityCheckedAt: destinationFuel.checkedAt
                 )
                 Divider().frame(height: 66)
                 FuelStatusCell(
                     title: "UL91",
                     status: destinationFuel.ul91,
                     price: destinationFuelPrices.ul91,
-                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.ul91
+                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.ul91,
+                    availabilityCheckedAt: destinationFuel.checkedAt
                 )
                 Divider().frame(height: 66)
                 FuelStatusCell(
                     title: "MOGAS",
                     status: destinationFuel.mogas,
                     price: destinationFuelPrices.mogas,
-                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.mogas
+                    referencePrice: AirportFuelPriceCatalog.referenceEDFZ.mogas,
+                    availabilityCheckedAt: destinationFuel.checkedAt
                 )
             }
         }
@@ -1376,6 +1379,7 @@ private struct FuelStatusCell: View {
     let status: FuelAvailabilityStatus
     let price: FuelPricePoint?
     let referencePrice: FuelPricePoint?
+    let availabilityCheckedAt: String?
 
     private var color: Color {
         switch status {
@@ -1386,7 +1390,7 @@ private struct FuelStatusCell: View {
     }
 
     private var priceText: String {
-        guard let price else { return "? €/L" }
+        guard let price else { return "Preis nicht hinterlegt" }
         let formatted = String(format: "%.2f", price.eurosPerLiter)
             .replacingOccurrences(of: ".", with: ",")
         guard let referencePrice else { return "\(formatted) €/L" }
@@ -1397,7 +1401,7 @@ private struct FuelStatusCell: View {
     }
 
     private var dateText: String {
-        "Stand \(price?.checkedAt ?? "unklar")"
+        "Stand \(price?.checkedAt ?? availabilityCheckedAt ?? "unklar")"
     }
 
     var body: some View {
@@ -2103,7 +2107,10 @@ private struct RunwayRecommendationPanel: View {
     }
 
     private var metarWindText: String {
-        let base = String(format: "%03.0f/%02.0f", weather.windDirectionDegrees, weather.windSpeedKnots)
+        let roundedDirection = (weather.windDirectionDegrees / 10).rounded() * 10
+        let normalizedDirection = roundedDirection == 0 && weather.windSpeedKnots > 0
+            ? 360 : roundedDirection
+        let base = String(format: "%03.0f/%02.0f", normalizedDirection, weather.windSpeedKnots)
         return weather.gustKnots.map { "\(base) G\($0)" } ?? base
     }
 
@@ -2292,7 +2299,7 @@ private enum DashboardWeatherPreview {
                 $0 >= 9_999 ? "10+" : String(format: "%.1f", $0 / 1_000)
             } ?? "—"
             let base = sample.lowestCloudBaseFeetAGL.map {
-                Int($0.rounded()).formatted(.number.grouping(.automatic))
+                (Int(($0 / 100).rounded()) * 100).formatted(.number.grouping(.automatic))
             } ?? "—"
             return .init(
                 category: sample.category.rawValue,
@@ -2301,8 +2308,8 @@ private enum DashboardWeatherPreview {
                 clouds: clouds,
                 cloudBaseFeet: base,
                 pressureHPA: Int(pressure.rounded()),
-                densityAltitudeFeet: Int(densityAltitude.rounded()),
-                windDirectionDegrees: sample.windDirectionDegrees ?? 0,
+                densityAltitudeFeet: Int((densityAltitude / 100).rounded()) * 100,
+                windDirectionDegrees: ((sample.windDirectionDegrees ?? 0) / 10).rounded() * 10,
                 windSpeedKnots: sample.windSpeedKnots ?? 0,
                 gustKnots: sample.windGustKnots.map { Int($0.rounded()) }
             )

@@ -18,6 +18,7 @@ struct AirportFuelAvailability: Hashable {
     var avgas: FuelAvailabilityStatus = .check
     var ul91: FuelAvailabilityStatus = .check
     var mogas: FuelAvailabilityStatus = .check
+    var checkedAt: String?
 }
 
 struct AirportFuelCatalog {
@@ -68,6 +69,8 @@ struct AirportFuelCatalog {
             let fuelType = value("fuel_type", in: row).uppercased()
             let availability = status(from: value("availability_raw", in: row))
             var airport = values[icao] ?? AirportFuelAvailability()
+            let checkedAt = displayDate(value("data_checked_at", in: row))
+            if !checkedAt.isEmpty { airport.checkedAt = checkedAt }
             switch fuelType {
             case "AVGAS": airport.avgas = availability
             case "UL91": airport.ul91 = availability
@@ -78,5 +81,11 @@ struct AirportFuelCatalog {
         }
 
         return AirportFuelCatalog(values: values)
+    }
+
+    private static func displayDate(_ rawValue: String) -> String {
+        let parts = rawValue.split(separator: "-")
+        guard parts.count == 3 else { return rawValue }
+        return "\(parts[2]).\(parts[1]).\(parts[0])"
     }
 }
