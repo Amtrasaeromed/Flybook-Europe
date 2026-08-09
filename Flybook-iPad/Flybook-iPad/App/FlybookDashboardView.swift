@@ -389,7 +389,13 @@ struct FlybookDashboardView: View {
 
     private var airportWeatherSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            SectionTitle(title: "FLUGPLATZWETTER", systemName: "cloud.sun.rain")
+            HStack {
+                SectionTitle(title: "FLUGPLATZWETTER", systemName: "cloud.sun.rain")
+                Spacer()
+                Text("VORSCHAUDATEN")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.orange)
+            }
             DashboardCard {
                 HStack(spacing: 0) {
                     AirportWeatherColumn(airport: flightDepartureAirport)
@@ -939,45 +945,26 @@ private struct EditableFlightLegCard: View {
     var body: some View {
         DashboardCard {
             VStack(spacing: 5) {
-                HStack(spacing: 5) {
-                    Text("HINFLUG")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.dashboardNavy)
-                        .frame(width: 56, alignment: .leading)
-
-                    AirportICAOField(
+                HStack(spacing: 0) {
+                    FlightAirportHalf(
                         title: "ABFLUG",
                         text: $departureICAO,
                         airports: airports,
+                        airport: departureAirport,
                         referenceDate: departure,
                         onSelect: { _ in }
                     )
 
-                    RunwayRecommendationPanel(airport: departureAirport)
+                    Divider().frame(height: 100)
 
-                    Image(systemName: "arrow.right")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-
-                    AirportICAOField(
+                    FlightAirportHalf(
                         title: "ANKUNFT",
                         text: $arrivalICAO,
                         airports: airports,
+                        airport: arrivalAirport,
                         referenceDate: arrival,
                         onSelect: onArrivalSelected
                     )
-
-                    RunwayRecommendationPanel(airport: arrivalAirport)
-
-                    Button(action: onSwap) {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.caption.bold())
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
-                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Abflug und Ankunft tauschen")
                 }
                 .zIndex(2)
 
@@ -1027,6 +1014,16 @@ private struct EditableFlightLegCard: View {
                     .background(Color.dashboardBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 9))
 
                     ReadOnlyFlightTimeBox(title: "ANKUNFT", date: arrival, status: .unknown)
+
+                    Button(action: onSwap) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 9))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Abflug und Ankunft tauschen")
                 }
             }
         }
@@ -1039,8 +1036,36 @@ private struct EditableFlightLegCard: View {
     }
 }
 
+private struct FlightAirportHalf: View {
+    let title: String
+    @Binding var text: String
+    let airports: [Airport]
+    let airport: Airport
+    let referenceDate: Date
+    let onSelect: (Airport) -> Void
+
+    var body: some View {
+        HStack(spacing: 7) {
+            AirportICAOField(
+                title: title,
+                text: $text,
+                airports: airports,
+                referenceDate: referenceDate,
+                onSelect: onSelect
+            )
+            RunwayRecommendationPanel(
+                airport: airport,
+                weather: DashboardWeatherPreview.snapshot(for: airport)
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+    }
+}
+
 private struct RunwayRecommendationPanel: View {
     let airport: Airport
+    let weather: DashboardWeatherSnapshot
 
     private var runwayEnds: [String] {
         airport.referenceRunway
@@ -1052,67 +1077,105 @@ private struct RunwayRecommendationPanel: View {
         (Double(runwayEnds.first ?? "") ?? 0) * 10
     }
 
+    private var runwayHeadings: [(label: String, heading: Double)] {
+        runwayEnds.compactMap { label in
+            guard let number = Double(label) else { return nil }
+            return (label, number * 10)
+        }
+    }
+
+    private var recommendation: (label: String, heading: Double, headwind: Double, crosswind: Double)? {
+        runwayHeadings.map { end in
+            let difference = shortestAngle(weather.windDirectionDegrees - end.heading) * .pi / 180
+            return (
+                end.label,
+                end.heading,
+                weather.windSpeedKnots * cos(difference),
+                abs(weather.windSpeedKnots * sin(difference))
+            )
+        }.max { $0.headwind < $1.headwind }
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 2) {
             ZStack {
                 Circle()
                     .fill(Color.dashboardBackground)
                     .overlay { Circle().stroke(Color.dashboardBlue.opacity(0.22)) }
                 Text("N")
-                    .font(.system(size: 6, weight: .bold))
+                    .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(.secondary)
-                    .offset(y: -27)
+                    .offset(y: -38)
                 Capsule()
                     .fill(Color.dashboardNavy.opacity(0.82))
-                    .frame(width: 54, height: 8)
+                    .frame(width: 72, height: 10)
                     .overlay {
-                        Rectangle().fill(Color.white.opacity(0.8)).frame(width: 38, height: 1)
+                        Rectangle().fill(Color.white.opacity(0.85)).frame(width: 54, height: 1.5)
                     }
-                    .rotationEffect(.degrees(runwayHeading))
+                    .rotationEffect(.degrees(runwayHeading - 90))
                 Image(systemName: "arrow.down")
-                    .font(.system(size: 31, weight: .bold))
-                    .foregroundStyle(Color.orange.opacity(0.42))
-                    .rotationEffect(.degrees(45))
-                Text("?")
-                    .font(.system(size: 7, weight: .black))
+                    .font(.system(size: 43, weight: .heavy))
                     .foregroundStyle(.orange)
-                    .offset(x: 19, y: -19)
+                    .rotationEffect(.degrees(weather.windDirectionDegrees))
 
                 if runwayEnds.count == 2 {
-                    RunwayEndLabel(text: runwayEnds[0])
+                    RunwayEndLabel(
+                        text: runwayEnds[0],
+                        active: recommendation?.label == runwayEnds[0]
+                    )
                         .offset(runwayLabelOffset(heading: runwayHeading + 180))
-                    RunwayEndLabel(text: runwayEnds[1])
+                    RunwayEndLabel(
+                        text: runwayEnds[1],
+                        active: recommendation?.label == runwayEnds[1]
+                    )
                         .offset(runwayLabelOffset(heading: runwayHeading))
                 }
             }
-            .frame(width: 64, height: 58)
+            .frame(width: 92, height: 82)
 
-            HStack(spacing: 5) {
-                Text("↓ — kt").foregroundStyle(.green)
-                Text("→ — kt").foregroundStyle(.orange)
+            HStack(spacing: 8) {
+                Text(headwindText)
+                    .foregroundStyle((recommendation?.headwind ?? 0) >= 0 ? .green : .red)
+                Text("→ \(Int((recommendation?.crosswind ?? 0).rounded())) kt")
+                    .foregroundStyle(.orange)
             }
-            .font(.system(size: 6.5, weight: .bold))
+            .font(.system(size: 10.5, weight: .heavy).monospacedDigit())
         }
-        .frame(width: 70)
-        .accessibilityLabel("Runway \(airport.referenceRunway), Winddaten ausstehend")
+        .frame(width: 124)
+        .accessibilityLabel("Runway \(airport.referenceRunway), bevorzugt \(recommendation?.label ?? "unbekannt")")
     }
 
     private func runwayLabelOffset(heading: Double) -> CGSize {
         let radians = (heading - 90) * .pi / 180
-        return CGSize(width: cos(radians) * 25, height: sin(radians) * 25)
+        return CGSize(width: cos(radians) * 35, height: sin(radians) * 35)
+    }
+
+    private func shortestAngle(_ angle: Double) -> Double {
+        var normalized = angle.truncatingRemainder(dividingBy: 360)
+        if normalized > 180 { normalized -= 360 }
+        if normalized < -180 { normalized += 360 }
+        return normalized
+    }
+
+    private var headwindText: String {
+        let value = recommendation?.headwind ?? 0
+        return value >= 0
+            ? "↓ \(Int(value.rounded())) kt"
+            : "↑ \(Int(abs(value).rounded())) kt"
     }
 }
 
 private struct RunwayEndLabel: View {
     let text: String
+    let active: Bool
 
     var body: some View {
         Text(text)
-            .font(.system(size: 6.5, weight: .black).monospacedDigit())
-            .foregroundStyle(Color.dashboardNavy)
-            .padding(.horizontal, 3)
-            .frame(height: 13)
-            .background(Color.white, in: Capsule())
+            .font(.system(size: active ? 10 : 7, weight: .black).monospacedDigit())
+            .foregroundStyle(active ? .white : Color.dashboardNavy)
+            .padding(.horizontal, active ? 6 : 4)
+            .frame(height: active ? 20 : 15)
+            .background(active ? Color.dashboardBlue : Color.white, in: Capsule())
             .overlay { Capsule().stroke(Color.dashboardBlue.opacity(0.35)) }
     }
 }
@@ -1181,23 +1244,80 @@ private struct AltitudeDisplayBox: View {
     }
 }
 
+private struct DashboardWeatherSnapshot {
+    let category: String
+    let temperatureCelsius: Int
+    let visibilityKilometers: String
+    let clouds: String
+    let cloudBaseFeet: String
+    let pressureHPA: Int
+    let densityAltitudeFeet: Int
+    let windDirectionDegrees: Double
+    let windSpeedKnots: Double
+    let gustKnots: Int?
+
+    var categoryColor: Color {
+        switch category {
+        case "VFR": return .green
+        case "MVFR": return Color.dashboardBlue
+        case "IFR": return .red
+        default: return .purple
+        }
+    }
+}
+
+private enum DashboardWeatherPreview {
+    static func snapshot(for airport: Airport) -> DashboardWeatherSnapshot {
+        switch airport.icao {
+        case "EDFZ":
+            return .init(
+                category: "VFR", temperatureCelsius: 23, visibilityKilometers: "10+",
+                clouds: "FEW", cloudBaseFeet: "4.800", pressureHPA: 1018,
+                densityAltitudeFeet: 2_180, windDirectionDegrees: 240,
+                windSpeedKnots: 5, gustKnots: nil
+            )
+        case "EDAX":
+            return .init(
+                category: "VFR", temperatureCelsius: 21, visibilityKilometers: "10+",
+                clouds: "SCT", cloudBaseFeet: "3.900", pressureHPA: 1015,
+                densityAltitudeFeet: 1_620, windDirectionDegrees: 260,
+                windSpeedKnots: 8, gustKnots: 14
+            )
+        default:
+            return .init(
+                category: "MVFR", temperatureCelsius: 19, visibilityKilometers: "8",
+                clouds: "BKN", cloudBaseFeet: "2.400", pressureHPA: 1016,
+                densityAltitudeFeet: max(1_400, airport.elevationFeet + 1_100),
+                windDirectionDegrees: 230, windSpeedKnots: 7, gustKnots: 12
+            )
+        }
+    }
+}
+
 private struct AirportWeatherColumn: View {
     let airport: Airport
+
+    private var weather: DashboardWeatherSnapshot {
+        DashboardWeatherPreview.snapshot(for: airport)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 5) {
-                Circle().fill(Color.gray.opacity(0.55)).frame(width: 9, height: 9)
+                Circle().fill(weather.categoryColor).frame(width: 10, height: 10)
                 Text(airport.icao).font(.subheadline.bold()).foregroundStyle(Color.dashboardBlue)
                 Text(airport.name).font(.caption.bold()).foregroundStyle(Color.dashboardNavy).lineLimit(1)
+                Text(weather.category)
+                    .font(.system(size: 7, weight: .black))
+                    .foregroundStyle(weather.categoryColor)
             }
             HStack(spacing: 0) {
-                WeatherMetric(title: "TEMP", value: "— °C")
-                WeatherMetric(title: "SICHT", value: "— km")
-                WeatherMetric(title: "WOLKEN", value: "—")
-                WeatherMetric(title: "BASIS", value: "— ft")
-                WeatherMetric(title: "QNH", value: "—")
-                WeatherMetric(title: "DICHTEHÖHE", value: "— ft")
+                WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
+                WeatherMetric(title: "SICHT", value: "\(weather.visibilityKilometers) km")
+                WeatherMetric(title: "WOLKEN", value: weather.clouds)
+                WeatherMetric(title: "BASIS", value: "\(weather.cloudBaseFeet) ft")
+                WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
+                WeatherMetric(title: "DICHTEHÖHE", value: "\(weather.densityAltitudeFeet.formatted()) ft")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1217,7 +1337,7 @@ private struct WeatherMetric: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(value)
-                .font(.system(size: 8, weight: .bold).monospacedDigit())
+                .font(.system(size: 9, weight: .bold).monospacedDigit())
                 .foregroundStyle(Color.dashboardNavy)
                 .lineLimit(1)
         }
@@ -1252,34 +1372,34 @@ private struct AirportICAOField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title)
-                .font(.system(size: 7, weight: .bold))
+                .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
             HStack(spacing: 5) {
                 Circle()
-                    .fill(Color.gray.opacity(0.55))
-                    .frame(width: 8, height: 8)
+                    .fill(selectedAirport.map { DashboardWeatherPreview.snapshot(for: $0).categoryColor } ?? .gray)
+                    .frame(width: 11, height: 11)
                 TextField("ICAO", text: $text)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
-                    .font(.subheadline.bold())
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color.dashboardBlue)
                     .focused($isFocused)
-                    .frame(width: 52)
+                    .frame(width: 76)
                     .onChange(of: text) { _, value in
                         let normalized = String(value.uppercased().prefix(4))
                         if normalized != value { text = normalized }
                     }
             }
             Text(selectedAirport?.name ?? "Flugplatz wählen")
-                .font(.system(size: 7.5, weight: .semibold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.dashboardNavy)
                 .lineLimit(1)
             Text(DashboardSolarClock.display(for: selectedAirport, on: referenceDate))
-                .font(.system(size: 6.5, weight: .bold).monospacedDigit())
+                .font(.system(size: 9, weight: .bold).monospacedDigit())
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(width: 126, alignment: .leading)
+        .frame(width: 180, alignment: .leading)
         .overlay(alignment: .topLeading) {
             if isFocused, !matchingAirports.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -1305,7 +1425,7 @@ private struct AirportICAOField: View {
                         .stroke(Color.dashboardBlue.opacity(0.35), lineWidth: 1)
                 }
                 .shadow(radius: 6)
-                .offset(y: 48)
+                .offset(y: 66)
                 .zIndex(10)
             }
         }

@@ -20,6 +20,8 @@ funktionsfähige Version erhalten.
 - kompakte Runway-/Windgrafiken für Start und Ziel, lokale Sonnenzeiten sowie
   einheitlich gestaltete Abflug-, Best-Level-, Flughöhen-, Blockzeit- und
   Ankunftsfelder
+- geografisch ausgerichtete Runways mit windabhängig hervorgehobenem Bahnende
+  und berechneten Gegen-/Querwindkomponenten
 - vorbereitete Flugplatzwetterzeile für Temperatur, Sicht, Wolken,
   Wolkenbasis, QNH und Dichtehöhe sowie ein eigener Zwischenstopp-Bereich
 
