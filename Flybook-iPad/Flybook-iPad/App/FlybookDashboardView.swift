@@ -90,6 +90,41 @@ struct FlybookDashboardView: View {
         Int((Double(routeBlockMinutes) / Double(intermediateStopCount + 1)).rounded())
     }
 
+    private var activeETOPSGreenYellowMinutes: Int {
+        activeETOPSProfileValue(
+            name: "greenYellowMinutes",
+            legacyKey: "etopsGreenYellowMinutes",
+            fallback: 105
+        )
+    }
+
+    private var activeETOPSOrangeRedMinutes: Int {
+        let configured = activeETOPSProfileValue(
+            name: "orangeRedMinutes",
+            legacyKey: "etopsOrangeRedMinutes",
+            fallback: 150
+        )
+        return max(activeETOPSGreenYellowMinutes + 10, configured)
+    }
+
+    private func activeETOPSProfileValue(
+        name: String,
+        legacyKey: String,
+        fallback: Int
+    ) -> Int {
+        let profileDefaults = UserDefaults(suiteName: "de.flybook.europe.user-profiles")
+        let profileKey = "etopsProfile.\(activeUser).\(name)"
+        if let profileDefaults,
+           profileDefaults.object(forKey: profileKey) != nil {
+            return profileDefaults.integer(forKey: profileKey)
+        }
+        if activeUser == "Stephan",
+           UserDefaults.standard.object(forKey: legacyKey) != nil {
+            return UserDefaults.standard.integer(forKey: legacyKey)
+        }
+        return fallback
+    }
+
     private var routeMapWaypoints: [IPadRouteMapWaypoint] {
         var result = [
             IPadRouteMapWaypoint(
@@ -578,6 +613,8 @@ struct FlybookDashboardView: View {
                 departure: $outboundDeparture,
                 durationMinutes: routeMinutes,
                 etopsLegMinutes: etopsLegMinutes,
+                etopsGreenYellowMinutes: activeETOPSGreenYellowMinutes,
+                etopsOrangeRedMinutes: activeETOPSOrangeRedMinutes,
                 distanceNM: routeDistanceNM,
                 selectedAltitudeFeet: $selectedAltitudeFeet,
                 bestLevelFeet: bestLevelFeet,
@@ -651,6 +688,135 @@ struct FlybookDashboardView: View {
             : String(format: "FL%03d", altitude / 100)
     }
 
+    private struct AutomaticRoute {
+        let stopCount: Int
+        let firstICAO: String
+        let secondICAO: String
+        let routeDistanceNM: Double
+    }
+
+    private var automaticRouteCandidates: [Airport] {
+        airports.filter {
+            $0.isTechStop
+                && $0.icao != flightDepartureAirport.icao
+                && $0.icao != flightArrivalAirport.icao
+                && ($0.runwayLengthMeters ?? 0) > 0
+        }
+    }
+
+    private func routeDistanceNM(via stops: [Airport]) -> Double {
+        let points = [flightDepartureAirport] + stops + [flightArrivalAirport]
+        let legs = zip(points, points.dropFirst()).reduce(0.0) {
+            $0 + FlightGeometry.nauticalMiles(from: $1.0, to: $1.1)
+        }
+        return legs * 1.05 + 10
+    }
+
+    private func estimatedBlockMinutes(routeDistanceNM: Double, stopCount: Int) -> Int {
+        let climbMinutes = Int(
+            (Double(max(0, selectedAltitudeFeet - 1_500)) / 1_000 * 1.2)
+                .rounded()
+        )
+        return max(
+            8,
+            Int((routeDistanceNM / 109 * 60).rounded())
+                + (5 + climbMinutes) * (stopCount + 1)
+        )
+    }
+
+    private func optimizedAutomaticRoute(stopCount: Int) -> AutomaticRoute? {
+        guard stopCount > 0 else {
+            return AutomaticRoute(
+                stopCount: 0,
+                firstICAO: "",
+                secondICAO: "",
+                routeDistanceNM: routeDistanceNM(via: [])
+            )
+        }
+
+        let candidates = automaticRouteCandidates
+        guard !candidates.isEmpty else { return nil }
+        let direct = directRouteDistanceNM
+
+        if stopCount == 1 {
+            let target = FlightGeometry.intermediateCoordinate(
+                from: flightDepartureAirport,
+                to: flightArrivalAirport,
+                fraction: 0.5
+            )
+            guard let best = candidates.min(by: { lhs, rhs in
+                let lhsRoute = routeDistanceNM(via: [lhs])
+                let rhsRoute = routeDistanceNM(via: [rhs])
+                let lhsScore = (lhsRoute - direct) * 4
+                    + FlightGeometry.nauticalMiles(from: lhs, to: target)
+                let rhsScore = (rhsRoute - direct) * 4
+                    + FlightGeometry.nauticalMiles(from: rhs, to: target)
+                if abs(lhsScore - rhsScore) > 0.01 { return lhsScore < rhsScore }
+                return lhs.icao < rhs.icao
+            }) else { return nil }
+            return AutomaticRoute(
+                stopCount: 1,
+                firstICAO: best.icao,
+                secondICAO: "",
+                routeDistanceNM: routeDistanceNM(via: [best])
+            )
+        }
+
+        let firstTarget = FlightGeometry.intermediateCoordinate(
+            from: flightDepartureAirport,
+            to: flightArrivalAirport,
+            fraction: 1.0 / 3.0
+        )
+        let secondTarget = FlightGeometry.intermediateCoordinate(
+            from: flightDepartureAirport,
+            to: flightArrivalAirport,
+            fraction: 2.0 / 3.0
+        )
+        var best: (score: Double, first: Airport, second: Airport, route: Double)?
+        for first in candidates {
+            for second in candidates where second.icao != first.icao {
+                let route = routeDistanceNM(via: [first, second])
+                let firstLeg = FlightGeometry.nauticalMiles(from: flightDepartureAirport, to: first)
+                let middleLeg = FlightGeometry.nauticalMiles(from: first, to: second)
+                let finalLeg = FlightGeometry.nauticalMiles(from: second, to: flightArrivalAirport)
+                let idealLeg = (firstLeg + middleLeg + finalLeg) / 3
+                let balanceError = abs(firstLeg - idealLeg)
+                    + abs(middleLeg - idealLeg)
+                    + abs(finalLeg - idealLeg)
+                let targetError = FlightGeometry.nauticalMiles(from: first, to: firstTarget)
+                    + FlightGeometry.nauticalMiles(from: second, to: secondTarget)
+                let score = (route - direct) * 4 + balanceError * 2 + targetError
+                if best == nil || score < best!.score {
+                    best = (score, first, second, route)
+                }
+            }
+        }
+        guard let best else { return nil }
+        return AutomaticRoute(
+            stopCount: 2,
+            firstICAO: best.first.icao,
+            secondICAO: best.second.icao,
+            routeDistanceNM: best.route
+        )
+    }
+
+    private func applyAutomaticETOPSRoute() {
+        for count in 0...2 {
+            guard let route = optimizedAutomaticRoute(stopCount: count) else { continue }
+            let block = estimatedBlockMinutes(
+                routeDistanceNM: route.routeDistanceNM,
+                stopCount: count
+            )
+            let perLeg = Int((Double(block) / Double(count + 1)).rounded())
+            if perLeg < activeETOPSOrangeRedMinutes || count == 2 {
+                intermediateStopCount = route.stopCount
+                intermediateStop1ICAO = route.firstICAO
+                intermediateStop2ICAO = route.secondICAO
+                return
+            }
+        }
+    }
+
     private var intermediateStopSection: some View {
         DashboardCard {
             HStack(spacing: 8) {
@@ -707,6 +873,22 @@ struct FlybookDashboardView: View {
                 .frame(width: 220, alignment: .leading)
 
                 Spacer(minLength: 0)
+
+                Button {
+                    applyAutomaticETOPSRoute()
+                } label: {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Color.dashboardBlue)
+                        .frame(width: 38, height: 32)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("ETOPS-Route automatisch planen")
 
                 Button {
                     showsRouteMap = true
@@ -872,7 +1054,7 @@ struct FlybookDashboardView: View {
                     title: "NUTZER",
                     icon: "person",
                     selection: $activeUser,
-                    options: ["Stephan"]
+                    options: ["Stephan", "Maria"]
                 )
             }
         }
@@ -1451,6 +1633,8 @@ private struct EditableFlightLegCard: View {
     @Binding var departure: Date
     let durationMinutes: Int
     let etopsLegMinutes: Int
+    let etopsGreenYellowMinutes: Int
+    let etopsOrangeRedMinutes: Int
     let distanceNM: Double
     @Binding var selectedAltitudeFeet: Int
     let bestLevelFeet: Int
@@ -1459,8 +1643,6 @@ private struct EditableFlightLegCard: View {
     let routeRisks: [IPadRouteWeatherRisk]
     let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
-    @AppStorage("etopsGreenYellowMinutes") private var etopsGreenYellowMinutes = 105
-    @AppStorage("etopsOrangeRedMinutes") private var etopsOrangeRedMinutes = 150
 
     private var arrival: Date {
         departure.addingTimeInterval(TimeInterval(durationMinutes * 60))
