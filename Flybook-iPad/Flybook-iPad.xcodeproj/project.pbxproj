@@ -14,6 +14,8 @@
 		A10000000000000000000005 /* airports.csv in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* airports.csv */; };
 		A10000000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* Assets.xcassets */; };
 		A10000000000000000000007 /* FlybookDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* FlybookDashboardView.swift */; };
+		A10000000000000000000008 /* fuels.csv in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* fuels.csv */; };
+		A10000000000000000000009 /* FuelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* FuelCatalog.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +27,8 @@
 		B10000000000000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000007 /* Flybook Europe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flybook Europe.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000008 /* FlybookDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlybookDashboardView.swift; sourceTree = "<group>"; };
+		B10000000000000000000009 /* fuels.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuels.csv; sourceTree = "<group>"; };
+		B1000000000000000000000A /* FuelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelCatalog.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +76,7 @@
 			children = (
 				B10000000000000000000003 /* Airport.swift */,
 				B10000000000000000000004 /* CSVParser.swift */,
+				B1000000000000000000000A /* FuelCatalog.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -80,6 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				B10000000000000000000005 /* airports.csv */,
+				B10000000000000000000009 /* fuels.csv */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -151,6 +157,7 @@
 			files = (
 				A10000000000000000000006 /* Assets.xcassets in Resources */,
 				A10000000000000000000005 /* airports.csv in Resources */,
+				A10000000000000000000008 /* fuels.csv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -166,6 +173,7 @@
 				A10000000000000000000007 /* FlybookDashboardView.swift in Sources */,
 				A10000000000000000000001 /* FlybookIPadApp.swift in Sources */,
 				A10000000000000000000004 /* CSVParser.swift in Sources */,
+				A10000000000000000000009 /* FuelCatalog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -12,7 +12,9 @@ funktionsfähige Version erhalten.
 - Flugplatzsuche und erste responsive Detailansicht
 - vorhandenes Flybook-App-Symbol und Farbwelt
 - Hochformat als feste Vollbildansicht ohne vertikales Seitenscrolling
-- erstes Hauptdashboard mit Setup, Hin-/Rückflug und Wetterbereichen
+- erstes Hauptdashboard mit Oneway-Flugplanung und Wetterbereichen
+- Hauptseite mit Zielnavigation, Airport-/Kraftstoffdaten, Oneway-Planung,
+  Charterkalkulation und fester Symbol-Menüleiste
 
 ## Öffnen und starten
 

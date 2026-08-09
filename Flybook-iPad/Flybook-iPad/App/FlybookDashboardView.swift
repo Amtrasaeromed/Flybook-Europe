@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FlybookDashboardView: View {
     let airports: [Airport]
+    private let fuelCatalog = AirportFuelCatalog.load()
 
     @AppStorage("ipad.activeBase") private var activeBase = "LSV Mainz"
     @AppStorage("ipad.activeAircraft") private var activeAircraft = "DEZHS"
@@ -15,6 +16,7 @@ struct FlybookDashboardView: View {
         .roundedToNextQuarterHour
     @State private var showsAirportPicker = false
     @State private var showsMigrationNotice = false
+    @State private var includeLandingFees = false
 
     private var homeAirport: Airport {
         airports.first(where: { $0.icao == "EDFZ" })
@@ -33,6 +35,32 @@ struct FlybookDashboardView: View {
 
     private var routeMinutes: Int {
         max(8, Int((routeDistanceNM / 109 * 60).rounded()) + 8)
+    }
+
+    private var destinationAirports: [Airport] {
+        airports.filter { $0.icao != "EDFZ" }
+    }
+
+    private var destinationFuel: AirportFuelAvailability {
+        fuelCatalog.availability(for: destination.icao)
+    }
+
+    private var charterBlockHours: Double {
+        ceil((Double(routeMinutes) / 60) * 10) / 10
+    }
+
+    private var charterFuelLiters: Int {
+        Int((charterBlockHours * 60).rounded())
+    }
+
+    private var charterCostEUR: Int {
+        let hourlyRate: Double
+        switch activeAircraft {
+        case "DEUKS": hourlyRate = 145
+        case "DETIK": hourlyRate = 180
+        default: hourlyRate = 180
+        }
+        return Int((charterBlockHours * hourlyRate * 1.07).rounded())
     }
 
     var body: some View {
@@ -80,23 +108,245 @@ struct FlybookDashboardView: View {
     }
 
     private var fixedDashboard: some View {
-        VStack(spacing: 10) {
-            destinationHeader
-                .frame(height: 70)
-            setupPanel
-                .frame(height: 78)
-            actionBar
-                .frame(height: 42)
-            airportSummary
-                .frame(height: 82)
-            flightPlanningSection
-                .frame(height: 355, alignment: .top)
-            weatherSection
-                .frame(height: 330, alignment: .top)
+        VStack(spacing: 9) {
+            mainHeader
+                .frame(height: 72)
+            airportInformationRow
+                .frame(height: 96)
+            fiveDayOverview
+                .frame(height: 250, alignment: .top)
+            oneWayFlightSection
+                .frame(height: 190, alignment: .top)
+            charterCalculationSection
+                .frame(height: 238, alignment: .top)
             Spacer(minLength: 0)
+            bottomMenuBar
+                .frame(height: 62)
         }
         .padding(.horizontal, 14)
         .padding(.top, 8)
+    }
+
+    private var mainHeader: some View {
+        ZStack {
+            HStack(alignment: .center) {
+                Button {
+                    showsAirportPicker = true
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(destination.name.uppercased())
+                            .font(.system(size: 27, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color.dashboardNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.62)
+                        HStack(spacing: 7) {
+                            Text(countryFlag(destination.countryCode))
+                            Text("·  \(destination.icao)  ·  HÖHE \(destination.elevationFeet.formatted()) FT")
+                            Image(systemName: "chevron.down")
+                                .font(.caption.bold())
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+                    }
+                    .frame(width: 315, alignment: .leading)
+                    .clipped()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button {
+                    showsMigrationNotice = true
+                } label: {
+                    VStack(spacing: 1) {
+                        Image(systemName: "cloud.sun.fill")
+                            .symbolRenderingMode(.multicolor)
+                            .font(.system(size: 29, weight: .bold))
+                        Text("NOW!")
+                            .font(.caption2.weight(.black))
+                            .foregroundStyle(Color.dashboardNavy)
+                    }
+                    .frame(width: 64, height: 64)
+                    .background(Color.white, in: Circle())
+                    .overlay { Circle().stroke(Color.dashboardBlue, lineWidth: 2) }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Wetter jetzt vollständig aktualisieren")
+            }
+
+            HStack(spacing: 7) {
+                HeaderNavigationButton(systemName: "chevron.left") {
+                    selectDestination(offset: -1)
+                }
+                HeaderNavigationButton(
+                    systemName: "line.3.horizontal.decrease.circle.fill",
+                    highlighted: true
+                ) {
+                    showsMigrationNotice = true
+                }
+                HeaderNavigationButton(systemName: "chevron.right") {
+                    selectDestination(offset: 1)
+                }
+            }
+        }
+    }
+
+    private var airportInformationRow: some View {
+        DashboardCard {
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("RUNWAY", systemImage: "road.lanes")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    Text(destination.runwayDisplay)
+                        .font(.title3.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Divider().frame(height: 52)
+                FuelStatusCell(title: "AVGAS", status: destinationFuel.avgas)
+                Divider().frame(height: 52)
+                FuelStatusCell(title: "UL91", status: destinationFuel.ul91)
+                Divider().frame(height: 52)
+                FuelStatusCell(title: "MOGAS", status: destinationFuel.mogas)
+            }
+        }
+    }
+
+    private var fiveDayOverview: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                SectionTitle(title: "5-TAGES-WETTER", systemName: "cloud.sun")
+                Spacer()
+                Text("ICON-SEAMLESS · NOCH NICHT VERBUNDEN")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
+            }
+
+            DashboardCard {
+                VStack(spacing: 12) {
+                    HStack(spacing: 8) {
+                        ForEach(0..<5, id: \.self) { offset in
+                            ForecastPlaceholderTile(
+                                date: Calendar.current.date(
+                                    byAdding: .day,
+                                    value: offset,
+                                    to: .now
+                                ) ?? .now
+                            )
+                        }
+                    }
+                    Divider()
+                    HStack {
+                        Label("FOG RISK 06–22 UHR", systemImage: "cloud.fog")
+                        Spacer()
+                        Text("Wetteranbindung folgt")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var oneWayFlightSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionTitle(title: "FLUGPLANUNG · ONEWAY", systemName: "point.topleft.down.to.point.bottomright.curvepath")
+            FlightLegCard(
+                title: "HINFLUG",
+                departureAirport: homeAirport,
+                arrivalAirport: destination,
+                departure: $outboundDeparture,
+                durationMinutes: routeMinutes,
+                distanceNM: routeDistanceNM
+            )
+            .frame(height: 154)
+            .clipped()
+        }
+    }
+
+    private var charterCalculationSection: some View {
+        DashboardCard {
+            VStack(spacing: 10) {
+                HStack {
+                    Text("CHARTERKALKULATION")
+                        .font(.headline.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+
+                    Menu {
+                        ForEach(["DEZHS", "DEUKS", "DETIK"], id: \.self) { aircraft in
+                            Button(aircraft) { activeAircraft = aircraft }
+                        }
+                    } label: {
+                        Text(activeAircraft)
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.dashboardBlue)
+                    }
+
+                    Spacer()
+
+                    Toggle("Landegebühren", isOn: $includeLandingFees)
+                        .font(.caption.bold())
+                        .tint(Color.dashboardBlue)
+                }
+
+                HStack(spacing: 8) {
+                    CharterColumnHeader("BLOCKZEIT")
+                    CharterColumnHeader("KRAFTSTOFF")
+                    CharterColumnHeader("LANDEGEBÜHR")
+                    CharterColumnHeader("CHARTER")
+                }
+
+                HStack(spacing: 8) {
+                    CharterValueBox(value: charterBlockHours.formatted(.number.precision(.fractionLength(1))) + " h")
+                    CharterValueBox(value: "\(charterFuelLiters) L", accent: .green)
+                    CharterValueBox(value: includeLandingFees ? "?" : "—")
+                    CharterValueBox(value: "\(charterCostEUR) €")
+                }
+
+                Divider()
+
+                HStack {
+                    Text("GESAMT ONEWAY")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(Color.dashboardNavy)
+                    Spacer()
+                    Text(includeLandingFees ? "\(charterCostEUR) € + ?" : "\(charterCostEUR) €")
+                        .font(.title3.bold().monospacedDigit())
+                        .foregroundStyle(Color.dashboardNavy)
+                }
+                .padding(.horizontal, 4)
+            }
+        }
+    }
+
+    private var bottomMenuBar: some View {
+        HStack(spacing: 0) {
+            BottomMenuButton(systemName: "house.fill", label: "Hauptseite", selected: true) {}
+            BottomMenuButton(systemName: "airplane.arrival", label: "Destination Finder") { showsMigrationNotice = true }
+            BottomMenuButton(systemName: "signpost.right.and.left", label: "Alternates") { showsMigrationNotice = true }
+            BottomMenuButton(systemName: "calendar.badge.clock", label: "Reservierungen") { showsMigrationNotice = true }
+            BottomMenuButton(systemName: "building.2", label: "Basis") { showsMigrationNotice = true }
+            BottomMenuButton(systemName: "airplane", label: "Flugzeug") { showsMigrationNotice = true }
+            BottomMenuButton(systemName: "gearshape", label: "Setup") { showsMigrationNotice = true }
+        }
+        .padding(.horizontal, 6)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.black.opacity(0.09), lineWidth: 1)
+        }
+    }
+
+    private func selectDestination(offset: Int) {
+        guard !destinationAirports.isEmpty else { return }
+        let current = destinationAirports.firstIndex(where: { $0.icao == destination.icao }) ?? 0
+        let next = (current + offset + destinationAirports.count) % destinationAirports.count
+        destinationICAO = destinationAirports[next].icao
     }
 
     private var destinationHeader: some View {
@@ -326,6 +576,111 @@ struct FlybookDashboardView: View {
         countryCode.uppercased().unicodeScalars.compactMap {
             Unicode.Scalar(127_397 + $0.value).map(String.init)
         }.joined()
+    }
+}
+
+private struct HeaderNavigationButton: View {
+    let systemName: String
+    var highlighted = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 16, weight: .black))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 38)
+                .background(
+                    highlighted ? Color.dashboardBlue : Color.dashboardNavy,
+                    in: RoundedRectangle(cornerRadius: 10)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct FuelStatusCell: View {
+    let title: String
+    let status: FuelAvailabilityStatus
+
+    private var color: Color {
+        switch status {
+        case .available: return .green
+        case .unavailable: return .red
+        case .check: return .orange
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Label(title, systemImage: "fuelpump.fill")
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 9, height: 9)
+                Text(status.label)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(color)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct CharterColumnHeader: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+}
+
+private struct CharterValueBox: View {
+    let value: String
+    var accent: Color = Color.dashboardNavy
+
+    var body: some View {
+        Text(value)
+            .font(.headline.bold().monospacedDigit())
+            .foregroundStyle(accent)
+            .frame(maxWidth: .infinity, minHeight: 46)
+            .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 12))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+}
+
+private struct BottomMenuButton: View {
+    let systemName: String
+    let label: String
+    var selected = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 19, weight: .bold))
+                .foregroundStyle(selected ? .white : Color.dashboardBlue)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(
+                    selected ? Color.dashboardBlue : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 13)
+                )
+        }
+        .buttonStyle(.plain)
+        .padding(5)
+        .accessibilityLabel(label)
     }
 }
 
