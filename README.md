@@ -95,3 +95,7 @@ Die iPad-Flugplanung trennt Reisezeit und Charter-Blockzeit: Reisezeit enthält
 zusätzlich die Pausen geplanter Tankstopps, während Charter, Kraftstoff und die
 Blockzeitspalte nur die Zeit von Losrollen bis Anhalten summieren. Manuell
 wählbare Höhen und Best Level folgen der kursabhängigen VFR-Halbkreisflugregel.
+Das verdichtete Hochformatlayout integriert die beiden Wetterdatengruppen und
+die zehn Korridorpunkte direkt in die Flugplanung. VFR/MVFR stehen
+spiegelbildlich an den ICAO-Feldern; die Zwischenstoppsteuerung bleibt ohne
+zusätzliche Überschrift als feste, einzeilige Bedienleiste sichtbar.

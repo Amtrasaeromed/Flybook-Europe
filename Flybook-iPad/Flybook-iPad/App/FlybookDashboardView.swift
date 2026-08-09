@@ -240,11 +240,9 @@ struct FlybookDashboardView: View {
             fiveDayOverview
                 .frame(height: 194, alignment: .top)
             oneWayFlightSection
-                .frame(height: 228, alignment: .top)
-            airportWeatherSection
-                .frame(height: 120, alignment: .top)
+                .frame(height: 292, alignment: .top)
             intermediateStopSection
-                .frame(height: 82, alignment: .top)
+                .frame(height: 52, alignment: .top)
             charterCalculationSection
                 .frame(height: 146, alignment: .top)
             Spacer(minLength: 0)
@@ -512,6 +510,7 @@ struct FlybookDashboardView: View {
                 bestLevelFeet: bestLevelFeet,
                 departureAirport: flightDepartureAirport,
                 arrivalAirport: flightArrivalAirport,
+                routeRisks: routeWeather.segments,
                 onSwap: {
                     let previousDeparture = flightDepartureICAO
                     flightDepartureICAO = flightArrivalICAO
@@ -521,7 +520,7 @@ struct FlybookDashboardView: View {
                     destinationICAO = airport.icao
                 }
             )
-            .frame(height: 190)
+            .frame(height: 254)
         }
     }
 
@@ -531,36 +530,24 @@ struct FlybookDashboardView: View {
             : String(format: "FL%03d", altitude / 100)
     }
 
-    private var airportWeatherSection: some View {
-        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
-            ZStack {
-                SectionTitle(title: "FLUGWETTER", systemName: "cloud.sun.rain")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                IPadRouteRiskDots(risks: routeWeather.segments)
-                HStack {
-                    Spacer()
-                    Text("VORSCHAUDATEN")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.orange)
-                }
-            }
-            DashboardCard {
-                HStack(spacing: 0) {
-                    AirportWeatherColumn(airport: flightDepartureAirport)
-                    Divider().frame(height: 68)
-                    AirportWeatherColumn(airport: flightArrivalAirport)
-                }
-            }
-        }
-    }
-
     private var intermediateStopSection: some View {
-        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
-            SectionTitle(title: "ZWISCHENSTOPPS", systemName: "point.3.connected.trianglepath.dotted")
-            DashboardCard {
-                HStack(spacing: 8) {
-                    Group {
-                        if intermediateStopCount >= 1 {
+        DashboardCard {
+            HStack(spacing: 8) {
+                Text("Stops:")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.dashboardNavy)
+
+                Picker("Anzahl Zwischenstopps", selection: $intermediateStopCount) {
+                    Text("0").tag(0)
+                    Text("1").tag(1)
+                    Text("2").tag(2)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 120)
+
+                Group {
+                    if intermediateStopCount >= 1 {
                         StopAirportPicker(
                             title: "STOP 1",
                             selection: $intermediateStop1ICAO,
@@ -571,16 +558,16 @@ struct FlybookDashboardView: View {
                             stopCount: intermediateStopCount,
                             stopIndex: 1
                         )
-                        } else {
-                            Text("Direktflug")
-                                .font(.caption.bold())
-                                .foregroundStyle(.secondary)
-                        }
+                    } else {
+                        Text("Direktflug")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
                     }
-                    .frame(width: 220, alignment: .leading)
+                }
+                .frame(width: 220, alignment: .leading)
 
-                    Group {
-                        if intermediateStopCount == 2 {
+                Group {
+                    if intermediateStopCount == 2 {
                             StopAirportPicker(
                                 title: "STOP 2",
                                 selection: $intermediateStop2ICAO,
@@ -591,23 +578,13 @@ struct FlybookDashboardView: View {
                                 stopCount: intermediateStopCount,
                                 stopIndex: 2
                             )
-                        } else {
-                            Color.clear.frame(height: 1)
-                        }
+                    } else {
+                        Color.clear.frame(height: 1)
                     }
-                    .frame(width: 220, alignment: .leading)
-
-                    Spacer(minLength: 0)
-
-                    Picker("Anzahl Zwischenstopps", selection: $intermediateStopCount) {
-                        Text("0").tag(0)
-                        Text("1").tag(1)
-                        Text("2").tag(2)
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .frame(width: 120)
                 }
+                .frame(width: 220, alignment: .leading)
+
+                Spacer(minLength: 0)
             }
         }
     }
@@ -1264,6 +1241,7 @@ private struct EditableFlightLegCard: View {
     let bestLevelFeet: Int
     let departureAirport: Airport
     let arrivalAirport: Airport
+    let routeRisks: [IPadRouteWeatherRisk]
     let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
 
@@ -1294,7 +1272,8 @@ private struct EditableFlightLegCard: View {
 
     var body: some View {
         DashboardCard {
-            ZStack {
+            VStack(spacing: 4) {
+                ZStack {
                 Rectangle()
                     .fill(Color.dashboardNavy.opacity(0.15))
                     .frame(width: 1)
@@ -1389,6 +1368,26 @@ private struct EditableFlightLegCard: View {
                     .overlay { Circle().stroke(routeWind.color.opacity(0.75), lineWidth: 2) }
                     .offset(x: 111, y: 55)
                     .zIndex(4)
+                }
+                .frame(height: 157)
+
+                HStack(spacing: 0) {
+                    FlightWeatherMetrics(airport: departureAirport)
+                    Divider().frame(height: 42)
+                    FlightWeatherMetrics(airport: arrivalAirport)
+                }
+                .frame(height: 52)
+
+                ZStack {
+                    IPadRouteRiskDots(risks: routeRisks)
+                    HStack {
+                        Spacer()
+                        Text("VORSCHAUDATEN")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .frame(height: 14)
             }
         }
     }
@@ -1436,6 +1435,9 @@ private struct FlightAirportHalf: View {
     let onSelect: (Airport) -> Void
 
     private var mirrored: Bool { title == "ANKUNFT" }
+    private var weather: DashboardWeatherSnapshot {
+        DashboardWeatherPreview.snapshot(for: airport)
+    }
 
     var body: some View {
         ZStack {
@@ -1445,13 +1447,14 @@ private struct FlightAirportHalf: View {
                 airports: airports,
                 referenceDate: referenceDate,
                 mirrored: mirrored,
+                weather: weather,
                 onSelect: onSelect
             )
             .frame(maxWidth: .infinity, alignment: mirrored ? .trailing : .leading)
 
             RunwayRecommendationPanel(
                 airport: airport,
-                weather: DashboardWeatherPreview.snapshot(for: airport),
+                weather: weather,
                 mirrored: mirrored
             )
         }
@@ -1794,6 +1797,49 @@ private enum DashboardWeatherPreview {
     }
 }
 
+private struct FlightCategoryBadge: View {
+    let weather: DashboardWeatherSnapshot
+
+    var body: some View {
+        Text(weather.category)
+            .font(.system(size: 10, weight: .black))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .frame(width: 48, height: 25)
+            .background(weather.categoryColor, in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.dashboardNavy.opacity(0.22), lineWidth: 1)
+            }
+    }
+}
+
+private struct FlightWeatherMetrics: View {
+    let airport: Airport
+
+    private var weather: DashboardWeatherSnapshot {
+        DashboardWeatherPreview.snapshot(for: airport)
+    }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            WeatherMetricGroup {
+                WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
+                WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
+                WeatherMetric(title: "DICHTEHÖHE", value: "\(weather.densityAltitudeFeet.formatted()) ft")
+            }
+            WeatherMetricGroup {
+                WeatherMetric(title: "WOLKEN", value: weather.clouds)
+                WeatherMetric(title: "BASIS", value: "\(weather.cloudBaseFeet) ft")
+                WeatherMetric(title: "SICHT", value: "\(weather.visibilityKilometers) km")
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 8)
+    }
+}
+
 private struct AirportWeatherColumn: View {
     let airport: Airport
 
@@ -1880,6 +1926,7 @@ private struct AirportICAOField: View {
     let airports: [Airport]
     let referenceDate: Date
     let mirrored: Bool
+    let weather: DashboardWeatherSnapshot
     let onSelect: (Airport) -> Void
 
     @FocusState private var isFocused: Bool
@@ -1905,6 +1952,9 @@ private struct AirportICAOField: View {
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.secondary)
             HStack(spacing: 5) {
+                if mirrored {
+                    FlightCategoryBadge(weather: weather)
+                }
                 TextField("ICAO", text: $text)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
@@ -1917,6 +1967,9 @@ private struct AirportICAOField: View {
                         let normalized = String(value.uppercased().prefix(4))
                         if normalized != value { text = normalized }
                     }
+                if !mirrored {
+                    FlightCategoryBadge(weather: weather)
+                }
             }
             .frame(maxWidth: .infinity, alignment: mirrored ? .trailing : .leading)
             Text(selectedAirport?.name ?? "Flugplatz wählen")
