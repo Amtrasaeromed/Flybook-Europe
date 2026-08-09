@@ -240,7 +240,7 @@ struct FlybookDashboardView: View {
             fiveDayOverview
                 .frame(height: 194, alignment: .top)
             oneWayFlightSection
-                .frame(height: 292, alignment: .top)
+                .frame(height: 274, alignment: .top)
             intermediateStopSection
                 .frame(height: 52, alignment: .top)
             charterCalculationSection
@@ -520,7 +520,7 @@ struct FlybookDashboardView: View {
                     destinationICAO = airport.icao
                 }
             )
-            .frame(height: 254)
+            .frame(height: 236)
         }
     }
 
@@ -1279,6 +1279,10 @@ private struct EditableFlightLegCard: View {
                     .frame(width: 1)
                     .padding(.vertical, -2)
 
+                IPadRouteRiskBars(risks: routeRisks)
+                    .offset(y: -70)
+                    .zIndex(6)
+
                 VStack(spacing: 5) {
                     HStack(spacing: 0) {
                         FlightAirportHalf(
@@ -1377,17 +1381,6 @@ private struct EditableFlightLegCard: View {
                     FlightWeatherMetrics(airport: arrivalAirport)
                 }
                 .frame(height: 52)
-
-                ZStack {
-                    IPadRouteRiskDots(risks: routeRisks)
-                    HStack {
-                        Spacer()
-                        Text("VORSCHAUDATEN")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.orange)
-                    }
-                }
-                .frame(height: 14)
             }
         }
     }

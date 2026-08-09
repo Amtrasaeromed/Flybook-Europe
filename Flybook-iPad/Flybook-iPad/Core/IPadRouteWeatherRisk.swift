@@ -289,21 +289,24 @@ actor IPadRouteWeatherRiskService {
     private enum RiskError: Error { case noData }
 }
 
-struct IPadRouteRiskDots: View {
+struct IPadRouteRiskBars: View {
     let risks: [IPadRouteWeatherRisk]
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 3) {
             ForEach(0..<10, id: \.self) { index in
                 let risk = risks.indices.contains(index) ? risks[index] : .unavailable
-                Circle()
+                RoundedRectangle(cornerRadius: 2.5)
                     .fill(risk.color)
-                    .overlay { Circle().stroke(Color.dashboardNavy.opacity(0.5), lineWidth: 0.7) }
-                    .frame(width: 10, height: 10)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 2.5)
+                            .stroke(Color.dashboardNavy.opacity(0.5), lineWidth: 0.7)
+                    }
+                    .frame(width: 12, height: 6)
                     .accessibilityLabel("Streckenabschnitt \(index + 1)")
             }
         }
-        .frame(width: 145, height: 16)
+        .frame(width: 147, height: 10)
     }
 }
 
