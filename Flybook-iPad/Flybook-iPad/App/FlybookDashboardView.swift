@@ -1,5 +1,9 @@
 import SwiftUI
 
+private enum DashboardLayout {
+    static let sectionGap: CGFloat = 4
+}
+
 struct FlybookDashboardView: View {
     let airports: [Airport]
     private let fuelCatalog = AirportFuelCatalog.load()
@@ -161,7 +165,7 @@ struct FlybookDashboardView: View {
     var body: some View {
         GeometryReader { geometry in
             let canvasWidth = 820.0
-            let canvasHeight = 1_075.0
+            let canvasHeight = 1_080.0
             let scale = min(
                 geometry.size.width / canvasWidth,
                 geometry.size.height / canvasHeight
@@ -234,15 +238,15 @@ struct FlybookDashboardView: View {
             airportInformationRow
                 .frame(height: 104)
             fiveDayOverview
-                .frame(height: 190, alignment: .top)
+                .frame(height: 194, alignment: .top)
             oneWayFlightSection
-                .frame(height: 224, alignment: .top)
+                .frame(height: 228, alignment: .top)
             airportWeatherSection
-                .frame(height: 116, alignment: .top)
+                .frame(height: 120, alignment: .top)
             intermediateStopSection
-                .frame(height: 78, alignment: .top)
+                .frame(height: 82, alignment: .top)
             charterCalculationSection
-                .frame(height: 142, alignment: .top)
+                .frame(height: 146, alignment: .top)
             Spacer(minLength: 0)
             bottomMenuBar
                 .frame(height: 54)
@@ -417,7 +421,7 @@ struct FlybookDashboardView: View {
     }
 
     private var fiveDayOverview: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
             HStack {
                 SectionTitle(title: "5-TAGES-WETTER", systemName: "cloud.sun")
                 Spacer()
@@ -453,7 +457,7 @@ struct FlybookDashboardView: View {
     }
 
     private var oneWayFlightSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
             ZStack {
                 SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -528,7 +532,7 @@ struct FlybookDashboardView: View {
     }
 
     private var airportWeatherSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
             ZStack {
                 SectionTitle(title: "FLUGWETTER", systemName: "cloud.sun.rain")
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -551,7 +555,7 @@ struct FlybookDashboardView: View {
     }
 
     private var intermediateStopSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
             SectionTitle(title: "ZWISCHENSTOPPS", systemName: "point.3.connected.trianglepath.dotted")
             DashboardCard {
                 HStack(spacing: 8) {
@@ -609,7 +613,7 @@ struct FlybookDashboardView: View {
     }
 
     private var charterCalculationSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
             HStack {
                 SectionTitle(title: "CHARTERKALKULATION", systemName: "eurosign.circle")
                 Spacer()
