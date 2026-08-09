@@ -1,0 +1,263 @@
+{
+  "EBSP": {
+    "display_name": "Spa / Ardennen",
+    "latitude": 50.4825,
+    "longitude": 5.910278,
+    "region_image": "",
+    "region_label": "Ardennen / Hohes Venn"
+  },
+  "EDDV": {
+    "display_name": "Hannover",
+    "latitude": 52.4616667,
+    "longitude": 9.6836111,
+    "region_image": "",
+    "region_label": "Niedersachsen"
+  },
+  "EDGE": {
+    "display_name": "Eisenach",
+    "latitude": 50.9921667,
+    "longitude": 10.476,
+    "region_image": "",
+    "region_label": "Wartburg / Thüringen"
+  },
+  "EDHL": {
+    "display_name": "Lübeck",
+    "latitude": 53.8053667,
+    "longitude": 10.7192222,
+    "region_image": "",
+    "region_label": "Lübeck / Ostsee"
+  },
+  "EDKA": {
+    "display_name": "Aachen",
+    "latitude": 50.823055,
+    "longitude": 6.186389,
+    "region_image": "",
+    "region_label": "Aachen / Dreiländereck"
+  },
+  "EDKB": {
+    "display_name": "Bonn-Hangelar",
+    "latitude": 50.76889,
+    "longitude": 7.163333,
+    "region_label": "Rheinland"
+  },
+  "EDKM": {
+    "display_name": "Meschede / Hennesee",
+    "latitude": 51.302333,
+    "longitude": 8.237333,
+    "region_image": "",
+    "region_label": "Sauerland"
+  },
+  "EDLD": {
+    "display_name": "Dinslaken / Schwarze Heide",
+    "latitude": 51.6167,
+    "longitude": 6.8653,
+    "region_label": "Ruhrgebiet / Niederrhein"
+  },
+  "EDNH": {
+    "display_name": "Bad Wörishofen-Nord",
+    "latitude": 48.016124,
+    "longitude": 10.615025,
+    "region_label": "Allgäu"
+  },
+  "EDVI": {
+    "display_name": "Höxter-Holzminden",
+    "latitude": 51.8067,
+    "longitude": 9.3783,
+    "region_label": "Weserbergland"
+  },
+  "EDVM": {
+    "display_name": "Hildesheim",
+    "latitude": 52.179819,
+    "longitude": 9.945803,
+    "region_label": "Niedersachsen"
+  },
+  "EDWC": {
+    "display_name": "Damme",
+    "latitude": 52.4875,
+    "longitude": 8.186,
+    "region_label": "Oldenburger Münsterland"
+  },
+  "EDWJ": {
+    "display_name": "Juist",
+    "latitude": 53.680667,
+    "longitude": 7.057833,
+    "region_image": "",
+    "region_label": "Nordsee / Ostfriesische Inseln"
+  },
+  "EDWL": {
+    "latitude": 53.742379,
+    "longitude": 7.496345
+  },
+  "EDXE": {
+    "display_name": "Rheine-Eschendorf",
+    "latitude": 52.276389,
+    "longitude": 7.492778,
+    "region_label": "Münsterland"
+  },
+  "EDXH": {
+    "display_name": "Helgoland",
+    "latitude": 54.1853,
+    "longitude": 7.9158,
+    "region_image": "",
+    "region_label": "Nordsee / Hochseeinsel"
+  },
+  "EHAL": {
+    "latitude": 53.453612,
+    "longitude": 5.678396
+  },
+  "EHHV": {
+    "display_name": "Hilversum / Loosdrecht",
+    "latitude": 52.191944,
+    "longitude": 5.146944,
+    "region_image": "",
+    "region_label": "Gooi & Vecht"
+  },
+  "EHLE": {
+    "display_name": "Lelystad / Aviodrome",
+    "latitude": 52.453333,
+    "longitude": 5.513889,
+    "region_image": "",
+    "region_label": "Flevoland / Markermeer"
+  },
+  "EHMZ": {
+    "display_name": "Midden-Zeeland",
+    "latitude": 51.5122,
+    "longitude": 3.7311,
+    "region_image": "",
+    "region_label": "Zeeland"
+  },
+  "EHTX": {
+    "display_name": "Texel",
+    "latitude": 53.1153,
+    "longitude": 4.8336,
+    "region_image": "/mnt/data/flybook_v3_assets/EHTX_region.jpg",
+    "region_label": "Nordsee"
+  },
+  "EKAE": {
+    "latitude": 54.852798,
+    "longitude": 10.4564
+  },
+  "EKRN": {
+    "latitude": 55.063301,
+    "longitude": 14.7596
+  },
+  "EKSB": {
+    "latitude": 54.96440124511719,
+    "longitude": 9.791729927062988
+  },
+  "EKSS": {
+    "latitude": 55.889073,
+    "longitude": 10.613766
+  },
+  "EKVJ": {
+    "latitude": 55.990101,
+    "longitude": 8.35391
+  },
+  "LDLO": {
+    "latitude": 44.566985,
+    "longitude": 14.393883
+  },
+  "LDRI": {
+    "latitude": 45.216376,
+    "longitude": 14.57085
+  },
+  "LFGA": {
+    "latitude": 48.109901,
+    "longitude": 7.35901
+  },
+  "LFLP": {
+    "latitude": 45.928947,
+    "longitude": 6.0987
+  },
+  "LFRF": {
+    "latitude": 48.883099,
+    "longitude": -1.56417
+  },
+  "LIDT": {
+    "latitude": 46.023333,
+    "longitude": 11.125
+  },
+  "LIMW": {
+    "latitude": 45.738552,
+    "longitude": 7.3683
+  },
+  "LIPB": {
+    "latitude": 46.459245,
+    "longitude": 11.326125
+  },
+  "LIPV": {
+    "display_name": "Venedig-Lido",
+    "latitude": 45.4289,
+    "longitude": 12.3878,
+    "region_image": "",
+    "region_label": "Venedig / Adria"
+  },
+  "LJBL": {
+    "latitude": 46.357201,
+    "longitude": 14.1739
+  },
+  "LJMB": {
+    "latitude": 46.4799,
+    "longitude": 15.6861
+  },
+  "LJPZ": {
+    "latitude": 45.47201,
+    "longitude": 13.615951
+  },
+  "LKCS": {
+    "latitude": 48.948171,
+    "longitude": 14.42832
+  },
+  "LKKV": {
+    "latitude": 50.202999,
+    "longitude": 12.915
+  },
+  "LOIH": {
+    "latitude": 47.384477,
+    "longitude": 9.699776
+  },
+  "LOIJ": {
+    "latitude": 47.5201,
+    "longitude": 12.4497
+  },
+  "LOWI": {
+    "latitude": 47.260201,
+    "longitude": 11.344
+  },
+  "LOWS": {
+    "latitude": 47.793301,
+    "longitude": 13.0043
+  },
+  "LOWZ": {
+    "latitude": 47.291468,
+    "longitude": 12.790632
+  },
+  "LSGS": {
+    "latitude": 46.219166,
+    "longitude": 7.326944
+  },
+  "LSZA": {
+    "latitude": 46.004299,
+    "longitude": 8.91058
+  },
+  "LSZB": {
+    "display_name": "Bern-Belp",
+    "latitude": 46.912736,
+    "longitude": 7.498819,
+    "region_label": "Schweizer Mittelland"
+  },
+  "LSZG": {
+    "display_name": "Grenchen",
+    "latitude": 47.181599,
+    "longitude": 7.41719,
+    "region_label": "Schweizer Mittelland"
+  },
+  "LSZL": {
+    "latitude": 46.162535,
+    "longitude": 8.878908
+  },
+  "LSZR": {
+    "latitude": 47.485001,
+    "longitude": 9.56077
+  }
+}

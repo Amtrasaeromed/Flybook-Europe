@@ -1,0 +1,100 @@
+import Foundation
+import XCTest
+@testable import FlybookEurope
+
+final class WeatherSourcePriorityTests: XCTestCase {
+    @MainActor
+    func testLivePlanningWeatherWhenExplicitlyEnabled() async throws {
+        guard ProcessInfo.processInfo.environment[
+            "FLYBOOK_LIVE_WEATHER_TEST"
+        ] == "1" else {
+            throw XCTSkip("Nur für den expliziten Live-Quellencheck")
+        }
+
+        let timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Berlin"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let target = try XCTUnwrap(calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: Date()
+        ))
+        let airports = [
+            AirportReference(
+                icao: "EDLE",
+                name: "Essen/Mülheim",
+                latitude: 51.403,
+                longitude: 6.9392,
+                elevationFeet: 423,
+                timeZone: timeZone,
+                referenceRunway: "06/24"
+            ),
+            AirportReference.edfz
+        ]
+
+        for airport in airports {
+            let forecast = try await EDFZWeatherService.shared.forecast(
+                plannedDate: target,
+                airport: airport,
+                forceRefresh: true
+            )
+            XCTAssertFalse(forecast.samples.isEmpty, airport.icao)
+            XCTAssertNotNil(
+                forecast.sample(nearestTo: target),
+                "Keine zeitlich passende Prognose für \(airport.icao)"
+            )
+        }
+
+        let store = DestinationStore()
+        let destination = try XCTUnwrap(
+            store.destinations.first(where: { $0.icao == "EDLE" })
+        )
+        let destinationWeather = try await WeatherService.shared.weather(
+            for: destination,
+            targetInstants: [target],
+            forceRefresh: true
+        )
+        XCTAssertGreaterThanOrEqual(
+            destinationWeather.dailyForecast.count,
+            10,
+            "Die 10-Tage-Ansicht darf durch ICON Seamless nicht verkürzt werden"
+        )
+        XCTAssertTrue(
+            destinationWeather.dailyForecast.prefix(5).allSatisfy {
+                $0.model.contains("ICON Seamless")
+            },
+            "ICON Seamless muss in der Kurzfristprognose vorrangig bleiben"
+        )
+    }
+
+    func testICONSeamlessRoutesHaveStrictPriority() {
+        XCTAssertEqual(
+            ICONSeamlessAccessRoute.allCases,
+            [.dedicatedDWD, .genericForecast]
+        )
+    }
+
+    func testEveryRouteRequestsICONSeamlessExplicitly() throws {
+        for route in ICONSeamlessAccessRoute.allCases {
+            let url = try XCTUnwrap(route.url(queryItems: [
+                URLQueryItem(name: "latitude", value: "49.9675"),
+                URLQueryItem(name: "longitude", value: "8.1472")
+            ]))
+            let components = try XCTUnwrap(
+                URLComponents(url: url, resolvingAgainstBaseURL: false)
+            )
+            XCTAssertEqual(
+                components.queryItems?.first(where: { $0.name == "models" })?.value,
+                "icon_seamless"
+            )
+        }
+    }
+
+    func testBackupIsNotReportedAsICONSeamless() {
+        XCTAssertTrue(
+            EDFZForecastSource.iconSeamless(.dedicatedDWD).isICONSeamless
+        )
+        XCTAssertFalse(EDFZForecastSource.bestMatch.isICONSeamless)
+        XCTAssertFalse(EDFZForecastSource.metNorway.isICONSeamless)
+    }
+}

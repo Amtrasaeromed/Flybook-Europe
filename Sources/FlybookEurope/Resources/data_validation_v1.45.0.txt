@@ -1,0 +1,20 @@
+Flybook Europe data validation v1.45.0
+schema_version=1.2
+airports=117
+destination_detail_rows=86
+techstop_detail_rows=27
+feature_rows=819
+features_per_airport=7
+service_rows=369
+fuel_rows=471
+fuel_price_rows=36
+missing_elevations=0
+missing_runway_widths=0
+missing_runway_lda=0
+missing_timezones=0
+feature_techstop_yes=27
+feature_breakfast_yes=9
+feature_city_yes=3
+csv_parser=pass
+foreign_keys=pass
+duplicate_keys=0

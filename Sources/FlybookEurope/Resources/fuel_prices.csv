@@ -1,0 +1,37 @@
+schema_version,price_id,airport_id,fuel_type,fuel_label_raw,price_eur_per_litre,price_raw_text,price_checked_at,source
+1.2,EDAZ:AVGAS:7,EDAZ,AVGAS,AVGAS,3.06,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",2026-08-03,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite
+1.2,EDAZ:JET_A1:9,EDAZ,JET_A1,Jet A1,3.08,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",2026-08-03,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite
+1.2,EDAZ:MOGAS_SUPER:8,EDAZ,MOGAS_SUPER,Super Plus,2.69,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",2026-08-03,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite
+1.2,EDFM:AVGAS:25,EDFM,AVGAS,AVGAS,2.95,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",2026-08-03,https://www.flugplatz-mannheim.de/privatpiloten/
+1.2,EDFM:JET_A1:27,EDFM,JET_A1,Jet A1,2.7,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",2026-08-03,https://www.flugplatz-mannheim.de/privatpiloten/
+1.2,EDFM:MOGAS_SUPER:26,EDFM,MOGAS_SUPER,MOGAS,2.4,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",2026-08-03,https://www.flugplatz-mannheim.de/privatpiloten/
+1.2,EDGS:AVGAS:19,EDGS,AVGAS,Recherchierter Stand: AVGAS etwa,3.06,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",2026-08-03,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/
+1.2,EDGS:MOGAS_SUPER:20,EDGS,MOGAS_SUPER,Super Plus etwa,2.69,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",2026-08-03,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/
+1.2,EDLD:AVGAS:28,EDLD,AVGAS,24.07.2026: AVGAS,2.89,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",2026-08-03,https://schwarze-heide.com/fuer-piloten/titelform/
+1.2,EDLD:JET_A1:30,EDLD,JET_A1,Jet A1,2.99,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",2026-08-03,https://schwarze-heide.com/fuer-piloten/titelform/
+1.2,EDLD:MOGAS_SUPER:29,EDLD,MOGAS_SUPER,Super Plus,2.55,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",2026-08-03,https://schwarze-heide.com/fuer-piloten/titelform/
+1.2,EDLE:AVGAS:31,EDLE,AVGAS,02.07.2026: AVGAS,2.94,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",2026-08-03,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
+1.2,EDLE:JET_A1:33,EDLE,JET_A1,Jet A1,2.73,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",2026-08-03,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
+1.2,EDLE:MOGAS_SUPER:32,EDLE,MOGAS_SUPER,Super Plus,2.59,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",2026-08-03,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
+1.2,EDML:AVGAS:22,EDML,AVGAS,AVGAS,2.98,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
+1.2,EDML:JET_A1:23,EDML,JET_A1,Jet A1,2.95,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
+1.2,EDML:MOGAS_SUPER:24,EDML,MOGAS_SUPER,Super Plus,2.69,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
+1.2,EDML:OTHER:21,EDML,OTHER,22.07.2026: Swift 100R,2.8,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
+1.2,EDRK:AVGAS:13,EDRK,AVGAS,AVGAS,3.06,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",2026-08-03,https://flugplatz-koblenz-winningen.de/index.php/de/
+1.2,EDRK:JET_A1:15,EDRK,JET_A1,Jet A1,3.08,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",2026-08-03,https://flugplatz-koblenz-winningen.de/index.php/de/
+1.2,EDRK:MOGAS_SUPER:14,EDRK,MOGAS_SUPER,Super Plus,2.69,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",2026-08-03,https://flugplatz-koblenz-winningen.de/index.php/de/
+1.2,EDVI:AVGAS:16,EDVI,AVGAS,Zuletzt recherchiert: AVGAS ca.,2.49,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",2026-08-03,https://www.flugplatz-hx.de/index.html
+1.2,EDVI:JET_A1:18,EDVI,JET_A1,Jet A1 ca.,2.79,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",2026-08-03,https://www.flugplatz-hx.de/index.html
+1.2,EDVI:MOGAS_SUPER:17,EDVI,MOGAS_SUPER,Super Plus ca.,2.59,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",2026-08-03,https://www.flugplatz-hx.de/index.html
+1.2,EDWC:AVGAS:4,EDWC,AVGAS,AVGAS,2.59,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",2026-08-03,https://www.edwc.de/index.php/landegebuehren-ppr
+1.2,EDWC:JET_A1:6,EDWC,JET_A1,Jet A1,2.69,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",2026-08-03,https://www.edwc.de/index.php/landegebuehren-ppr
+1.2,EDWC:MOGAS_SUPER:5,EDWC,MOGAS_SUPER,Super Plus,2.49,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",2026-08-03,https://www.edwc.de/index.php/landegebuehren-ppr
+1.2,EDWF:AVGAS:1,EDWF,AVGAS,AVGAS,2.59,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",2026-08-03,https://flugplatz-leer-papenburg.de/aktuelles/
+1.2,EDWF:JET_A1:3,EDWF,JET_A1,Jet A1,2.89,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",2026-08-03,https://flugplatz-leer-papenburg.de/aktuelles/
+1.2,EDWF:MOGAS_SUPER:2,EDWF,MOGAS_SUPER,Super 95,2.59,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",2026-08-03,https://flugplatz-leer-papenburg.de/aktuelles/
+1.2,EDWI:AVGAS:10,EDWI,AVGAS,AVGAS,2.69,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",2026-08-03,https://www.edwi.info/piloten/tankstelle.html
+1.2,EDWI:JET_A1:12,EDWI,JET_A1,Jet A1,2.9,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",2026-08-03,https://www.edwi.info/piloten/tankstelle.html
+1.2,EDWI:MOGAS_SUPER:11,EDWI,MOGAS_SUPER,Super Plus,2.36,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",2026-08-03,https://www.edwi.info/piloten/tankstelle.html
+1.2,EHLE:AVGAS:20260803,EHLE,AVGAS,AVGAS 100LL,3.474,"AVGAS 100LL 3,474 €/l inkl. Steuern und MwSt.; Preisänderungen vorbehalten",2026-08-03,https://www.lelystadairport.nl/en/for-pilots/fuel/
+1.2,EHLE:AVGAS_UL94:20260803,EHLE,AVGAS_UL94,AVGAS UL94,3.093,"AVGAS UL94 3,093 €/l inkl. Steuern und MwSt.; Preisänderungen vorbehalten",2026-08-03,https://www.lelystadairport.nl/en/for-pilots/fuel/
+1.2,EHLE:JET_A1:20260803,EHLE,JET_A1,Jet A1,2.953,"Jet A1 2,953 €/l inkl. Steuern und MwSt.; Preisänderungen vorbehalten",2026-08-03,https://www.lelystadairport.nl/en/for-pilots/fuel/
