@@ -78,3 +78,12 @@ Scripts/run_release_math_audit.sh
 ```
 
 Der geprüfte Stand ist in `INTEGRITAET_v1.46.0.md` dokumentiert.
+
+## iPad-Migration
+
+Die neue SwiftUI-iPad-App liegt unter `Flybook-iPad/` und ist für eine feste
+Hochformat-Vollbildansicht ausgelegt. Die Flugplanung stellt Abflug und Ankunft
+spiegelbildlich dar; Wind, Zielwechsel und Blockzeit liegen auf der Mittelachse.
+Die Zielauswahl akzeptiert eine direkte ICAO-Eingabe und zeigt ab drei Zeichen
+Vorschläge. Der dauerhaft sichtbare Zwischenstoppblock hält Auswahlfelder und
+0/1/2-Schalter in einem festen, einzeiligen Layout.
