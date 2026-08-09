@@ -1518,7 +1518,7 @@ private struct RunwayRecommendationPanel: View {
 
     private func runwayLabelOffset(heading: Double) -> CGSize {
         let radians = (heading - 90) * .pi / 180
-        return CGSize(width: cos(radians) * 35, height: sin(radians) * 35)
+        return CGSize(width: cos(radians) * 41, height: sin(radians) * 41)
     }
 
     private func shortestAngle(_ angle: Double) -> Double {
@@ -1589,10 +1589,10 @@ private struct RunwayEndLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 10, weight: .black).monospacedDigit())
+            .font(.system(size: 9, weight: .black).monospacedDigit())
             .foregroundStyle(active ? .white : Color.dashboardNavy)
-            .padding(.horizontal, 6)
-            .frame(height: 20)
+            .padding(.horizontal, 5)
+            .frame(height: 18)
             .background(active ? Color.dashboardBlue : Color.white, in: Capsule())
             .overlay { Capsule().stroke(Color.dashboardBlue.opacity(0.35)) }
     }
@@ -1752,17 +1752,39 @@ private struct AirportWeatherColumn: View {
                     .font(.system(size: 20, weight: .bold))
                     .frame(width: 24)
             }
-            HStack(spacing: 0) {
-                WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
-                WeatherMetric(title: "SICHT", value: "\(weather.visibilityKilometers) km")
-                WeatherMetric(title: "WOLKEN", value: weather.clouds)
-                WeatherMetric(title: "BASIS", value: "\(weather.cloudBaseFeet) ft")
-                WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
-                WeatherMetric(title: "DICHTEHÖHE", value: "\(weather.densityAltitudeFeet.formatted()) ft")
+            HStack(spacing: 5) {
+                WeatherMetricGroup {
+                    WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
+                    WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
+                    WeatherMetric(title: "DICHTEHÖHE", value: "\(weather.densityAltitudeFeet.formatted()) ft")
+                }
+                WeatherMetricGroup {
+                    WeatherMetric(title: "WOLKEN", value: weather.clouds)
+                    WeatherMetric(title: "BASIS", value: "\(weather.cloudBaseFeet) ft")
+                    WeatherMetric(title: "SICHT", value: "\(weather.visibilityKilometers) km")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 8)
+    }
+}
+
+private struct WeatherMetricGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: 0) {
+            content
+        }
+        .padding(.horizontal, 3)
+        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.dashboardBlue.opacity(0.38), lineWidth: 1)
+        }
     }
 }
 
