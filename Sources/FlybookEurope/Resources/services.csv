@@ -372,3 +372,8 @@ schema_version,service_id,airport_id,service_type,availability_raw,provider_name
 1.2,EDAX:bicycle,EDAX,bicycle,Ja – direkt am Platz,Müritz Airpark,Fahrräder und E-Bikes,Fahrräder und E-Bikes laut Betreiber,Direkt am Platz,,,,hoch,,https://www.mueritz-airpark.de/flugplatz/daten/,,2026-08-09
 1.2,EDAX:rental_car,EDAX,rental_car,Ja – direkt am Platz,Müritz Airpark / App2Drive,Mietwagen,Mietwagen laut Betreiber,Direkt am Platz,,,,hoch,,https://www.mueritz-airpark.de/flugplatz/daten/,,2026-08-09
 1.2,EDAX:app2drive,EDAX,app2drive,Ja – laut Betreiber,Müritz Airpark / App2Drive,app_carsharing,App2Drive laut Flugplatzdaten,Direkt am Platz,,,,hoch,,https://www.mueritz-airpark.de/flugplatz/daten/,,2026-08-09
+1.2,EGHF:restaurant,EGHF,restaurant,available,Café 05,Bistro/Café,Café und Viewing Area am Flugplatz,Direkt am Platz,,,,hoch,,https://solentairport.com/pilot-briefing/,,2026-08-13
+1.2,EGHQ:rental_car,EGHQ,rental_car,Ja – am Flughafen,Mietwagenanbieter am Flughafen,Mietwagen,Mietwagen für Cornwall-Ausflüge,Am Flughafen,,,,hoch,,https://www.flynqy.co.uk/general-aviation/,,2026-08-13
+1.2,EGKH:bicycle,EGKH,bicycle,Ja – E-Bike-Hire am Platz,Headcorn Aerodrome,E-Bike-Verleih,E-Bike-Hire laut Betreiber,Direkt am Platz,,,,hoch,,https://www.headcornaerodrome.co.uk/pilots-page,,2026-08-13
+1.2,EGKH:restaurant,EGKH,restaurant,available,Headcorn Aerodrome Café,Café/Restaurant,Café und Restaurant am Flugplatz,Direkt am Platz,,,,hoch,,https://www.headcornaerodrome.co.uk/pilots-page,,2026-08-13
+1.2,EGHA:restaurant,EGHA,restaurant,available,Lore of the Sky Restaurant,Restaurant,Restaurant am Flugplatz,Direkt am Platz,,,,hoch,,https://www.comptonairfield.com/visiting-us-by-air/,,2026-08-13

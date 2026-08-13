@@ -36,14 +36,14 @@
 		B10000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B10000000000000000000003 /* Airport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Airport.swift; sourceTree = "<group>"; };
 		B10000000000000000000004 /* CSVParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSVParser.swift; sourceTree = "<group>"; };
-		B10000000000000000000005 /* airports.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = airports.csv; sourceTree = "<group>"; };
+		B10000000000000000000005 /* airports.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = ../Sources/FlybookEurope/Resources/airports.csv; sourceTree = SOURCE_ROOT; };
 		B10000000000000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000007 /* Flybook Europe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flybook Europe.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B10000000000000000000008 /* FlybookDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlybookDashboardView.swift; sourceTree = "<group>"; };
-		B10000000000000000000009 /* fuels.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuels.csv; sourceTree = "<group>"; };
+		B10000000000000000000009 /* fuels.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = ../Sources/FlybookEurope/Resources/fuels.csv; sourceTree = SOURCE_ROOT; };
 		B1000000000000000000000A /* FuelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelCatalog.swift; sourceTree = "<group>"; };
-		B1000000000000000000000B /* fuel_prices.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuel_prices.csv; sourceTree = "<group>"; };
-		B1000000000000000000000C /* features.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = features.csv; sourceTree = "<group>"; };
+		B1000000000000000000000B /* fuel_prices.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = ../Sources/FlybookEurope/Resources/fuel_prices.csv; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000000C /* features.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = ../Sources/FlybookEurope/Resources/features.csv; sourceTree = SOURCE_ROOT; };
 		B1000000000000000000000D /* AirportPresentationCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirportPresentationCatalog.swift; sourceTree = "<group>"; };
 		B1000000000000000000000E /* IPadRouteWeatherRisk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadRouteWeatherRisk.swift; sourceTree = "<group>"; };
 		B1000000000000000000000F /* IPadRouteMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadRouteMapView.swift; sourceTree = "<group>"; };
@@ -271,7 +271,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 14700;
 				DEVELOPMENT_TEAM = 8U4M6QK39X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -280,7 +280,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.47.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.stephan.flybook.ipad;
 				PRODUCT_NAME = "Flybook Europe";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -297,7 +297,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 14700;
 				DEVELOPMENT_TEAM = 8U4M6QK39X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -306,7 +306,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.47.0;
 				PRODUCT_BUNDLE_IDENTIFIER = de.stephan.flybook.ipad;
 				PRODUCT_NAME = "Flybook Europe";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

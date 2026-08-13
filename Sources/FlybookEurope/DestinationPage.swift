@@ -3092,6 +3092,7 @@ struct DestinationPage: View {
                     )
                     AirportMetric(title: "LDA", value: destination.ldaDisplay)
                     AirportMetric(title: "Surface", value: destination.surface)
+                    AirportMetric(title: "POE", value: destination.portOfEntry)
                     AirportMetric(
                         title: "AVGAS",
                         value: destination.avgas,
@@ -3911,6 +3912,7 @@ private struct AirportInformationPopover: View {
                     detailRow("Abmessungen", destination.runwayDimensionsDisplay)
                     detailRow("LDA", destination.ldaDisplay)
                     detailRow("Belag", destination.surface + (destination.grassOnly ? " · Grasplatz" : ""))
+                    detailRow("POE", destination.portOfEntry)
                     detailRow("Platzhöhe", "\(Int(destination.elevationFeet.rounded())) ft")
                     if !destination.status.isEmpty { detailRow("Datenstatus", destination.status) }
                 }

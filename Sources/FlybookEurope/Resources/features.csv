@@ -386,7 +386,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGJJ:wellness,EGJJ,wellness,Grenzfall,"The Club Hotel & Spa, St Helier",Fahrrad,38,49.18152,-2.102398,7.36,115,38,11,Fahrrad,38,"The Club Hotel & Spa, St Helier",https://www.jersey.com/,2026-08-02
 1.2,EGKA:techstop,EGKA,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EGKA:breakfast,EGKA,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
-1.2,EGKA:city,EGKA,city,Nein,,,,,,,,,,,,,,2026-08-04
+1.2,EGKA:city,EGKA,city,Ja,Brighton,Zug/Bus/Taxi,20,,,,,,,Zug/Bus/Taxi,20,Brighton,https://flybrighton.com/pilot-info/airfield-data/,2026-08-13
 1.2,EGKA:beach,EGKA,beach,Ja,Lancing Beach,Fahrrad,14,50.819416,-0.3254,2.68,42,14,4,Fahrrad,14,Lancing Beach,https://www.visitbrighton.com/,2026-08-02
 1.2,EGKA:lake,EGKA,lake,Nein,,,,,,,,,,,,,https://www.visitbrighton.com/,2026-08-02
 1.2,EGKA:mountain,EGKA,mountain,Nein,,,,,,,,,,,,,https://www.visitbrighton.com/,2026-08-02
@@ -888,3 +888,45 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EDRY:lake,EDRY,lake,Nein,,,,,,,,,,,,,,2026-08-09
 1.2,EDRY:mountain,EDRY,mountain,Nein,,,,,,,,,,,,,,2026-08-09
 1.2,EDRY:wellness,EDRY,wellness,Nein,,,,,,,,,,,,,,2026-08-09
+1.2,EGHJ:techstop,EGHJ,techstop,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:breakfast,EGHJ,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:city,EGHJ,city,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:beach,EGHJ,beach,Ja,Bembridge Beach,Zu Fuß,10,,,,,,,Zu Fuß,10,Bembridge Beach,https://eghj.extremelynice.net/eghj/airfield-details/,2026-08-13
+1.2,EGHJ:lake,EGHJ,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:mountain,EGHJ,mountain,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:wellness,EGHJ,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:techstop,EGHF,techstop,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:breakfast,EGHF,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:city,EGHF,city,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:beach,EGHF,beach,Ja,Lee-on-Solent Beach,Zu Fuß,5,,,,,,,Zu Fuß,5,Lee-on-Solent Beach,https://solentairport.com/pilot-briefing/,2026-08-13
+1.2,EGHF:lake,EGHF,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:mountain,EGHF,mountain,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:wellness,EGHF,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGMD:techstop,EGMD,techstop,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGMD:breakfast,EGMD,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGMD:city,EGMD,city,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGMD:beach,EGMD,beach,Ja,Dungeness Coast,Taxi/Auto,15,,,,,,,Taxi/Auto,15,Dungeness Coast,https://lyddairport.co.uk/pilot-information/,2026-08-13
+1.2,EGMD:lake,EGMD,lake,Ja,Romney Marsh und Dungeness,Taxi/Auto,15,,,,,,,Taxi/Auto,15,Romney Marsh und Dungeness,https://lyddairport.co.uk/pilot-information/,2026-08-13
+1.2,EGMD:mountain,EGMD,mountain,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGMD:wellness,EGMD,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:techstop,EGHQ,techstop,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:breakfast,EGHQ,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:city,EGHQ,city,Ja,Newquay,Mietwagen/Taxi/Bus,15,,,,,,,Mietwagen/Taxi/Bus,15,Newquay,https://www.flynqy.co.uk/general-aviation/,2026-08-13
+1.2,EGHQ:beach,EGHQ,beach,Ja,Watergate Bay und Fistral Beach,Mietwagen/Taxi/Bus,15,,,,,,,Mietwagen/Taxi/Bus,15,Watergate Bay und Fistral Beach,https://www.flynqy.co.uk/general-aviation/,2026-08-13
+1.2,EGHQ:lake,EGHQ,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:mountain,EGHQ,mountain,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:wellness,EGHQ,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:techstop,EGKH,techstop,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:breakfast,EGKH,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:city,EGKH,city,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:beach,EGKH,beach,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:lake,EGKH,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:mountain,EGKH,mountain,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:wellness,EGKH,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:techstop,EGHA,techstop,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:breakfast,EGHA,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:city,EGHA,city,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:beach,EGHA,beach,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:lake,EGHA,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:mountain,EGHA,mountain,Ja,Cranborne Chase,Taxi,15,,,,,,,Taxi,15,Cranborne Chase,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13
+1.2,EGHA:wellness,EGHA,wellness,Nein,,,,,,,,,,,,,,2026-08-13

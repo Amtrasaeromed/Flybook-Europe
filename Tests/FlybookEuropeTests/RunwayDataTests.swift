@@ -7,10 +7,10 @@ final class RunwayDataTests: XCTestCase {
         let store = DestinationStore()
 
         XCTAssertNil(store.loadError)
-        XCTAssertEqual(store.destinations.count, 128)
+        XCTAssertEqual(store.destinations.count, 134)
         XCTAssertEqual(
             store.destinations.filter { $0.icao != "EDFZ" }.count,
-            127
+            133
         )
 
         for destination in store.destinations {
@@ -55,6 +55,37 @@ final class RunwayDataTests: XCTestCase {
                 )
             }
         }
+    }
+
+    func testUKMergePackAirportsExposePOEAndConservativeFuelStatus() throws {
+        let store = DestinationStore()
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: store.destinations.map { ($0.icao, $0) }
+        )
+        let ukICAOs = [
+            "EGHN", "EGHJ", "EGHF", "EGKA", "EGMD",
+            "EGHQ", "EGHR", "EGKH", "EGHA"
+        ]
+
+        for icao in ukICAOs {
+            XCTAssertEqual(
+                try XCTUnwrap(byICAO[icao]).portOfEntry,
+                "Ja",
+                "POE fehlt für \(icao)"
+            )
+        }
+
+        let bembridge = try XCTUnwrap(byICAO["EGHJ"])
+        XCTAssertEqual(bembridge.avgas, "?")
+        XCTAssertEqual(bembridge.ul91, "?")
+        XCTAssertEqual(bembridge.mogas, "?")
+        XCTAssertEqual(bembridge.jetA1, "?")
+
+        let headcorn = try XCTUnwrap(byICAO["EGKH"])
+        XCTAssertEqual(headcorn.avgas, "?")
+        XCTAssertEqual(headcorn.ul91, "?")
+        XCTAssertEqual(headcorn.mogas, "?")
+        XCTAssertEqual(headcorn.jetA1, "?")
     }
 
     func testPreferredAlternatesAreStandardTechStopDestinations() throws {

@@ -574,6 +574,13 @@ struct FlybookDashboardView: View {
                     Text(destination.runwaySurface.isEmpty ? "Belag unklar" : destination.runwaySurface)
                         .font(.subheadline.bold())
                         .foregroundStyle(Color.dashboardBlue)
+                    Text("POE \(destination.portOfEntry)")
+                        .font(.caption.bold())
+                        .foregroundStyle(
+                            destination.portOfEntry == "Ja"
+                                ? Color.green
+                                : Color.secondary
+                        )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 

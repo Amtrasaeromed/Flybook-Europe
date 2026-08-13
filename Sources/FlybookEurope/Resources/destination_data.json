@@ -133,6 +133,69 @@
     "region_image": "/mnt/data/flybook_v3_assets/EHTX_region.jpg",
     "region_label": "Nordsee"
   },
+  "EGHN": {
+    "display_name": "Sandown / Isle of Wight",
+    "latitude": 50.653,
+    "longitude": -1.182,
+    "region_image": "",
+    "region_label": "Isle of Wight"
+  },
+  "EGHJ": {
+    "display_name": "Bembridge / Isle of Wight",
+    "latitude": 50.6778,
+    "longitude": -1.1114,
+    "region_image": "",
+    "region_label": "Isle of Wight"
+  },
+  "EGHF": {
+    "display_name": "Solent / Lee-on-Solent",
+    "latitude": 50.815,
+    "longitude": -1.206,
+    "region_image": "",
+    "region_label": "Solent / Hampshire"
+  },
+  "EGKA": {
+    "display_name": "Brighton City / Shoreham",
+    "latitude": 50.8356,
+    "longitude": -0.2972,
+    "region_image": "",
+    "region_label": "Sussex / Brighton"
+  },
+  "EGMD": {
+    "display_name": "Lydd / Dungeness",
+    "latitude": 50.9561,
+    "longitude": 0.9392,
+    "region_image": "",
+    "region_label": "Kent / Dungeness"
+  },
+  "EGHQ": {
+    "display_name": "Newquay / Cornwall",
+    "latitude": 50.4408,
+    "longitude": -4.9953,
+    "region_image": "",
+    "region_label": "Cornwall"
+  },
+  "EGHR": {
+    "display_name": "Goodwood / Chichester",
+    "latitude": 50.8594,
+    "longitude": -0.7592,
+    "region_image": "",
+    "region_label": "Chichester / South Downs"
+  },
+  "EGKH": {
+    "display_name": "Headcorn / Kent",
+    "latitude": 51.1569,
+    "longitude": 0.6417,
+    "region_image": "",
+    "region_label": "Kent"
+  },
+  "EGHA": {
+    "display_name": "Compton Abbas / Dorset",
+    "latitude": 50.9672,
+    "longitude": -2.1536,
+    "region_image": "",
+    "region_label": "Dorset / Cranborne Chase"
+  },
   "EKAE": {
     "latitude": 54.852798,
     "longitude": 10.4564

@@ -24,7 +24,7 @@ private struct CSVTable {
 @MainActor
 final class DestinationStore: ObservableObject {
     private static let schemaVersion = "1.2"
-    private static let expectedDestinationCount = 127
+    private static let expectedDestinationCount = 133
     private static let bundledSeedPrices: [String: FuelPriceRecord] = [
         "EDFZ": FuelPriceRecord(
             avgas: 3.03,
@@ -206,6 +206,7 @@ final class DestinationStore: ObservableObject {
                         airport["ppr_ga_access", default: ""],
                         techstopRow["ppr_operational_notes", default: ""]
                     ),
+                    portOfEntry: portOfEntryStatus(airport: airport),
                     transfer: nonEmpty(
                         destinationRow["transfer_default", default: ""],
                         airport["transfer_default", default: ""]
@@ -471,6 +472,16 @@ final class DestinationStore: ObservableObject {
         rows.first(where: { $0["service_type"] == type })?["availability_raw"] ?? ""
     }
 
+    private func portOfEntryStatus(airport: [String: String]) -> String {
+        let text = [
+            airport["operating_notes", default: ""],
+            airport["airport_note", default: ""]
+        ].joined(separator: " ")
+        if text.localizedCaseInsensitiveContains("POE: Ja") { return "Ja" }
+        if text.localizedCaseInsensitiveContains("POE: Nein") { return "Nein" }
+        return "?"
+    }
+
     private func serviceValue(
         _ type: String,
         field: String,
@@ -684,6 +695,7 @@ final class DestinationStore: ObservableObject {
             mogasPricePerLiterEUR: Self.bundledSeedPrices["EDFZ"]?.mogas,
             fuelPriceReportedAt: Self.bundledSeedPrices["EDFZ"]?.reportedAt,
             ppr: "Nein",
+            portOfEntry: "?",
             transfer: "Mainz / Rheinhessen",
             transferMinutes: 20,
             bikeDirect: "Nein",

@@ -13,6 +13,7 @@ struct Airport: Identifiable, Hashable {
     let runwayLengthMeters: Int?
     let runwayWidthMeters: Int?
     let runwaySurface: String
+    let portOfEntry: String
     let airportFilter: String
 
     var id: String { icao }
@@ -68,6 +69,10 @@ enum AirportCatalog {
                     ? Int(Double(value("runway_width_m", in: row)) ?? 0)
                     : nil,
                 runwaySurface: value("runway_surface", in: row),
+                portOfEntry: portOfEntryStatus(
+                    operatingNotes: value("operating_notes", in: row),
+                    airportNote: value("airport_note", in: row)
+                ),
                 airportFilter: value("airport_filter", in: row)
             )
         }
@@ -79,6 +84,16 @@ enum AirportCatalog {
         return airports.sorted {
             $0.icao.localizedStandardCompare($1.icao) == .orderedAscending
         }
+    }
+
+    private static func portOfEntryStatus(
+        operatingNotes: String,
+        airportNote: String
+    ) -> String {
+        let text = operatingNotes + " " + airportNote
+        if text.localizedCaseInsensitiveContains("POE: Ja") { return "Ja" }
+        if text.localizedCaseInsensitiveContains("POE: Nein") { return "Nein" }
+        return "?"
     }
 }
 
@@ -96,6 +111,7 @@ extension Airport {
         runwayLengthMeters: 1_000,
         runwayWidthMeters: 22,
         runwaySurface: "Asphalt",
+        portOfEntry: "?",
         airportFilter: "Heimatflugplatz"
     )
 

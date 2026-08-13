@@ -8,7 +8,9 @@ funktionsfähige Version erhalten.
 
 - natives SwiftUI-App-Target für iPadOS 17 oder neuer
 - festes SwiftUI-Vollbilddashboard als iPad-Grundlayout
-- aktueller lokaler Flybook-Flugplatzbestand aus `airports.csv`
+- gemeinsamer aktueller Flybook-Flugplatzbestand direkt aus
+  `Sources/FlybookEurope/Resources`; macOS und iPad verwenden dieselben
+  Airport-, Merkmals-, Fuel- und Preisdateien
 - Flugplatzsuche und erste responsive Detailansicht
 - vorhandenes Flybook-App-Symbol und Farbwelt
 - Hochformat als feste Vollbildansicht ohne vertikales Seitenscrolling

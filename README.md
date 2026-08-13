@@ -1,4 +1,4 @@
-# Flybook Europe Native v1.46.0
+# Flybook Europe Native v1.47.0
 
 Native macOS-App zur Zielauswahl, Flugzeit-, Kraftstoff- und Charterkalkulation
 für VFR-Reisen. Die App bleibt ein Planungswerkzeug und ersetzt weder AIP,
@@ -77,7 +77,7 @@ python3 Scripts/release_persistence_audit.py
 Scripts/run_release_math_audit.sh
 ```
 
-Der geprüfte Stand ist in `INTEGRITAET_v1.46.0.md` dokumentiert.
+Der geprüfte Stand ist in `INTEGRITAET_v1.47.0.md` dokumentiert.
 
 ## iPad-Migration
 

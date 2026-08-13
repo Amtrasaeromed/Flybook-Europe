@@ -249,6 +249,7 @@ struct Destination: Identifiable, Hashable {
     var mogasPricePerLiterEUR: Double?
     var fuelPriceReportedAt: String?
     let ppr: String
+    let portOfEntry: String
     let transfer: String
     let transferMinutes: Int
     let bikeDirect: String

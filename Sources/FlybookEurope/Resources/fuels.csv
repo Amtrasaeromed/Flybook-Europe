@@ -206,7 +206,7 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EGHN:MOGAS_SUPER,EGHN,MOGAS_SUPER,Prüfen,Prüfen,,,https://www.eghn.org.uk/pilots,2026-08-02,2026-08-02
 1.2,EGHN:UL91,EGHN,UL91,Prüfen,Prüfen,,,https://www.eghn.org.uk/pilots,2026-08-02,2026-08-02
 1.2,EGHR:AVGAS,EGHR,AVGAS,Ja,Ja,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
-1.2,EGHR:JET_A1,EGHR,JET_A1,Prüfen,Prüfen,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
+1.2,EGHR:JET_A1,EGHR,JET_A1,Ja,Jet A1,,,https://www.goodwood.com/flying/pilot-information/,2026-08-13,2026-08-13
 1.2,EGHR:MOGAS_SUPER,EGHR,MOGAS_SUPER,Nein,Nein,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
 1.2,EGHR:UL91,EGHR,UL91,Prüfen,Prüfen,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
 1.2,EGJA:AVGAS,EGJA,AVGAS,Nein,Nein,,,flyalderney.com/pilot-info (Betreiberseite),2026-08-02,2026-08-02
@@ -222,7 +222,7 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EGJJ:MOGAS_SUPER,EGJJ,MOGAS_SUPER,Nein,Nein,,,flyalderney.com/pilot-info + IVAO Channel Islands + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,EGJJ:UL91,EGJJ,UL91,Prüfen,Prüfen,,,flyalderney.com/pilot-info + IVAO Channel Islands + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,EGKA:AVGAS,EGKA,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
-1.2,EGKA:JET_A1,EGKA,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
+1.2,EGKA:JET_A1,EGKA,JET_A1,Ja,Jet A1,,,https://flybrighton.com/pilot-info/airfield-data/,2026-08-13,2026-08-13
 1.2,EGKA:MOGAS_SUPER,EGKA,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EGKA:UL91,EGKA,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EHAL:AVGAS,EHAL,AVGAS,Ja,AVGAS 100LL,,"Tank 12000 l; 80 l/min",https://eaip.lvnl.nl/,2026-08-13,2026-08-13
@@ -470,3 +470,27 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,LSZR:JET_A1,LSZR,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,LSZR:MOGAS_SUPER,LSZR,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,LSZR:UL91,LSZR,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
+1.2,EGHJ:AVGAS,EGHJ,AVGAS,Prüfen,Nicht verlässlich verfügbar; nicht darauf planen,,,https://eghj.extremelynice.net/eghj/airfield-details/,2026-08-13,2026-08-13
+1.2,EGHJ:JET_A1,EGHJ,JET_A1,Prüfen,Nicht verlässlich verfügbar; nicht darauf planen,,,https://eghj.extremelynice.net/eghj/airfield-details/,2026-08-13,2026-08-13
+1.2,EGHJ:MOGAS_SUPER,EGHJ,MOGAS_SUPER,Prüfen,Nicht verlässlich verfügbar; nicht darauf planen,,,https://eghj.extremelynice.net/eghj/airfield-details/,2026-08-13,2026-08-13
+1.2,EGHJ:UL91,EGHJ,UL91,Prüfen,Nicht verlässlich verfügbar; nicht darauf planen,,,https://eghj.extremelynice.net/eghj/airfield-details/,2026-08-13,2026-08-13
+1.2,EGHF:AVGAS,EGHF,AVGAS,Ja,AVGAS 100LL,,,https://solentairport.com/pilot-briefing/,2026-08-13,2026-08-13
+1.2,EGHF:JET_A1,EGHF,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://solentairport.com/pilot-briefing/,2026-08-13,2026-08-13
+1.2,EGHF:MOGAS_SUPER,EGHF,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://solentairport.com/pilot-briefing/,2026-08-13,2026-08-13
+1.2,EGHF:UL91,EGHF,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://solentairport.com/pilot-briefing/,2026-08-13,2026-08-13
+1.2,EGMD:AVGAS,EGMD,AVGAS,Ja,AVGAS 100LL,,,https://lyddairport.co.uk/pilot-information/,2026-08-13,2026-08-13
+1.2,EGMD:JET_A1,EGMD,JET_A1,Ja,Jet A1,,,https://lyddairport.co.uk/pilot-information/,2026-08-13,2026-08-13
+1.2,EGMD:MOGAS_SUPER,EGMD,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://lyddairport.co.uk/pilot-information/,2026-08-13,2026-08-13
+1.2,EGMD:UL91,EGMD,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://lyddairport.co.uk/pilot-information/,2026-08-13,2026-08-13
+1.2,EGHQ:AVGAS,EGHQ,AVGAS,Ja,AVGAS,,,https://www.flynqy.co.uk/general-aviation/,2026-08-13,2026-08-13
+1.2,EGHQ:JET_A1,EGHQ,JET_A1,Ja,Jet A1,,,https://www.flynqy.co.uk/general-aviation/,2026-08-13,2026-08-13
+1.2,EGHQ:MOGAS_SUPER,EGHQ,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flynqy.co.uk/general-aviation/,2026-08-13,2026-08-13
+1.2,EGHQ:UL91,EGHQ,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flynqy.co.uk/general-aviation/,2026-08-13,2026-08-13
+1.2,EGKH:AVGAS,EGKH,AVGAS,Prüfen,GA-Fuel verfügbar; Sorte aktuell bestätigen,,,https://www.headcornaerodrome.co.uk/pilots-page,2026-08-13,2026-08-13
+1.2,EGKH:JET_A1,EGKH,JET_A1,Prüfen,GA-Fuel verfügbar; Sorte aktuell bestätigen,,,https://www.headcornaerodrome.co.uk/pilots-page,2026-08-13,2026-08-13
+1.2,EGKH:MOGAS_SUPER,EGKH,MOGAS_SUPER,Prüfen,GA-Fuel verfügbar; Sorte aktuell bestätigen,,,https://www.headcornaerodrome.co.uk/pilots-page,2026-08-13,2026-08-13
+1.2,EGKH:UL91,EGKH,UL91,Prüfen,GA-Fuel verfügbar; Sorte aktuell bestätigen,,,https://www.headcornaerodrome.co.uk/pilots-page,2026-08-13,2026-08-13
+1.2,EGHA:AVGAS,EGHA,AVGAS,Ja,AVGAS 100LL,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
+1.2,EGHA:JET_A1,EGHA,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
+1.2,EGHA:MOGAS_SUPER,EGHA,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
+1.2,EGHA:UL91,EGHA,UL91,Nein,UL91 nicht als UL94 ausweisen,,UL94 verfügbar,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
