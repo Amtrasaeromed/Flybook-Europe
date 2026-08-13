@@ -91,6 +91,10 @@ final class AirportOperatingHoursTests: XCTestCase {
             assessment(airport, "2026-08-14T07:30:00Z", .ehal),
             .confirmedOpen
         )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-14T16:30:00Z", .ehal),
+            .confirmedClosed
+        )
 
         let instant = try XCTUnwrap(
             ISO8601DateFormatter().date(from: "2026-08-14T12:00:00Z")
@@ -108,7 +112,7 @@ final class AirportOperatingHoursTests: XCTestCase {
         formatter.timeZone = airport.timeZone
         formatter.dateFormat = "HH:mm"
         XCTAssertEqual(formatter.string(from: window.opening), "09:30")
-        XCTAssertEqual(formatter.string(from: window.closing), "19:00")
+        XCTAssertEqual(formatter.string(from: window.closing), "18:00")
     }
 
     func testAlternateOpeningHoursFilterHasStrictConfirmedMode() {

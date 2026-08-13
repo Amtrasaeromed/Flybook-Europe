@@ -269,14 +269,20 @@ struct AirportOpeningHoursProfile: Codable, Equatable {
         let summer = AirportOpeningPeriod(
             fromUTC: "07:30",
             closingReference: .fixed,
-            fixedUntilUTC: "17:00"
+            fixedUntilUTC: "16:00"
         )
         return AirportOpeningHoursProfile(
-            summer: AirportSeasonHours(
-                monday: summer, tuesday: summer, wednesday: summer,
-                thursday: summer, friday: summer, saturday: summer,
-                sunday: summer, holiday: summer
-            )
+            summer: AirportSeasonHours(outsideHoursPPR: true),
+            winter: AirportSeasonHours(outsideHoursPPR: true),
+            dateRules: [
+                AirportDateRule(
+                    startMonth: 4, startDay: 1,
+                    endMonth: 10, endDay: 30,
+                    label: "UDP 1 · 1. Apr.–30. Okt.",
+                    period: summer,
+                    summary: "0730–1600 UTC regulär; 1600–1700 UTC PPR"
+                )
+            ]
         )
     }()
 

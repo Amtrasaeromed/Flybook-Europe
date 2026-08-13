@@ -195,6 +195,8 @@ final class DestinationStore: ObservableObject {
                     avgas: fuelAvailability("AVGAS", fuelRows: airportFuels, priceRows: airportPrices),
                     ul91: fuelAvailability("UL91", fuelRows: airportFuels, priceRows: airportPrices),
                     mogas: fuelAvailability("MOGAS_SUPER", fuelRows: airportFuels, priceRows: airportPrices),
+                    jetA1: fuelAvailability("JET_A1", fuelRows: airportFuels, priceRows: airportPrices),
+                    fuelDetails: fuelDetails(rows: airportFuels),
                     avgasPricePerLiterEUR: price("AVGAS", rows: airportPrices),
                     ul91PricePerLiterEUR: price("UL91", rows: airportPrices),
                     mogasPricePerLiterEUR: price("MOGAS_SUPER", rows: airportPrices),
@@ -421,6 +423,14 @@ final class DestinationStore: ObservableObject {
         {
             return "Nein"
         }
+        if raw == "ja"
+            || raw.hasPrefix("ja ")
+            || raw == "yes"
+            || raw == "available"
+            || raw == "verfügbar"
+        {
+            return "Ja"
+        }
         return "?"
     }
 
@@ -428,6 +438,27 @@ final class DestinationStore: ObservableObject {
         rows.first(where: { $0["fuel_type"] == type }).flatMap {
             optionalDouble($0["price_eur_per_litre", default: ""])
         }
+    }
+
+    private func fuelDetails(rows: [[String: String]]) -> String {
+        rows.compactMap { row in
+            let availability = row["availability_raw", default: ""]
+                .folding(
+                    options: [.diacriticInsensitive, .caseInsensitive],
+                    locale: .current
+                )
+            guard availability == "ja"
+                    || availability == "yes"
+                    || availability == "available"
+            else { return nil }
+            let grade = nonEmpty(
+                row["grade_or_detail", default: ""],
+                row["fuel_type", default: ""]
+            )
+            let facility = row["other_fuels_raw", default: ""]
+            return facility.isEmpty ? grade : "\(grade): \(facility)"
+        }
+        .joined(separator: "\n")
     }
 
     private func priceReportedAt(rows: [[String: String]]) -> String? {

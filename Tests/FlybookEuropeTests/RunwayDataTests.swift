@@ -163,4 +163,20 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(byICAO["EHLE"]).elevationFeet, -12)
         XCTAssertEqual(try XCTUnwrap(byICAO["EDKM"]).elevationFeet, 1_436)
     }
+
+    func testAmelandAIPFuelTypesAndFacilitiesAreLoaded() throws {
+        let store = DestinationStore()
+        let ameland = try XCTUnwrap(
+            store.destinations.first { $0.icao == "EHAL" }
+        )
+
+        XCTAssertEqual(ameland.avgas, "Ja")
+        XCTAssertEqual(ameland.mogas, "Ja")
+        XCTAssertEqual(ameland.jetA1, "Ja")
+        XCTAssertEqual(ameland.ul91, "Nein")
+        XCTAssertTrue(ameland.fuelDetails.contains("AVGAS 100LL"))
+        XCTAssertTrue(ameland.fuelDetails.contains("MOGAS Euro 98"))
+        XCTAssertTrue(ameland.fuelDetails.contains("Jet A1 O/R"))
+        XCTAssertTrue(ameland.fuelDetails.contains("12000 l"))
+    }
 }

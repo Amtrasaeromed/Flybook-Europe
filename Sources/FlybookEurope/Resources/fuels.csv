@@ -225,9 +225,9 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EGKA:JET_A1,EGKA,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EGKA:MOGAS_SUPER,EGKA,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EGKA:UL91,EGKA,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
-1.2,EHAL:AVGAS,EHAL,AVGAS,Nein,Nein,,,,,2026-08-02
-1.2,EHAL:JET_A1,EHAL,JET_A1,,,,,,,2026-08-02
-1.2,EHAL:MOGAS_SUPER,EHAL,MOGAS_SUPER,Nein,Nein,,,,,2026-08-02
+1.2,EHAL:AVGAS,EHAL,AVGAS,Ja,AVGAS 100LL,,"Tank 12000 l; 80 l/min",https://eaip.lvnl.nl/,2026-08-13,2026-08-13
+1.2,EHAL:JET_A1,EHAL,JET_A1,Ja,Jet A1 O/R,,"Tank 8000 l; 80 l/min",https://eaip.lvnl.nl/,2026-08-13,2026-08-13
+1.2,EHAL:MOGAS_SUPER,EHAL,MOGAS_SUPER,Ja,MOGAS Euro 98,,"Tank 10000 l; 80 l/min",https://eaip.lvnl.nl/,2026-08-13,2026-08-13
 1.2,EHAL:UL91,EHAL,UL91,Nein,Nein,,,,,2026-08-02
 1.2,EHHV:AVGAS,EHHV,AVGAS,Ja,AVGAS 100LL,,,https://www.ehhv.nl/for-pilots/fuel-and-oil,2026-08-03,2026-08-03
 1.2,EHHV:JET_A1,EHHV,JET_A1,Ja,Jet A1,,,https://www.ehhv.nl/for-pilots/fuel-and-oil,2026-08-03,2026-08-03

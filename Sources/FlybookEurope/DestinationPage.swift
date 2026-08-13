@@ -3120,6 +3120,11 @@ struct DestinationPage: View {
                         referencePricePerLiterEUR: mainzMogasPrice,
                         priceReportedAt: destination.fuelPriceReportedAt
                     )
+                    AirportMetric(
+                        title: "JET A1",
+                        value: destination.jetA1,
+                        fuelStatus: true
+                    )
                 }
             }
         }
@@ -3832,11 +3837,26 @@ private struct AirportInformationPopover: View {
         return formatter.string(from: instant)
     }
 
+    private var operationalHoursNote: String? {
+        guard airport.icao == "EHAL", let instant else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = airport.timeZone
+        let components = calendar.dateComponents([.month, .day], from: instant)
+        let monthDay = (components.month ?? 0) * 100 + (components.day ?? 0)
+        if (401...1030).contains(monthDay) {
+            return "PN vorab telefonisch empfohlen. 18:00–19:00 Ortszeit "
+                + "(16:00–17:00 UTC) nur PPR."
+        }
+        return "Winterperiode 1. November–31. März: eingeschränkt verfügbar, "
+            + "mindestens 1 Stunde PPR unter +31 519 554030."
+    }
+
     private var fuelText: String {
         [
             fuelLine("AVGAS", availability: destination.avgas, price: destination.avgasPricePerLiterEUR),
             fuelLine("UL91", availability: destination.ul91, price: destination.ul91PricePerLiterEUR),
-            fuelLine("MOGAS", availability: destination.mogas, price: destination.mogasPricePerLiterEUR)
+            fuelLine("MOGAS", availability: destination.mogas, price: destination.mogasPricePerLiterEUR),
+            fuelLine("JET A1", availability: destination.jetA1, price: nil)
         ]
         .filter { !$0.isEmpty }
         .joined(separator: "  ·  ")
@@ -3874,6 +3894,9 @@ private struct AirportInformationPopover: View {
                             .font(.system(size: 12, weight: .semibold))
                     }
                     detailRow("Betriebszeit", openingHoursText)
+                    if let operationalHoursNote {
+                        detailRow("Zusatzregel", operationalHoursNote)
+                    }
                     if !destination.ppr.isEmpty {
                         detailRow("PPR", destination.ppr)
                     }
@@ -3895,6 +3918,9 @@ private struct AirportInformationPopover: View {
 
                 informationSection("VERSORGUNG & MOBILITÄT") {
                     if !fuelText.isEmpty { detailRow("Kraftstoff", fuelText) }
+                    if !destination.fuelDetails.isEmpty {
+                        detailRow("Tankstellen", destination.fuelDetails)
+                    }
                     if !destination.transfer.isEmpty {
                         detailRow(
                             "Transfer",
