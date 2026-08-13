@@ -266,6 +266,18 @@ final class CharterMathTests: XCTestCase {
         XCTAssertEqual(ceil(rawSuggestion), 65)
     }
 
+    func testSuggestedRefuelRoundsEveryFuelValueUpForSafety() {
+        let suggestion = CharterMath.suggestedRefuelLiters(
+            startingFuelLiters: 98,
+            firstLegBlockFuelLiters: 55.2,
+            firstLegRequiredFuelLiters: 65.7,
+            secondLegRequiredFuelLiters: 69.2,
+            remainingFirstLegFuelIsAvailable: true,
+            safetyRoundingIncrementLiters: 1
+        )
+        XCTAssertEqual(suggestion, 28, accuracy: 0.0001)
+    }
+
     func testRefueledRouteIsGreenWhenMinimumIsMet() {
         XCTAssertEqual(
             CharterMath.fuelStatus(

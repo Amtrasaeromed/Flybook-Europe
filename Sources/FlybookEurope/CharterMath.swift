@@ -58,16 +58,33 @@ enum CharterMath {
         firstLegBlockFuelLiters: Double,
         firstLegRequiredFuelLiters: Double,
         secondLegRequiredFuelLiters: Double,
-        remainingFirstLegFuelIsAvailable: Bool
+        remainingFirstLegFuelIsAvailable: Bool,
+        safetyRoundingIncrementLiters: Double = 0
     ) -> Double {
-        let firstLegFuelDeduction = remainingFirstLegFuelIsAvailable
+        let increment = max(0, safetyRoundingIncrementLiters)
+        func roundedUpForSafety(_ liters: Double) -> Double {
+            let nonnegativeLiters = max(0, liters)
+            guard increment > 0 else { return nonnegativeLiters }
+            return ceil(nonnegativeLiters / increment - 0.000_000_001)
+                * increment
+        }
+
+        let rawFirstLegFuelDeduction = remainingFirstLegFuelIsAvailable
             ? firstLegBlockFuelLiters
             : firstLegRequiredFuelLiters
+        let firstLegFuelDeduction = roundedUpForSafety(
+            rawFirstLegFuelDeduction
+        )
         let remainingAfterFirstLeg = max(
             0,
             startingFuelLiters - firstLegFuelDeduction
         )
-        return max(0, secondLegRequiredFuelLiters - remainingAfterFirstLeg)
+        let secondLegFuelRequired = roundedUpForSafety(
+            secondLegRequiredFuelLiters
+        )
+        return roundedUpForSafety(
+            max(0, secondLegFuelRequired - remainingAfterFirstLeg)
+        )
     }
 
     static func fuelStatus(

@@ -1515,18 +1515,17 @@ struct DestinationPage: View {
     }
 
     private var minimumSuggestedRefuelLiters: Double {
-        let displayedFirstLegMinimum = roundedUpForFuelDisplay(
-            outboundRequiredFuel
-        )
-        return roundedUpForFuelDisplay(
-            CharterMath.suggestedRefuelLiters(
-                startingFuelLiters: startingFuelLiters,
-                firstLegBlockFuelLiters: outboundBlockFuel,
-                firstLegRequiredFuelLiters: displayedFirstLegMinimum,
-                secondLegRequiredFuelLiters: secondLegFullRequiredFuel,
-                remainingFirstLegFuelIsAvailable:
-                    outboundReserveNotConsumed
-            )
+        CharterMath.suggestedRefuelLiters(
+            startingFuelLiters: startingFuelLiters,
+            firstLegBlockFuelLiters: outboundBlockFuel,
+            firstLegRequiredFuelLiters: outboundRequiredFuel,
+            secondLegRequiredFuelLiters: secondLegFullRequiredFuel,
+            remainingFirstLegFuelIsAvailable:
+                outboundReserveNotConsumed,
+            safetyRoundingIncrementLiters:
+                fuelDisplayUnit == .liters
+                ? 1
+                : fuelDisplayUnit.toLiters(0.1)
         )
     }
 
