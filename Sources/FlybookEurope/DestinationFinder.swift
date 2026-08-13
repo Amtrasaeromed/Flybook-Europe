@@ -185,7 +185,7 @@ struct DestinationFinderMatch: Identifiable, Hashable {
     var weatherWasChecked = true
 }
 
-struct DestinationFinderWeatherHour: Equatable {
+struct DestinationFinderWeatherHour: Codable, Equatable {
     let instant: Date
     let temperatureCelsius: Double?
     let steadyWindKnots: Double?
@@ -969,11 +969,19 @@ private struct DestinationFinderAPIResponse: Decodable {
 
 actor DestinationFinderWeatherCache {
     static let shared = DestinationFinderWeatherCache()
-    private let lifetime: TimeInterval = 30 * 60
-    private var cache: [String: (Date, [DestinationFinderWeatherHour])] = [:]
+    private struct CacheEntry: Codable {
+        let retrievedAt: Date
+        let hours: [DestinationFinderWeatherHour]
+    }
+
+    private let nearTermLifetime: TimeInterval = 30 * 60
+    private let futureLifetime: TimeInterval = 3 * 60 * 60
+    private var cache: [String: CacheEntry] = [:]
     private var knownDestinations: [Destination] = []
+    private var didLoadPersistentCache = false
 
     func register(destinations: [Destination]) {
+        loadPersistentCacheIfNeeded()
         knownDestinations = destinations.filter {
             $0.latitude != nil && $0.longitude != nil
         }
@@ -984,12 +992,13 @@ actor DestinationFinderWeatherCache {
         longitude: Double,
         instant: Date
     ) -> DestinationFinderWeatherHour? {
+        loadPersistentCacheIfNeeded()
         let candidates = knownDestinations.compactMap { destination
             -> (Double, [DestinationFinderWeatherHour])? in
             guard let destinationLatitude = destination.latitude,
                   let destinationLongitude = destination.longitude,
                   let cached = cache[destination.icao],
-                  Date().timeIntervalSince(cached.0) < lifetime
+                  cacheIsFresh(cached, for: instant)
             else { return nil }
             let distance = Self.distanceNM(
                 latitude,
@@ -997,7 +1006,7 @@ actor DestinationFinderWeatherCache {
                 destinationLatitude,
                 destinationLongitude
             )
-            return (distance, cached.1)
+            return (distance, cached.hours)
         }
         guard let nearest = candidates.min(by: { $0.0 < $1.0 }),
               nearest.0 <= 60,
@@ -1030,24 +1039,29 @@ actor DestinationFinderWeatherCache {
         from: Date,
         until: Date
     ) async -> [String: [DestinationFinderWeatherHour]] {
+        loadPersistentCacheIfNeeded()
         let eligible = destinations.filter {
             $0.latitude != nil && $0.longitude != nil
         }
         let missing = eligible.filter {
             guard let cached = cache[$0.icao],
-                  Date().timeIntervalSince(cached.0) < lifetime
+                  cacheIsFresh(cached, for: from)
             else { return true }
-            return !Self.covers(cached.1, from: from, until: until)
+            return !Self.covers(cached.hours, from: from, until: until)
         }
 
         // Kleine serielle Batches sind auch bei kurzem, schlechtem Empfang
         // robuster als viele parallele Einzelanfragen.
+        var openMeteoWasThrottled = false
         for start in stride(from: 0, to: missing.count, by: 10) {
             guard !Task.isCancelled else { break }
+            guard !openMeteoWasThrottled else { break }
             let end = min(start + 10, missing.count)
             let batch = Array(missing[start..<end])
             do {
                 try await fetchBatch(batch, from: from, until: until)
+            } catch is OpenMeteoAccessError {
+                openMeteoWasThrottled = true
             } catch {
                 // Open-Meteo kann einen kompletten Batch etwa bei erreichtem
                 // Tageslimit ablehnen. Die noch offenen Ziele werden danach
@@ -1057,9 +1071,9 @@ actor DestinationFinderWeatherCache {
 
         let unresolved = eligible.filter {
             guard let cached = cache[$0.icao],
-                  Date().timeIntervalSince(cached.0) < lifetime
+                  cacheIsFresh(cached, for: from)
             else { return true }
-            return !Self.covers(cached.1, from: from, until: until)
+            return !Self.covers(cached.hours, from: from, until: until)
         }
         for start in stride(from: 0, to: unresolved.count, by: 4) {
             guard !Task.isCancelled else { break }
@@ -1087,8 +1101,14 @@ actor DestinationFinderWeatherCache {
                             referenceRunway: destination.referenceRunway
                         )
                         do {
-                            let forecast = try await EDFZWeatherService.shared
-                                .metNorwayForecast(airport: reference)
+                            let forecast: EDFZForecast
+                            do {
+                                forecast = try await EDFZWeatherService.shared
+                                    .metNorwayForecast(airport: reference)
+                            } catch {
+                                forecast = try await DWDMOSMIXService.shared
+                                    .forecast(airport: reference)
+                            }
                             let hours = Self.fallbackHours(
                                 forecast,
                                 from: from,
@@ -1112,19 +1132,63 @@ actor DestinationFinderWeatherCache {
                 return values
             }
             for (icao, hours) in fallbacks {
-                cache[icao] = (Date(), hours)
+                cache[icao] = CacheEntry(retrievedAt: Date(), hours: hours)
             }
         }
+
+        savePersistentCache()
 
         return Dictionary(
             uniqueKeysWithValues: eligible.compactMap { destination in
                 guard let entry = cache[destination.icao],
-                      Date().timeIntervalSince(entry.0) < lifetime,
-                      Self.covers(entry.1, from: from, until: until)
+                      cacheIsFresh(entry, for: from),
+                      Self.covers(entry.hours, from: from, until: until)
                 else { return nil }
-                return (destination.icao, entry.1)
+                return (destination.icao, entry.hours)
             }
         )
+    }
+
+    private func cacheIsFresh(_ entry: CacheEntry, for instant: Date) -> Bool {
+        let lifetime = instant.timeIntervalSinceNow > 24 * 60 * 60
+            ? futureLifetime
+            : nearTermLifetime
+        return Date().timeIntervalSince(entry.retrievedAt) < lifetime
+    }
+
+    private func loadPersistentCacheIfNeeded() {
+        guard !didLoadPersistentCache else { return }
+        didLoadPersistentCache = true
+        guard let data = try? Data(contentsOf: persistentCacheURL()),
+              let saved = try? JSONDecoder().decode(
+                  [String: CacheEntry].self,
+                  from: data
+              )
+        else { return }
+        let oldestUsefulDate = Date().addingTimeInterval(-futureLifetime)
+        cache = saved.filter { $0.value.retrievedAt >= oldestUsefulDate }
+    }
+
+    private func savePersistentCache() {
+        guard let data = try? JSONEncoder().encode(cache) else { return }
+        try? data.write(to: persistentCacheURL(), options: .atomic)
+    }
+
+    private func persistentCacheURL() -> URL {
+        let root = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? FileManager.default.temporaryDirectory
+        let directory = root
+            .appendingPathComponent("Flybook Europe", isDirectory: true)
+            .appendingPathComponent("WeatherCache", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        return directory.appendingPathComponent("destination-finder.json")
     }
 
     private static func covers(
@@ -1195,9 +1259,9 @@ actor DestinationFinderWeatherCache {
             throw DestinationFinderError.serverError
         }
         for (destination, response) in zip(destinations, responses) {
-            cache[destination.icao] = (
-                Date(),
-                transform(response, destination: destination)
+            cache[destination.icao] = CacheEntry(
+                retrievedAt: Date(),
+                hours: transform(response, destination: destination)
             )
         }
     }
@@ -1245,7 +1309,7 @@ actor DestinationFinderWeatherCache {
         guard let url = components.url else {
             throw DestinationFinderError.invalidRequest
         }
-        let (data, response) = try await FlightNetwork.data(
+        let (data, response) = try await FlightNetwork.openMeteoData(
             from: url,
             priority: .low
         )

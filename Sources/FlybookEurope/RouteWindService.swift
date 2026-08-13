@@ -243,7 +243,7 @@ actor RouteWindService {
             apiResponses = cached.responses
         } else {
             let (data, response) =
-                try await FlightNetwork.data(
+                try await FlightNetwork.openMeteoData(
                     from: url,
                     priority: .high
                 )

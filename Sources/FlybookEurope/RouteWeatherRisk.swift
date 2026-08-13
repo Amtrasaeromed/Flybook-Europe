@@ -556,7 +556,7 @@ actor RouteWeatherRiskService {
             ].joined(separator: ","))
         ]
         guard let url = components?.url else { throw RiskError.noData }
-        let (data, response) = try await FlightNetwork.data(
+        let (data, response) = try await FlightNetwork.openMeteoData(
             from: url,
             priority: .low
         )
@@ -580,19 +580,12 @@ actor RouteWeatherRiskService {
                 URLQueryItem(name: "lon", value: String(format: "%.4f", sample.longitude))
             ]
             guard let url = components.url else { continue }
-            var request = URLRequest(url: url)
-            request.setValue(
-                "FlybookEurope/1.0 aviation-weather-planner",
-                forHTTPHeaderField: "User-Agent"
-            )
             do {
-                let (data, response) = try await FlightNetwork.data(
-                    for: request,
+                let data = try await FlightNetwork.metNorwayData(
+                    from: url,
                     priority: .low
                 )
-                guard let http = response as? HTTPURLResponse,
-                      (200..<300).contains(http.statusCode),
-                      let decoded = try? JSONDecoder().decode(METResponse.self, from: data),
+                guard let decoded = try? JSONDecoder().decode(METResponse.self, from: data),
                       let point = decoded.properties.timeseries.min(by: {
                           abs($0.instant.timeIntervalSince(sample.instant))
                               < abs($1.instant.timeIntervalSince(sample.instant))

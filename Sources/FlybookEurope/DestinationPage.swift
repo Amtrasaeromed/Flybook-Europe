@@ -3252,6 +3252,9 @@ struct DestinationPage: View {
         if model.contains("MET Norway") {
             return "MET Norway · Backup"
         }
+        if model.contains("MOSMIX") {
+            return "DWD MOSMIX · Backup"
+        }
         if model.contains("ICON") {
             return "\(model) · DWD"
         }

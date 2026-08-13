@@ -108,8 +108,14 @@ actor WeatherService {
                         ) ?? .current,
                         referenceRunway: destination.referenceRunway
                     )
-                    let fallback = try await EDFZWeatherService.shared
-                        .metNorwayForecast(airport: airport)
+                    let fallback: EDFZForecast
+                    do {
+                        fallback = try await EDFZWeatherService.shared
+                            .metNorwayForecast(airport: airport)
+                    } catch {
+                        fallback = try await DWDMOSMIXService.shared
+                            .forecast(airport: airport)
+                    }
                     let metWeather = metNorwayWeather(
                         fallback,
                         destination: destination,
@@ -202,6 +208,9 @@ actor WeatherService {
         destination: Destination,
         targetInstants: [Date]
     ) -> DestinationWeather {
+        let sourceLabel = forecast.source == .mosmix
+            ? "DWD MOSMIX"
+            : "MET Norway"
         let timeZone = TimeZone(
             identifier: destination.timeZoneIdentifier
         ) ?? .current
@@ -291,7 +300,7 @@ actor WeatherService {
                 localDate: dateKey,
                 displayDay: offset == 0 ? "LANDUNG HINFLUG" : "START RÜCKFLUG",
                 localTime: timeFormatter.string(from: instant) + " LCL",
-                model: "MET Norway",
+                model: sourceLabel,
                 temperatureCelsius: sample.temperatureCelsius,
                 weatherCode: sample.weatherCode,
                 visibilityMeters: sample.visibilityMeters,
@@ -343,7 +352,7 @@ actor WeatherService {
                 maximumWindGustKnots: samples.compactMap(\.windGustKnots).max(),
                 hourlySurfaceWindKnots: hourlyWind,
                 hourlyFogRiskScores: hourlyFogRisk,
-                model: "MET Norway"
+                model: sourceLabel
             )
         }
 
@@ -760,7 +769,7 @@ actor WeatherService {
             throw WeatherError.invalidURL
         }
 
-        let (data, response) = try await FlightNetwork.data(
+        let (data, response) = try await FlightNetwork.openMeteoData(
             from: url,
             priority: .low
         )

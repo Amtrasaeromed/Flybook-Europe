@@ -96,5 +96,70 @@ final class WeatherSourcePriorityTests: XCTestCase {
         )
         XCTAssertFalse(EDFZForecastSource.bestMatch.isICONSeamless)
         XCTAssertFalse(EDFZForecastSource.metNorway.isICONSeamless)
+        XCTAssertFalse(EDFZForecastSource.mosmix.isICONSeamless)
+    }
+
+    func testOpenMeteoRetryAfterSecondsAreRespected() throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let retry = try XCTUnwrap(
+            OpenMeteoCircuitBreaker.retryDate(header: "900", now: now)
+        )
+        XCTAssertEqual(retry.timeIntervalSince(now), 900, accuracy: 0.1)
+    }
+
+    func testOpenMeteoDailyLimitWaitsUntilNextUTCDay() {
+        let date = ISO8601DateFormatter().date(
+            from: "2026-08-13T21:30:00Z"
+        )!
+        let expected = ISO8601DateFormatter().date(
+            from: "2026-08-14T00:05:00Z"
+        )!
+        XCTAssertEqual(
+            OpenMeteoCircuitBreaker.startOfNextUTCDay(after: date),
+            expected
+        )
+    }
+
+    func testMOSMIXKMZExtractorReadsDeflatedKML() throws {
+        let encoded = "UEsDBBQAAAAIALCtDV3daiF9DwAAABAAAAAIAAAAdGVzdC5rbWyzyc7NsctIzcnJt9EHMQFQSwECFAMUAAAACACwrQ1d3WohfQ8AAAAQAAAACAAAAAAAAAAAAAAAgAEAAAAAdGVzdC5rbWxQSwUGAAAAAAEAAQA2AAAANQAAAAAA"
+        let archive = try XCTUnwrap(Data(base64Encoded: encoded))
+        let kml = try DWDMOSMIXService.firstFile(inKMZ: archive)
+        XCTAssertEqual(String(data: kml, encoding: .utf8), "<kml>hello</kml>")
+    }
+
+    func testMOSMIXKMLIsConvertedToFlightWeather() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <kml:kml xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:dwd="https://opendata.dwd.de/weather/lib/pointforecast_dwd_extension_V1_0.xsd">
+          <dwd:TimeStep>2026-08-14T09:00:00.000Z</dwd:TimeStep>
+          <dwd:Forecast dwd:elementName="TTT"><dwd:value>293.15</dwd:value></dwd:Forecast>
+          <dwd:Forecast dwd:elementName="Td"><dwd:value>291.15</dwd:value></dwd:Forecast>
+          <dwd:Forecast dwd:elementName="FF"><dwd:value>5</dwd:value></dwd:Forecast>
+          <dwd:Forecast dwd:elementName="Nl"><dwd:value>80</dwd:value></dwd:Forecast>
+          <dwd:Forecast dwd:elementName="VV"><dwd:value>4000</dwd:value></dwd:Forecast>
+        </kml:kml>
+        """
+        let forecast = try DWDMOSMIXService.parseKML(
+            Data(xml.utf8),
+            retrievedAt: Date()
+        )
+        let sample = try XCTUnwrap(forecast.samples.first)
+        XCTAssertEqual(sample.temperatureCelsius!, 20, accuracy: 0.01)
+        XCTAssertEqual(sample.windSpeedKnots!, 9.71922, accuracy: 0.001)
+        XCTAssertEqual(sample.ceilingFeetAGL!, 800, accuracy: 0.1)
+        XCTAssertEqual(sample.category, .ifr)
+    }
+
+    func testLiveMOSMIXWhenExplicitlyEnabled() async throws {
+        guard ProcessInfo.processInfo.environment[
+            "FLYBOOK_LIVE_MOSMIX_TEST"
+        ] == "1" else {
+            throw XCTSkip("Nur für den expliziten DWD-MOSMIX-Quellencheck")
+        }
+        let forecast = try await DWDMOSMIXService.shared.forecast(
+            airport: .edfz
+        )
+        XCTAssertFalse(forecast.samples.isEmpty)
+        XCTAssertEqual(forecast.source, .mosmix)
     }
 }

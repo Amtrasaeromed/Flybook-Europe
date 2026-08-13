@@ -1,6 +1,6 @@
 import Foundation
 
-enum ICONSeamlessAccessRoute: String, CaseIterable, Hashable {
+enum ICONSeamlessAccessRoute: String, CaseIterable, Codable, Hashable {
     case dedicatedDWD = "dwd-icon"
     case genericForecast = "forecast"
 
@@ -17,10 +17,11 @@ enum ICONSeamlessAccessRoute: String, CaseIterable, Hashable {
     }
 }
 
-enum EDFZForecastSource: Hashable {
+enum EDFZForecastSource: Codable, Hashable {
     case iconSeamless(ICONSeamlessAccessRoute)
     case bestMatch
     case metNorway
+    case mosmix
 
     var isICONSeamless: Bool {
         if case .iconSeamless = self { return true }
@@ -28,7 +29,7 @@ enum EDFZForecastSource: Hashable {
     }
 }
 
-struct EDFZWeatherSample: Hashable {
+struct EDFZWeatherSample: Codable, Hashable {
     let validTime: Date
     let windDirectionDegrees: Double?
     let windSpeedKnots: Double?
@@ -45,7 +46,7 @@ struct EDFZWeatherSample: Hashable {
     let pressureMSLHPA: Double?
 }
 
-struct EDFZForecast: Hashable {
+struct EDFZForecast: Codable, Hashable {
     let retrievedAt: Date
     let samples: [EDFZWeatherSample]
     let source: EDFZForecastSource
@@ -313,11 +314,22 @@ enum EDFZRunway {
 
 actor EDFZWeatherService {
     static let shared = EDFZWeatherService()
+    private struct MetNorwayDiskEntry: Codable {
+        let data: Data
+        let retrievedAt: Date
+        let expiresAt: Date
+        let lastModified: String?
+    }
+
     private let primaryCacheLifetime: TimeInterval = 30 * 60
     private let backupRetryLifetime: TimeInterval = 5 * 60
     private let staleSeamlessFallbackLifetime: TimeInterval = 3 * 60 * 60
     private var forecastCache: [String: (Date, EDFZForecast)] = [:]
+    private var forecastDiskCache: [String: EDFZForecast] = [:]
+    private var didLoadForecastDiskCache = false
     private var metNorwayCache: [String: (Date, EDFZForecast)] = [:]
+    private var metNorwayDiskCache: [String: MetNorwayDiskEntry] = [:]
+    private var didLoadMetNorwayDiskCache = false
     private var forecastTasks: [String: Task<EDFZForecast, Error>] = [:]
     private var metNorwayTasks: [String: Task<EDFZForecast, Error>] = [:]
 
@@ -326,11 +338,13 @@ actor EDFZWeatherService {
         airport: AirportReference,
         forceRefresh: Bool = false
     ) async throws -> EDFZForecast {
+        loadForecastDiskCacheIfNeeded()
         let cacheKey = forecastKey(
             plannedDate: plannedDate,
             airport: airport
         )
         let previousForecast = forecastCache[cacheKey]?.1
+            ?? forecastDiskCache[cacheKey]
         if !forceRefresh,
            let cached = previousForecast,
            Date().timeIntervalSince(cached.retrievedAt)
@@ -355,6 +369,8 @@ actor EDFZWeatherService {
             let result = try await task.value
             forecastTasks[cacheKey] = nil
             forecastCache[cacheKey] = (Date(), result)
+            forecastDiskCache[cacheKey] = result
+            saveForecastDiskCache()
             return result
         } catch {
             forecastTasks[cacheKey] = nil
@@ -388,6 +404,51 @@ actor EDFZWeatherService {
         forecast.source.isICONSeamless
             ? primaryCacheLifetime
             : backupRetryLifetime
+    }
+
+    private func loadForecastDiskCacheIfNeeded() {
+        guard !didLoadForecastDiskCache else { return }
+        didLoadForecastDiskCache = true
+        guard let data = try? Data(contentsOf: forecastDiskCacheURL()),
+              let saved = try? JSONDecoder().decode(
+                  [String: EDFZForecast].self,
+                  from: data
+              )
+        else { return }
+        let oldestUsefulDate = Date().addingTimeInterval(
+            -staleSeamlessFallbackLifetime
+        )
+        forecastDiskCache = saved.filter {
+            $0.value.retrievedAt >= oldestUsefulDate
+        }
+    }
+
+    private func saveForecastDiskCache() {
+        guard let data = try? JSONEncoder().encode(forecastDiskCache) else {
+            return
+        }
+        try? data.write(to: forecastDiskCacheURL(), options: .atomic)
+    }
+
+    private func forecastDiskCacheURL() -> URL {
+        weatherCacheDirectory().appendingPathComponent("planning-weather.json")
+    }
+
+    private func weatherCacheDirectory() -> URL {
+        let root = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? FileManager.default.temporaryDirectory
+        let directory = root
+            .appendingPathComponent("Flybook Europe", isDirectory: true)
+            .appendingPathComponent("WeatherCache", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        return directory
     }
 
     private func downloadForecast(
@@ -492,10 +553,14 @@ actor EDFZWeatherService {
             // kommen. MET Norway bleibt der letzte, fremde Provider.
         }
 
-        return try await metNorwayForecast(
-            airport: airport,
-            forceRefresh: forceRefresh
-        )
+        do {
+            return try await metNorwayForecast(
+                airport: airport,
+                forceRefresh: forceRefresh
+            )
+        } catch {
+            return try await DWDMOSMIXService.shared.forecast(airport: airport)
+        }
     }
 
     private func downloadICONForecast(
@@ -518,7 +583,7 @@ actor EDFZWeatherService {
         source: EDFZForecastSource,
         airport: AirportReference
     ) async throws -> EDFZForecast {
-        let (data, response) = try await FlightNetwork.data(
+        let (data, response) = try await FlightNetwork.openMeteoData(
             from: url,
             priority: .high
         )
@@ -603,10 +668,21 @@ actor EDFZWeatherService {
         airport: AirportReference,
         forceRefresh: Bool = false
     ) async throws -> EDFZForecast {
+        loadMetNorwayDiskCacheIfNeeded()
         if !forceRefresh,
            let cached = metNorwayCache[airport.icao],
            Date().timeIntervalSince(cached.0) < primaryCacheLifetime {
             return cached.1
+        }
+        if !forceRefresh,
+           let cached = metNorwayDiskCache[airport.icao],
+           cached.expiresAt > Date(),
+           let forecast = try? decodeMetNorwayForecast(
+               data: cached.data,
+               retrievedAt: cached.retrievedAt
+           ) {
+            metNorwayCache[airport.icao] = (cached.retrievedAt, forecast)
+            return forecast
         }
         if let running = metNorwayTasks[airport.icao] {
             return try await running.value
@@ -633,25 +709,45 @@ actor EDFZWeatherService {
             string: "https://api.met.no/weatherapi/locationforecast/2.0/compact"
         )
         components?.queryItems = [
-            URLQueryItem(name: "lat", value: String(airport.latitude)),
-            URLQueryItem(name: "lon", value: String(airport.longitude))
+            URLQueryItem(
+                name: "lat",
+                value: String(format: "%.4f", airport.latitude)
+            ),
+            URLQueryItem(
+                name: "lon",
+                value: String(format: "%.4f", airport.longitude)
+            )
         ]
         guard let url = components?.url else {
             throw EDFZWeatherError.invalidURL
         }
-        var request = URLRequest(url: url)
-        request.setValue(
-            "Flybook/1.0 flight-planning-weather-client",
-            forHTTPHeaderField: "User-Agent"
-        )
-        let (data, response) = try await FlightNetwork.data(
-            for: request,
+        let previous = metNorwayDiskCache[airport.icao]
+        let data = try await FlightNetwork.metNorwayData(
+            from: url,
             priority: .high
         )
-        guard let http = response as? HTTPURLResponse,
-              (200..<300).contains(http.statusCode)
-        else { throw EDFZWeatherError.serverError }
+        let now = Date()
+        let entry = MetNorwayDiskEntry(
+            data: data,
+            retrievedAt: previous?.data == data
+                ? previous?.retrievedAt ?? now
+                : now,
+            expiresAt: now.addingTimeInterval(primaryCacheLifetime),
+            lastModified: previous?.lastModified
+        )
+        metNorwayDiskCache[airport.icao] = entry
+        saveMetNorwayDiskCache()
 
+        return try decodeMetNorwayForecast(
+            data: data,
+            retrievedAt: entry.retrievedAt
+        )
+    }
+
+    private func decodeMetNorwayForecast(
+        data: Data,
+        retrievedAt: Date
+    ) throws -> EDFZForecast {
         let decoded = try JSONDecoder().decode(
             MetNorwayResponse.self,
             from: data
@@ -704,13 +800,39 @@ actor EDFZWeatherService {
             )
         }
         guard !samples.isEmpty else { throw EDFZWeatherError.serverError }
-        let result = EDFZForecast(
-            retrievedAt: Date(),
+        return EDFZForecast(
+            retrievedAt: retrievedAt,
             samples: samples,
             source: .metNorway
         )
-        return result
     }
+
+    private func loadMetNorwayDiskCacheIfNeeded() {
+        guard !didLoadMetNorwayDiskCache else { return }
+        didLoadMetNorwayDiskCache = true
+        guard let data = try? Data(contentsOf: metNorwayDiskCacheURL()),
+              let saved = try? JSONDecoder().decode(
+                  [String: MetNorwayDiskEntry].self,
+                  from: data
+              )
+        else { return }
+        let oldestUsefulDate = Date().addingTimeInterval(-24 * 60 * 60)
+        metNorwayDiskCache = saved.filter {
+            $0.value.expiresAt >= oldestUsefulDate
+        }
+    }
+
+    private func saveMetNorwayDiskCache() {
+        guard let data = try? JSONEncoder().encode(metNorwayDiskCache) else {
+            return
+        }
+        try? data.write(to: metNorwayDiskCacheURL(), options: .atomic)
+    }
+
+    private func metNorwayDiskCacheURL() -> URL {
+        weatherCacheDirectory().appendingPathComponent("met-norway.json")
+    }
+
 
     private func estimatedVisibilityMeters(symbol: String) -> Double {
         if symbol.contains("fog") { return 1_000 }
