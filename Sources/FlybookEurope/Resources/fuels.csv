@@ -494,7 +494,7 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EGHA:JET_A1,EGHA,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
 1.2,EGHA:MOGAS_SUPER,EGHA,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
 1.2,EGHA:UL91,EGHA,UL91,Nein,UL91 nicht als UL94 ausweisen,,UL94 verfügbar,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
-1.2,EDLM:AVGAS,EDLM,AVGAS,Ja,AVGAS 100LL,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
-1.2,EDLM:JET_A1,EDLM,JET_A1,Ja,Jet A1,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
-1.2,EDLM:MOGAS_SUPER,EDLM,MOGAS_SUPER,Nein,Nicht in den übermittelten AIP-Kraftstoffangaben,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
+1.2,EDLM:AVGAS,EDLM,AVGAS,Ja,AVGAS 100LL,,,https://xn--flugplatz-loemhle-g3b.de/tanken/,2026-08-13,2026-08-13
+1.2,EDLM:JET_A1,EDLM,JET_A1,Ja,Jet A1,,,https://xn--flugplatz-loemhle-g3b.de/tanken/,2026-08-13,2026-08-13
+1.2,EDLM:MOGAS_SUPER,EDLM,MOGAS_SUPER,Ja,Super Plus,,,https://xn--flugplatz-loemhle-g3b.de/tanken/,2026-08-13,2026-08-13
 1.2,EDLM:UL91,EDLM,UL91,Nein,Nicht veröffentlicht,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13

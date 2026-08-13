@@ -191,7 +191,9 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(edlm.runwayLDAM, 700)
         XCTAssertEqual(edlm.avgas, "Ja")
         XCTAssertEqual(edlm.jetA1, "Ja")
-        XCTAssertEqual(edlm.mogas, "Nein")
+        XCTAssertEqual(edlm.mogas, "Ja")
+        XCTAssertEqual(edlm.avgasPricePerLiterEUR, 3.06)
+        XCTAssertEqual(edlm.mogasPricePerLiterEUR, 2.49)
         XCTAssertTrue(LandingVoucherBook.includes("EDLM"))
     }
 

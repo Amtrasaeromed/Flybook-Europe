@@ -2,6 +2,26 @@ import XCTest
 @testable import FlybookEurope
 
 final class FuelPriceServiceTests: XCTestCase {
+    func testOfficialMarlPageParserUsesGrossPricesAndDate() {
+        let html = """
+        <h3>Kraftstoff AVGAS 100LL</h3>
+        <div>EUR 3,06 pro Liter (Brutto)</div>
+        <div>EUR 2,57 pro Liter (Netto)</div>
+        <h3>Kraftstoff JET A-1</h3>
+        <div>EUR 3,08 pro Liter (Brutto)</div>
+        <h3>Kraftstoff SUPER PLUS</h3>
+        <div>EUR 2,49 pro Liter (Brutto)</div>
+        <div>EUR 2,09 pro Liter (Netto)</div>
+        <p>Datenstand: 01.07.2026</p>
+        """
+
+        let record = MonthlyFuelPriceService.parseOfficialMarlPage(html)
+
+        XCTAssertEqual(record.avgas, 3.06)
+        XCTAssertEqual(record.mogas, 2.49)
+        XCTAssertEqual(record.reportedAt, "Stand 01.07.2026")
+    }
+
     func testCachedPricesOverrideSeedWithoutDroppingOtherFuelTypes() {
         let result = MonthlyFuelPriceService.mergedPrices(
             seed: [

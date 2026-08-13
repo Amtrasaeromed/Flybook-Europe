@@ -26,6 +26,7 @@ enum FuelPriceSettingsKey {
 
 actor MonthlyFuelPriceService {
     static let shared = MonthlyFuelPriceService()
+    nonisolated private static let validationVersion = 7
 
     private struct Cache: Codable {
         let monthKey: String
@@ -34,15 +35,18 @@ actor MonthlyFuelPriceService {
         let checkedAtByICAO: [String: Date]?
     }
 
-    private let validationVersion = 6
     private let regularCheckInterval: TimeInterval = 24 * 60 * 60
 
     nonisolated static func cachedPrices(
         seed: [String: FuelPriceRecord]
     ) -> [String: FuelPriceRecord] {
-        mergedPrices(
+        let cache = try? loadCache()
+        return mergedPrices(
             seed: seed,
-            cached: (try? loadCache())?.prices ?? [:]
+            cached:
+                cache?.validationVersion == validationVersion
+                ? cache?.prices ?? [:]
+                : [:]
         )
     }
 
@@ -52,7 +56,11 @@ actor MonthlyFuelPriceService {
         now: Date = Date()
     ) async -> FuelPriceRecord? {
         let icao = rawICAO.uppercased()
-        let previousCache = try? Self.loadCache()
+        let loadedCache = try? Self.loadCache()
+        let previousCache =
+            loadedCache?.validationVersion == Self.validationVersion
+            ? loadedCache
+            : nil
         var prices = Self.mergedPrices(
             seed: seed,
             cached: previousCache?.prices ?? [:]
@@ -70,6 +78,8 @@ actor MonthlyFuelPriceService {
         let fetched: FuelPriceRecord?
         if icao == "EDFZ" {
             fetched = await officialMainzPrices()
+        } else if icao == "EDLM" {
+            fetched = await officialMarlPrices()
         } else {
             fetched = try? await fetchCommunityPrices(icao: icao)
         }
@@ -84,7 +94,7 @@ actor MonthlyFuelPriceService {
         try? Self.saveCache(
             Cache(
                 monthKey: currentMonthKey,
-                validationVersion: validationVersion,
+                validationVersion: Self.validationVersion,
                 prices: prices,
                 checkedAtByICAO: checkedAtByICAO
             )
@@ -136,6 +146,82 @@ actor MonthlyFuelPriceService {
             reportedAt: "Stand 13.05.2026"
         )
         return record.avgas == nil && record.ul91 == nil && record.mogas == nil ? nil : record
+    }
+
+    func officialMarlPrices() async -> FuelPriceRecord? {
+        guard let url = URL(
+            string: "https://xn--flugplatz-loemhle-g3b.de/tanken/"
+        ) else { return nil }
+        guard let html = try? await download(url), !html.isEmpty else {
+            return nil
+        }
+        let record = Self.parseOfficialMarlPage(html)
+        return record.avgas == nil && record.mogas == nil ? nil : record
+    }
+
+    nonisolated static func parseOfficialMarlPage(
+        _ html: String
+    ) -> FuelPriceRecord {
+        let text = html
+            .replacingOccurrences(
+                of: "<[^>]+>",
+                with: " ",
+                options: .regularExpression
+            )
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+        return FuelPriceRecord(
+            avgas: marlGrossPrice(
+                in: text,
+                labels: ["Kraftstoff AVGAS 100LL", "AVGAS 100LL"]
+            ),
+            mogas: marlGrossPrice(
+                in: text,
+                labels: ["Kraftstoff SUPER PLUS", "SUPER PLUS"]
+            ),
+            reportedAt: marlReportedAt(in: text)
+        )
+    }
+
+    nonisolated private static func marlGrossPrice(
+        in text: String,
+        labels: [String]
+    ) -> Double? {
+        for label in labels {
+            let escaped = NSRegularExpression.escapedPattern(for: label)
+            let pattern =
+                escaped
+                + #"(?is:.{0,260}?)(?:EUR|€)\s*([0-9]+[,.][0-9]{2,3})\s*pro\s*Liter\s*\(Brutto\)"#
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(
+                    in: text,
+                    range: NSRange(text.startIndex..., in: text)
+                  ),
+                  let range = Range(match.range(at: 1), in: text),
+                  let value = Double(
+                    text[range].replacingOccurrences(of: ",", with: ".")
+                  ),
+                  (0.5...10).contains(value)
+            else { continue }
+            return value
+        }
+        return nil
+    }
+
+    nonisolated private static func marlReportedAt(
+        in text: String
+    ) -> String? {
+        let pattern = #"Datenstand:\s*([0-9]{2}\.[0-9]{2}\.[0-9]{4})"#
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: [.caseInsensitive]
+        ),
+        let match = regex.firstMatch(
+            in: text,
+            range: NSRange(text.startIndex..., in: text)
+        ),
+        let range = Range(match.range(at: 1), in: text)
+        else { return nil }
+        return "Stand " + String(text[range])
     }
 
     private func fetchCommunityPrices(icao: String) async throws -> FuelPriceRecord {
