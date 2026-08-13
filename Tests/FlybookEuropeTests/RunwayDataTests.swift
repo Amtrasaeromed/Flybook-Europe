@@ -79,13 +79,11 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(bembridge.avgas, "?")
         XCTAssertEqual(bembridge.ul91, "?")
         XCTAssertEqual(bembridge.mogas, "?")
-        XCTAssertEqual(bembridge.jetA1, "?")
 
         let headcorn = try XCTUnwrap(byICAO["EGKH"])
         XCTAssertEqual(headcorn.avgas, "?")
         XCTAssertEqual(headcorn.ul91, "?")
         XCTAssertEqual(headcorn.mogas, "?")
-        XCTAssertEqual(headcorn.jetA1, "?")
     }
 
     func testUKMergePackTourismFeaturesMatchTravelTimeRules() throws {
@@ -181,7 +179,6 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertTrue(edxe.features.contains(.techStop))
         XCTAssertEqual(edxe.avgas, "Ja")
         XCTAssertEqual(edxe.mogas, "Ja")
-        XCTAssertEqual(edxe.jetA1, "Nein")
         XCTAssertTrue(LandingVoucherBook.includes("EDXE"))
 
         let edlm = try XCTUnwrap(byICAO["EDLM"])
@@ -190,7 +187,6 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(edlm.runwayM, 830)
         XCTAssertEqual(edlm.runwayLDAM, 700)
         XCTAssertEqual(edlm.avgas, "Ja")
-        XCTAssertEqual(edlm.jetA1, "Ja")
         XCTAssertEqual(edlm.mogas, "Ja")
         XCTAssertEqual(edlm.avgasPricePerLiterEUR, 3.14)
         XCTAssertEqual(edlm.mogasPricePerLiterEUR, 2.61)
@@ -204,7 +200,6 @@ final class RunwayDataTests: XCTestCase {
 
         XCTAssertTrue(edls.features.contains(.techStop))
         XCTAssertEqual(edls.avgas, "Ja")
-        XCTAssertEqual(edls.jetA1, "Ja")
         XCTAssertEqual(edls.mogas, "Ja")
         XCTAssertEqual(edls.portOfEntry, "Ja")
         XCTAssertEqual(edls.referenceRunway, "11/29")
@@ -308,11 +303,27 @@ final class RunwayDataTests: XCTestCase {
 
         XCTAssertEqual(ameland.avgas, "Ja")
         XCTAssertEqual(ameland.mogas, "Ja")
-        XCTAssertEqual(ameland.jetA1, "Ja")
         XCTAssertEqual(ameland.ul91, "Nein")
         XCTAssertTrue(ameland.fuelDetails.contains("AVGAS 100LL"))
         XCTAssertTrue(ameland.fuelDetails.contains("MOGAS Euro 98"))
-        XCTAssertTrue(ameland.fuelDetails.contains("Jet A1 O/R"))
         XCTAssertTrue(ameland.fuelDetails.contains("12000 l"))
+    }
+
+    func testUserVisibleAirportInformationExcludesTurbineFuel() {
+        for destination in DestinationStore().destinations {
+            let visibleInformation = [
+                destination.fuelDetails,
+                destination.airportNote,
+                destination.restaurantNotes,
+                destination.highlights
+            ].joined(separator: " ").lowercased()
+
+            XCTAssertFalse(
+                visibleInformation.contains("jet a1")
+                    || visibleInformation.contains("jet a-1")
+                    || visibleInformation.contains("jet fuel"),
+                "Nicht benötigte Kraftstoffinformation bei \(destination.icao)"
+            )
+        }
     }
 }

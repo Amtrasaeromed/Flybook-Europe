@@ -7,8 +7,8 @@ final class FuelPriceServiceTests: XCTestCase {
         <h3>Kraftstoff AVGAS 100LL</h3>
         <div>EUR 3,14 pro Liter (Brutto)</div>
         <div>EUR 2,64 pro Liter (Netto)</div>
-        <h3>Kraftstoff JET A-1</h3>
-        <div>EUR 3,18 pro Liter (Brutto)</div>
+        <h3>Nicht benötigte Kraftstoffsorte</h3>
+        <div>EUR 4,18 pro Liter (Brutto)</div>
         <h3>Kraftstoff SUPER PLUS</h3>
         <div>EUR 2,61 pro Liter (Brutto)</div>
         <div>EUR 2,19 pro Liter (Netto)</div>

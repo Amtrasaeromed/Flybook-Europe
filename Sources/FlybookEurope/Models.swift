@@ -242,7 +242,6 @@ struct Destination: Identifiable, Hashable {
     var avgas: String
     var ul91: String
     var mogas: String
-    var jetA1: String = ""
     var fuelDetails: String = ""
     var avgasPricePerLiterEUR: Double?
     var ul91PricePerLiterEUR: Double?

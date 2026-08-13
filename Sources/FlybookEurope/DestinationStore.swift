@@ -195,7 +195,6 @@ final class DestinationStore: ObservableObject {
                     avgas: fuelAvailability("AVGAS", fuelRows: airportFuels, priceRows: airportPrices),
                     ul91: fuelAvailability("UL91", fuelRows: airportFuels, priceRows: airportPrices),
                     mogas: fuelAvailability("MOGAS_SUPER", fuelRows: airportFuels, priceRows: airportPrices),
-                    jetA1: fuelAvailability("JET_A1", fuelRows: airportFuels, priceRows: airportPrices),
                     fuelDetails: fuelDetails(rows: airportFuels),
                     avgasPricePerLiterEUR: price("AVGAS", rows: airportPrices),
                     ul91PricePerLiterEUR: price("UL91", rows: airportPrices),

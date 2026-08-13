@@ -3632,11 +3632,6 @@ struct DestinationPage: View {
                         referencePricePerLiterEUR: mainzMogasPrice,
                         priceReportedAt: destination.fuelPriceReportedAt
                     )
-                    AirportMetric(
-                        title: "JET A1",
-                        value: destination.jetA1,
-                        fuelStatus: true
-                    )
                 }
             }
         }
@@ -4370,8 +4365,7 @@ private struct AirportInformationPopover: View {
         [
             fuelLine("AVGAS", availability: destination.avgas, price: destination.avgasPricePerLiterEUR),
             fuelLine("UL91", availability: destination.ul91, price: destination.ul91PricePerLiterEUR),
-            fuelLine("MOGAS", availability: destination.mogas, price: destination.mogasPricePerLiterEUR),
-            fuelLine("JET A1", availability: destination.jetA1, price: nil)
+            fuelLine("MOGAS", availability: destination.mogas, price: destination.mogasPricePerLiterEUR)
         ]
         .filter { !$0.isEmpty }
         .joined(separator: "  ·  ")

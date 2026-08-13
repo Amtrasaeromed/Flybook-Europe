@@ -1,472 +1,355 @@
 schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,price_raw_text,other_fuels_raw,source,source_checked_at,data_checked_at
 1.2,EBSP:AVGAS,EBSP,AVGAS,Ja,AVGAS 100LL,,,https://www.aerodromedespa.be/infos-pilote/,2026-08-03,2026-08-03
-1.2,EBSP:JET_A1,EBSP,JET_A1,Ja,Jet A1,,,https://www.aerodromedespa.be/infos-pilote/,2026-08-03,2026-08-03
 1.2,EBSP:MOGAS_SUPER,EBSP,MOGAS_SUPER,Nein,Nicht bestätigt,,,https://www.aerodromedespa.be/infos-pilote/,2026-08-03,2026-08-03
 1.2,EBSP:UL91,EBSP,UL91,Nein,Nicht bestätigt,,,https://www.aerodromedespa.be/infos-pilote/,2026-08-03,2026-08-03
 1.2,EDAH:AVGAS,EDAH,AVGAS,Ja,Ja,,,https://www.stic.de/broschuere-flugplatz/index.html,2026-08-02,2026-08-02
-1.2,EDAH:JET_A1,EDAH,JET_A1,Ja,Ja,,,https://www.stic.de/broschuere-flugplatz/index.html,2026-08-02,2026-08-02
 1.2,EDAH:MOGAS_SUPER,EDAH,MOGAS_SUPER,Nein,Nein,,,https://www.stic.de/broschuere-flugplatz/index.html,2026-08-02,2026-08-02
 1.2,EDAH:UL91,EDAH,UL91,Prüfen,Prüfen,,,https://www.stic.de/broschuere-flugplatz/index.html,2026-08-02,2026-08-02
-1.2,EDAY:AVGAS,EDAY,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise auf Betreiberseite,Jet A1,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDAY:JET_A1,EDAY,JET_A1,Jet A1,Jet A1,Aktuelle Preise auf Betreiberseite,Jet A1,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDAY:MOGAS_SUPER,EDAY,MOGAS_SUPER,Super Plus laut Betreiberangebot prüfen,Super Plus laut Betreiberangebot prüfen,Aktuelle Preise auf Betreiberseite,Jet A1,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDAY:UL91,EDAY,UL91,Nein,Nein,Aktuelle Preise auf Betreiberseite,Jet A1,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDAZ:AVGAS,EDAZ,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDAZ:JET_A1,EDAZ,JET_A1,Jet A1,Jet A1,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDAZ:MOGAS_SUPER,EDAZ,MOGAS_SUPER,Ja – Super Plus Aviation,Ja – Super Plus Aviation,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDAZ:UL91,EDAZ,UL91,Nein,Nein,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDBN:AVGAS,EDBN,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise beim Betreiber,Jet A1,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
-1.2,EDBN:JET_A1,EDBN,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber,Jet A1,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
-1.2,EDBN:MOGAS_SUPER,EDBN,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber,Jet A1,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
-1.2,EDBN:UL91,EDBN,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,Jet A1,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
+1.2,EDAY:AVGAS,EDAY,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise auf Betreiberseite,,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDAY:MOGAS_SUPER,EDAY,MOGAS_SUPER,Super Plus laut Betreiberangebot prüfen,Super Plus laut Betreiberangebot prüfen,Aktuelle Preise auf Betreiberseite,,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDAY:UL91,EDAY,UL91,Nein,Nein,Aktuelle Preise auf Betreiberseite,,https://www.flugplatz-strausberg.de/entgelte-und-treibstoff/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDAZ:AVGAS,EDAZ,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDAZ:MOGAS_SUPER,EDAZ,MOGAS_SUPER,Ja – Super Plus Aviation,Ja – Super Plus Aviation,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDAZ:UL91,EDAZ,UL91,Nein,Nein,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDBN:AVGAS,EDBN,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise beim Betreiber,,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
+1.2,EDBN:MOGAS_SUPER,EDBN,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber,,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
+1.2,EDBN:UL91,EDBN,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,,https://www.flughafen-neubrandenburg.de/,2026-08-03 · mittel,2026-08-03 · mittel
 1.2,EDCG:AVGAS,EDCG,AVGAS,Ja,Ja,,,https://ostseeflugruegen.de/flugplatz-ruegen/,2026-08-02,2026-08-02
-1.2,EDCG:JET_A1,EDCG,JET_A1,Prüfen,Prüfen,,,https://ostseeflugruegen.de/flugplatz-ruegen/,2026-08-02,2026-08-02
 1.2,EDCG:MOGAS_SUPER,EDCG,MOGAS_SUPER,Nein,Nein,,,https://ostseeflugruegen.de/flugplatz-ruegen/,2026-08-02,2026-08-02
 1.2,EDCG:UL91,EDCG,UL91,Prüfen,Prüfen,,,https://ostseeflugruegen.de/flugplatz-ruegen/,2026-08-02,2026-08-02
-1.2,EDFM:AVGAS,EDFM,AVGAS,Ja – AVGAS,Ja – AVGAS,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",Jet A1,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDFM:JET_A1,EDFM,JET_A1,Jet A1,Jet A1,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",Jet A1,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDFM:MOGAS_SUPER,EDFM,MOGAS_SUPER,Ja – MOGAS,Ja – MOGAS,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",Jet A1,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDFM:UL91,EDFM,UL91,Nein,Nein,"AVGAS 2,95 €/l; MOGAS 2,40 €/l; Jet A1 2,70 €/l",Jet A1,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDFM:AVGAS,EDFM,AVGAS,Ja – AVGAS,Ja – AVGAS,"AVGAS 2,95 €/l; MOGAS 2,40 €/l",,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDFM:MOGAS_SUPER,EDFM,MOGAS_SUPER,Ja – MOGAS,Ja – MOGAS,"AVGAS 2,95 €/l; MOGAS 2,40 €/l",,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDFM:UL91,EDFM,UL91,Nein,Nein,"AVGAS 2,95 €/l; MOGAS 2,40 €/l",,https://www.flugplatz-mannheim.de/privatpiloten/,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDFR:AVGAS,EDFR,AVGAS,Ja,Ja,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
-1.2,EDFR:JET_A1,EDFR,JET_A1,Ja,Ja,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDFR:MOGAS_SUPER,EDFR,MOGAS_SUPER,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDFR:UL91,EDFR,UL91,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDGE:AVGAS,EDGE,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/16",2026-08-02,2026-08-02
-1.2,EDGE:JET_A1,EDGE,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/16",2026-08-02,2026-08-02
 1.2,EDGE:MOGAS_SUPER,EDGE,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/16",2026-08-02,2026-08-02
 1.2,EDGE:UL91,EDGE,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/16",2026-08-02,2026-08-02
-1.2,EDGS:AVGAS,EDGS,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",Jet A1,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDGS:JET_A1,EDGS,JET_A1,Jet A1,Jet A1,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",Jet A1,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDGS:MOGAS_SUPER,EDGS,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",Jet A1,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDGS:UL91,EDGS,UL91,Nein,Nein,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",Jet A1,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDHL:AVGAS,EDHL,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Flughafen/Handling,Jet A1,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
-1.2,EDHL:JET_A1,EDHL,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Flughafen/Handling,Jet A1,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
-1.2,EDHL:MOGAS_SUPER,EDHL,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Flughafen/Handling,Jet A1,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
-1.2,EDHL:UL91,EDHL,UL91,Ja,Ja,Aktuelle Preise beim Flughafen/Handling,Jet A1,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
+1.2,EDGS:AVGAS,EDGS,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDGS:MOGAS_SUPER,EDGS,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDGS:UL91,EDGS,UL91,Nein,Nein,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDHL:AVGAS,EDHL,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Flughafen/Handling,,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
+1.2,EDHL:MOGAS_SUPER,EDHL,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Flughafen/Handling,,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
+1.2,EDHL:UL91,EDHL,UL91,Ja,Ja,Aktuelle Preise beim Flughafen/Handling,,https://www.flughafen-luebeck.de/de/technische-infos,2026-08-02,2026-08-02
 1.2,EDKA:AVGAS,EDKA,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-02,2026-08-02
-1.2,EDKA:JET_A1,EDKA,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-02,2026-08-02
 1.2,EDKA:MOGAS_SUPER,EDKA,MOGAS_SUPER,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-02,2026-08-02
 1.2,EDKA:UL91,EDKA,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-02,2026-08-02
 1.2,EDKB:AVGAS,EDKB,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hangelar.de/,2026-08-03,2026-08-03
-1.2,EDKB:JET_A1,EDKB,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hangelar.de/,2026-08-03,2026-08-03
 1.2,EDKB:MOGAS_SUPER,EDKB,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hangelar.de/,2026-08-03,2026-08-03
 1.2,EDKB:UL91,EDKB,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hangelar.de/,2026-08-03,2026-08-03
 1.2,EDKM:AVGAS,EDKM,AVGAS,Ja,AVGAS,,,https://flugplatz-meschede.de/,2026-08-03,2026-08-03
-1.2,EDKM:JET_A1,EDKM,JET_A1,Ja,Jet A1,,,https://flugplatz-meschede.de/,2026-08-03,2026-08-03
 1.2,EDKM:MOGAS_SUPER,EDKM,MOGAS_SUPER,Nein,Nicht bestätigt,,,https://flugplatz-meschede.de/,2026-08-03,2026-08-03
 1.2,EDKM:UL91,EDKM,UL91,Nein,Nicht bestätigt,,,https://flugplatz-meschede.de/,2026-08-03,2026-08-03
-1.2,EDLD:AVGAS,EDLD,AVGAS,Ja – AVGAS,Ja – AVGAS,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",Jet A1,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLD:JET_A1,EDLD,JET_A1,Jet A1,Jet A1,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",Jet A1,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLD:MOGAS_SUPER,EDLD,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",Jet A1,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLD:UL91,EDLD,UL91,Nein,Nein,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l; Jet A1 2,99 €/l",Jet A1,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLE:AVGAS,EDLE,AVGAS,Ja – AVGAS,Ja – AVGAS,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",Jet A1,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLE:JET_A1,EDLE,JET_A1,Jet A1,Jet A1,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",Jet A1,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLE:MOGAS_SUPER,EDLE,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",Jet A1,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLE:UL91,EDLE,UL91,Nein,Nein,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l; Jet A1 2,73 €/l",Jet A1,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLD:AVGAS,EDLD,AVGAS,Ja – AVGAS,Ja – AVGAS,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l",,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLD:MOGAS_SUPER,EDLD,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l",,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLD:UL91,EDLD,UL91,Nein,Nein,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l",,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLE:AVGAS,EDLE,AVGAS,Ja – AVGAS,Ja – AVGAS,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l",,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLE:MOGAS_SUPER,EDLE,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l",,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLE:UL91,EDLE,UL91,Nein,Nein,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l",,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDLH:AVGAS,EDLH,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber,Keine weitere Sorte bestätigt,https://www.flugplatz-hamm.de/lsc20/flugplatz/flugplatzinformationen,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLH:JET_A1,EDLH,JET_A1,Prüfen,Prüfen,Aktuelle Preise beim Betreiber,Keine weitere Sorte bestätigt,https://www.flugplatz-hamm.de/lsc20/flugplatz/flugplatzinformationen,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDLH:MOGAS_SUPER,EDLH,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,Aktuelle Preise beim Betreiber,Keine weitere Sorte bestätigt,https://www.flugplatz-hamm.de/lsc20/flugplatz/flugplatzinformationen,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDLH:OTHER,EDLH,OTHER,listed,Keine weitere Sorte bestätigt,Aktuelle Preise beim Betreiber,Keine weitere Sorte bestätigt,https://www.flugplatz-hamm.de/lsc20/flugplatz/flugplatzinformationen,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDLH:UL91,EDLH,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,Keine weitere Sorte bestätigt,https://www.flugplatz-hamm.de/lsc20/flugplatz/flugplatzinformationen,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLN:AVGAS,EDLN,AVGAS,Ja – AVGAS,Ja – AVGAS,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R und Jet A1,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDLN:JET_A1,EDLN,JET_A1,Swift 100R und Jet A1,Swift 100R und Jet A1,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R und Jet A1,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDLN:MOGAS_SUPER,EDLN,MOGAS_SUPER,Nein,Nein,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R und Jet A1,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDLN:UL91,EDLN,UL91,Nein,Nein,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R und Jet A1,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDLS:AVGAS,EDLS,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,Jet A1,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLS:JET_A1,EDLS,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,Jet A1,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLS:MOGAS_SUPER,EDLS,MOGAS_SUPER,Ja – Super Plus 98,Ja – Super Plus 98,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,Jet A1,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDLS:UL91,EDLS,UL91,Nein,Nein,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,Jet A1,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDMA:AVGAS,EDMA,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,Jet A1,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDMA:JET_A1,EDMA,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,Jet A1,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDMA:MOGAS_SUPER,EDMA,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,Jet A1,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDMA:UL91,EDMA,UL91,Nein,Nein,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,Jet A1,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDME:AVGAS,EDME,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise und Abgabe vor Flug bestätigen,Jet A1,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDME:JET_A1,EDME,JET_A1,Jet A1,Jet A1,Aktuelle Preise und Abgabe vor Flug bestätigen,Jet A1,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDME:MOGAS_SUPER,EDME,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise und Abgabe vor Flug bestätigen,Jet A1,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDME:UL91,EDME,UL91,Nein,Nein,Aktuelle Preise und Abgabe vor Flug bestätigen,Jet A1,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDML:AVGAS,EDML,AVGAS,Ja – AVGAS,Ja – AVGAS,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",Swift 100R und Jet A1,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDML:JET_A1,EDML,JET_A1,Swift 100R und Jet A1,Swift 100R und Jet A1,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",Swift 100R und Jet A1,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDML:MOGAS_SUPER,EDML,MOGAS_SUPER,Ja – Super Plus 98 E0,Ja – Super Plus 98 E0,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",Swift 100R und Jet A1,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDML:UL91,EDML,UL91,Nein,Nein,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Jet A1 2,95 €/l; Super Plus 2,69 €/l",Swift 100R und Jet A1,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLN:AVGAS,EDLN,AVGAS,Ja – AVGAS,Ja – AVGAS,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDLN:MOGAS_SUPER,EDLN,MOGAS_SUPER,Nein,Nein,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDLN:UL91,EDLN,UL91,Nein,Nein,"02.07.2026: AVGAS ca. 3,046 €/l; Swift 100R ca. 3,012 €/l",Swift 100R,https://www.mgl.de/aviation/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDLS:AVGAS,EDLS,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLS:MOGAS_SUPER,EDLS,MOGAS_SUPER,Ja – Super Plus 98,Ja – Super Plus 98,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDLS:UL91,EDLS,UL91,Nein,Nein,Aktuelle Preise beim Betreiber; keine belastbare Preisangabe in der Arbeitsgrundlage,,https://www.flugplatz-stadtlohn.de/index.php?L=48&id=79,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDMA:AVGAS,EDMA,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDMA:MOGAS_SUPER,EDMA,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDMA:UL91,EDMA,UL91,Nein,Nein,Aktuelle Preise beim Betreiber; tendenziell höher als Clubplätze,,https://www.augsburg-airport.de/piloten/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDME:AVGAS,EDME,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise und Abgabe vor Flug bestätigen,,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDME:MOGAS_SUPER,EDME,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise und Abgabe vor Flug bestätigen,,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDME:UL91,EDME,UL91,Nein,Nein,Aktuelle Preise und Abgabe vor Flug bestätigen,,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDML:AVGAS,EDML,AVGAS,Ja – AVGAS,Ja – AVGAS,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Super Plus 2,69 €/l",Swift 100R,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDML:MOGAS_SUPER,EDML,MOGAS_SUPER,Ja – Super Plus 98 E0,Ja – Super Plus 98 E0,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Super Plus 2,69 €/l",Swift 100R,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDML:UL91,EDML,UL91,Nein,Nein,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Super Plus 2,69 €/l",Swift 100R,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDMV:AVGAS,EDMV,AVGAS,Ja – AVGAS vorhanden,Ja – AVGAS vorhanden,Aktuelle Abgabe und Preise vor Flug telefonisch bestätigen,Weitere Sorten vorab bestätigen,https://www.edmv.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDMV:JET_A1,EDMV,JET_A1,Prüfen,Prüfen,Aktuelle Abgabe und Preise vor Flug telefonisch bestätigen,Weitere Sorten vorab bestätigen,https://www.edmv.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDMV:MOGAS_SUPER,EDMV,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Abgabe und Preise vor Flug telefonisch bestätigen,Weitere Sorten vorab bestätigen,https://www.edmv.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDMV:OTHER,EDMV,OTHER,listed,Weitere Sorten vorab bestätigen,Aktuelle Abgabe und Preise vor Flug telefonisch bestätigen,Weitere Sorten vorab bestätigen,https://www.edmv.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDMV:UL91,EDMV,UL91,Nein,Nein,Aktuelle Abgabe und Preise vor Flug telefonisch bestätigen,Weitere Sorten vorab bestätigen,https://www.edmv.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDNH:AVGAS,EDNH,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://flugplatz-badwoerishofen.de/,2026-08-03,2026-08-03
-1.2,EDNH:JET_A1,EDNH,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://flugplatz-badwoerishofen.de/,2026-08-03,2026-08-03
 1.2,EDNH:MOGAS_SUPER,EDNH,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://flugplatz-badwoerishofen.de/,2026-08-03,2026-08-03
 1.2,EDNH:UL91,EDNH,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://flugplatz-badwoerishofen.de/,2026-08-03,2026-08-03
-1.2,EDNL:AVGAS,EDNL,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDNL:JET_A1,EDNL,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDNL:MOGAS_SUPER,EDNL,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDNL:UL91,EDNL,UL91,Nein,Nein,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDPA:AVGAS,EDPA,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber,Jet A1,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDPA:JET_A1,EDPA,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber,Jet A1,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDPA:MOGAS_SUPER,EDPA,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,Aktuelle Preise beim Betreiber,Jet A1,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDPA:UL91,EDPA,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,Jet A1,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDNL:AVGAS,EDNL,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDNL:MOGAS_SUPER,EDNL,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDNL:UL91,EDNL,UL91,Nein,Nein,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://www.ednl.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDPA:AVGAS,EDPA,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber,,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDPA:MOGAS_SUPER,EDPA,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,Aktuelle Preise beim Betreiber,,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDPA:UL91,EDPA,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,,https://edpa.de/flugplatz-info/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDQA:AVGAS,EDQA,AVGAS,Ja,Ja,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
-1.2,EDQA:JET_A1,EDQA,JET_A1,Ja,Ja,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDQA:MOGAS_SUPER,EDQA,MOGAS_SUPER,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDQA:UL91,EDQA,UL91,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
-1.2,EDRK:AVGAS,EDRK,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDRK:JET_A1,EDRK,JET_A1,Jet A1,Jet A1,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDRK:MOGAS_SUPER,EDRK,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDRK:UL91,EDRK,UL91,Nein,Nein,"AVGAS 3,06 €/l; Super Plus 2,69 €/l; Jet A1 3,08 €/l (01.07.2026)",Jet A1,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDTD:AVGAS,EDTD,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise am Automaten/Betreiber prüfen,Jet A1; Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTD:JET_A1,EDTD,JET_A1,Jet A1; Selbstbedienungstankanlage,Jet A1; Selbstbedienungstankanlage,Aktuelle Preise am Automaten/Betreiber prüfen,Jet A1; Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTD:MOGAS_SUPER,EDTD,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise am Automaten/Betreiber prüfen,Jet A1; Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTD:UL91,EDTD,UL91,Nein,Nein,Aktuelle Preise am Automaten/Betreiber prüfen,Jet A1; Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTF:AVGAS,EDTF,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://freiburg-airport.de/,2026-08-02,2026-08-02
-1.2,EDTF:JET_A1,EDTF,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://freiburg-airport.de/,2026-08-02,2026-08-02
-1.2,EDTF:MOGAS_SUPER,EDTF,MOGAS_SUPER,Ja – MOGAS,Ja – MOGAS,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://freiburg-airport.de/,2026-08-02,2026-08-02
-1.2,EDTF:UL91,EDTF,UL91,Prüfen,Prüfen,Aktuelle Preise beim Betreiber; vor Flug prüfen,Jet A1,https://freiburg-airport.de/,2026-08-02,2026-08-02
-1.2,EDTY:AVGAS,EDTY,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber,Jet A1,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTY:JET_A1,EDTY,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber,Jet A1,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTY:MOGAS_SUPER,EDTY,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber,Jet A1,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTY:UL91,EDTY,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,Jet A1,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDRK:AVGAS,EDRK,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDRK:MOGAS_SUPER,EDRK,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDRK:UL91,EDRK,UL91,Nein,Nein,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",,https://flugplatz-koblenz-winningen.de/index.php/de/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDTD:AVGAS,EDTD,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise am Automaten/Betreiber prüfen,Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDTD:MOGAS_SUPER,EDTD,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise am Automaten/Betreiber prüfen,Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDTD:UL91,EDTD,UL91,Nein,Nein,Aktuelle Preise am Automaten/Betreiber prüfen,Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDTF:AVGAS,EDTF,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-02,2026-08-02
+1.2,EDTF:MOGAS_SUPER,EDTF,MOGAS_SUPER,Ja – MOGAS,Ja – MOGAS,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-02,2026-08-02
+1.2,EDTF:UL91,EDTF,UL91,Prüfen,Prüfen,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-02,2026-08-02
+1.2,EDTY:AVGAS,EDTY,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber,,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDTY:MOGAS_SUPER,EDTY,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber,,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDTY:UL91,EDTY,UL91,Nein,Nein,Aktuelle Preise beim Betreiber,,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDTZ:AVGAS,EDTZ,AVGAS,Ja,Ja,,,https://www.flugplatz-konstanz.de/informationen/fuer-piloten,2026-08-02,2026-08-02
-1.2,EDTZ:JET_A1,EDTZ,JET_A1,Prüfen,Prüfen,,,https://www.flugplatz-konstanz.de/informationen/fuer-piloten,2026-08-02,2026-08-02
 1.2,EDTZ:MOGAS_SUPER,EDTZ,MOGAS_SUPER,Prüfen,Prüfen,,,https://www.flugplatz-konstanz.de/informationen/fuer-piloten,2026-08-02,2026-08-02
 1.2,EDTZ:UL91,EDTZ,UL91,Prüfen,Prüfen,,,https://www.flugplatz-konstanz.de/informationen/fuer-piloten,2026-08-02,2026-08-02
-1.2,EDVI:AVGAS,EDVI,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",Jet A1,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDVI:JET_A1,EDVI,JET_A1,Jet A1,Jet A1,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",Jet A1,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDVI:MOGAS_SUPER,EDVI,MOGAS_SUPER,Ja – Super Plus 98,Ja – Super Plus 98,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",Jet A1,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDVI:UL91,EDVI,UL91,Nein,Nein,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l; Jet A1 ca. 2,79 €/l",Jet A1,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDVK:AVGAS,EDVK,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Kraftstoffpreise beim Handling/Betreiber,Jet A1,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDVK:JET_A1,EDVK,JET_A1,Jet A1,Jet A1,Aktuelle Kraftstoffpreise beim Handling/Betreiber,Jet A1,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDVK:MOGAS_SUPER,EDVK,MOGAS_SUPER,Nein/nicht bestätigt,Nein/nicht bestätigt,Aktuelle Kraftstoffpreise beim Handling/Betreiber,Jet A1,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDVK:UL91,EDVK,UL91,Nein,Nein,Aktuelle Kraftstoffpreise beim Handling/Betreiber,Jet A1,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDVI:AVGAS,EDVI,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l",,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDVI:MOGAS_SUPER,EDVI,MOGAS_SUPER,Ja – Super Plus 98,Ja – Super Plus 98,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l",,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDVI:UL91,EDVI,UL91,Nein,Nein,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l",,https://www.flugplatz-hx.de/index.html,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,EDVK:AVGAS,EDVK,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Kraftstoffpreise beim Handling/Betreiber,,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDVK:MOGAS_SUPER,EDVK,MOGAS_SUPER,Nein/nicht bestätigt,Nein/nicht bestätigt,Aktuelle Kraftstoffpreise beim Handling/Betreiber,,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDVK:UL91,EDVK,UL91,Nein,Nein,Aktuelle Kraftstoffpreise beim Handling/Betreiber,,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDVM:AVGAS,EDVM,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hildesheim.de/index.php?iCID=1,2026-08-03,2026-08-03
-1.2,EDVM:JET_A1,EDVM,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hildesheim.de/index.php?iCID=1,2026-08-03,2026-08-03
 1.2,EDVM:MOGAS_SUPER,EDVM,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hildesheim.de/index.php?iCID=1,2026-08-03,2026-08-03
 1.2,EDVM:UL91,EDVM,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hildesheim.de/index.php?iCID=1,2026-08-03,2026-08-03
-1.2,EDWC:AVGAS,EDWC,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",Jet A1,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWC:JET_A1,EDWC,JET_A1,Jet A1,Jet A1,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",Jet A1,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWC:MOGAS_SUPER,EDWC,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",Jet A1,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWC:UL91,EDWC,UL91,Nein,Nein,"AVGAS 2,59 €/l; Super Plus 2,49 €/l; Jet A1 2,69 €/l",Jet A1,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWF:AVGAS,EDWF,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",Jet A1,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWF:JET_A1,EDWF,JET_A1,Jet A1,Jet A1,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",Jet A1,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWF:MOGAS_SUPER,EDWF,MOGAS_SUPER,Ja – Super 95,Ja – Super 95,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",Jet A1,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWF:UL91,EDWF,UL91,Nein,Nein,"AVGAS 2,59 €/l; Super 95 2,59 €/l; Jet A1 2,89 €/l (recherchierter Betreiberstand)",Jet A1,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWC:AVGAS,EDWC,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 2,59 €/l; Super Plus 2,49 €/l",,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWC:MOGAS_SUPER,EDWC,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"AVGAS 2,59 €/l; Super Plus 2,49 €/l",,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWC:UL91,EDWC,UL91,Nein,Nein,"AVGAS 2,59 €/l; Super Plus 2,49 €/l",,https://www.edwc.de/index.php/landegebuehren-ppr,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWF:AVGAS,EDWF,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 2,59 €/l; Super 95 2,59 €/l",,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWF:MOGAS_SUPER,EDWF,MOGAS_SUPER,Ja – Super 95,Ja – Super 95,"AVGAS 2,59 €/l; Super 95 2,59 €/l",,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWF:UL91,EDWF,UL91,Nein,Nein,"AVGAS 2,59 €/l; Super 95 2,59 €/l",,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDWG:AVGAS,EDWG,AVGAS,Prüfen,Prüfen,,,https://www.edwg.de/piloten-infos/,2026-08-02,2026-08-02
-1.2,EDWG:JET_A1,EDWG,JET_A1,Prüfen,Prüfen,,,https://www.edwg.de/piloten-infos/,2026-08-02,2026-08-02
 1.2,EDWG:MOGAS_SUPER,EDWG,MOGAS_SUPER,Prüfen,Prüfen,,,https://www.edwg.de/piloten-infos/,2026-08-02,2026-08-02
 1.2,EDWG:UL91,EDWG,UL91,Prüfen,Prüfen,,,https://www.edwg.de/piloten-infos/,2026-08-02,2026-08-02
-1.2,EDWI:AVGAS,EDWI,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",Jet A1,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWI:JET_A1,EDWI,JET_A1,Jet A1,Jet A1,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",Jet A1,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWI:MOGAS_SUPER,EDWI,MOGAS_SUPER,Ja – alkoholfreies Super Plus,Ja – alkoholfreies Super Plus,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",Jet A1,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
-1.2,EDWI:UL91,EDWI,UL91,Nein,Nein,"AVGAS 2,69 €/l; Super Plus 2,36 €/l; Jet A1 2,90 €/l (30.06.2026)",Jet A1,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWI:AVGAS,EDWI,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,"AVGAS 2,69 €/l; Super Plus 2,36 €/l",,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWI:MOGAS_SUPER,EDWI,MOGAS_SUPER,Ja – alkoholfreies Super Plus,Ja – alkoholfreies Super Plus,"AVGAS 2,69 €/l; Super Plus 2,36 €/l",,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
+1.2,EDWI:UL91,EDWI,UL91,Nein,Nein,"AVGAS 2,69 €/l; Super Plus 2,36 €/l",,https://www.edwi.info/piloten/tankstelle.html,2026-08-03 · hoch,2026-08-03 · hoch
 1.2,EDWJ:AVGAS,EDWJ,AVGAS,Nein,Nein,,,https://www.edwj.de/piloteninfos/,2026-08-02,2026-08-02
-1.2,EDWJ:JET_A1,EDWJ,JET_A1,Nein,Nein,,,https://www.edwj.de/piloteninfos/,2026-08-02,2026-08-02
 1.2,EDWJ:MOGAS_SUPER,EDWJ,MOGAS_SUPER,Nein,Nein,,,https://www.edwj.de/piloteninfos/,2026-08-02,2026-08-02
 1.2,EDWJ:UL91,EDWJ,UL91,Nein,Nein,,,https://www.edwj.de/piloteninfos/,2026-08-02,2026-08-02
 1.2,EDWL:AVGAS,EDWL,AVGAS,Nein,Nein,,,,,2026-08-02
-1.2,EDWL:JET_A1,EDWL,JET_A1,,,,,,,2026-08-02
 1.2,EDWL:MOGAS_SUPER,EDWL,MOGAS_SUPER,Nein,Nein,,,,,2026-08-02
 1.2,EDWL:UL91,EDWL,UL91,Nein,Nein,,,,,2026-08-02
 1.2,EDWR:AVGAS,EDWR,AVGAS,Ja,Ja,,,https://www.flugberechnung.de/Airport-BMK_Flugplatz-Borkum,2026-08-02,2026-08-02
-1.2,EDWR:JET_A1,EDWR,JET_A1,Prüfen,Prüfen,,,https://www.flugberechnung.de/Airport-BMK_Flugplatz-Borkum,2026-08-02,2026-08-02
 1.2,EDWR:MOGAS_SUPER,EDWR,MOGAS_SUPER,Prüfen,Prüfen,,,https://www.flugberechnung.de/Airport-BMK_Flugplatz-Borkum,2026-08-02,2026-08-02
 1.2,EDWR:UL91,EDWR,UL91,Prüfen,Prüfen,,,https://www.flugberechnung.de/Airport-BMK_Flugplatz-Borkum,2026-08-02,2026-08-02
 1.2,EDWY:AVGAS,EDWY,AVGAS,Nein,Nein,,,"Betreiberinformation: kein AVGAS am Flugplatz Norderney",2026-08-08,2026-08-08
-1.2,EDWY:JET_A1,EDWY,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz",2026-08-02,2026-08-02
 1.2,EDWY:MOGAS_SUPER,EDWY,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz",2026-08-02,2026-08-02
 1.2,EDWY:UL91,EDWY,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz",2026-08-02,2026-08-02
 1.2,EDXE:AVGAS,EDXE,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
-1.2,EDXE:JET_A1,EDXE,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
 1.2,EDXE:MOGAS_SUPER,EDXE,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
 1.2,EDXE:UL91,EDXE,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
 1.2,EDXH:AVGAS,EDXH,AVGAS,Ja,Ja,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
-1.2,EDXH:JET_A1,EDXH,JET_A1,Nein,Nein,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
 1.2,EDXH:MOGAS_SUPER,EDXH,MOGAS_SUPER,Nein,Nein,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
 1.2,EDXH:UL91,EDXH,UL91,Nein,Nein,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
 1.2,EDXO:AVGAS,EDXO,AVGAS,Ja,Ja,,,https://www.flugplatz-st-peter-ording.de/tanken/,2026-08-02,2026-08-02
-1.2,EDXO:JET_A1,EDXO,JET_A1,Ja,Ja,,,https://www.flugplatz-st-peter-ording.de/tanken/,2026-08-02,2026-08-02
 1.2,EDXO:MOGAS_SUPER,EDXO,MOGAS_SUPER,Nein,Nein,,,https://www.flugplatz-st-peter-ording.de/tanken/,2026-08-02,2026-08-02
 1.2,EDXO:UL91,EDXO,UL91,Prüfen,Prüfen,,,https://www.flugplatz-st-peter-ording.de/tanken/,2026-08-02,2026-08-02
 1.2,EDXW:AVGAS,EDXW,AVGAS,Ja,Ja,,,https://www.flughafen-sylt.de/piloten/services,2026-08-02,2026-08-02
-1.2,EDXW:JET_A1,EDXW,JET_A1,Ja,Ja,,,https://www.flughafen-sylt.de/piloten/services,2026-08-02,2026-08-02
 1.2,EDXW:MOGAS_SUPER,EDXW,MOGAS_SUPER,Ja,Ja,,,https://www.flughafen-sylt.de/piloten/services,2026-08-02,2026-08-02
 1.2,EDXW:UL91,EDXW,UL91,Prüfen,Prüfen,,,https://www.flughafen-sylt.de/piloten/services,2026-08-02,2026-08-02
 1.2,EDXY:AVGAS,EDXY,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/15",2026-08-02,2026-08-02
-1.2,EDXY:JET_A1,EDXY,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/15",2026-08-02,2026-08-02
 1.2,EDXY:MOGAS_SUPER,EDXY,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/15",2026-08-02,2026-08-02
 1.2,EDXY:UL91,EDXY,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/15",2026-08-02,2026-08-02
 1.2,EGHC:AVGAS,EGHC,AVGAS,Ja,Ja,,,landsendairport.co.uk/flyscilly + landsendairport.co.uk/visiting-pilots (Betreiberseite),2026-08-02,2026-08-02
-1.2,EGHC:JET_A1,EGHC,JET_A1,Ja,Ja,,,landsendairport.co.uk/flyscilly + landsendairport.co.uk/visiting-pilots (Betreiberseite),2026-08-02,2026-08-02
 1.2,EGHC:MOGAS_SUPER,EGHC,MOGAS_SUPER,Nein,Nein,,,landsendairport.co.uk/flyscilly + landsendairport.co.uk/visiting-pilots (Betreiberseite),2026-08-02,2026-08-02
 1.2,EGHC:UL91,EGHC,UL91,Prüfen,Prüfen,,,landsendairport.co.uk/flyscilly + landsendairport.co.uk/visiting-pilots (Betreiberseite),2026-08-02,2026-08-02
 1.2,EGHE:AVGAS,EGHE,AVGAS,Nein,Nein,,,scilly.gov.uk/general-aviation-ppr + airfield.directory + openAIP + peter2000 (vier Quellen),2026-08-02,2026-08-02
-1.2,EGHE:JET_A1,EGHE,JET_A1,Nein,Nein,,,scilly.gov.uk/general-aviation-ppr + airfield.directory + openAIP + peter2000 (vier Quellen),2026-08-02,2026-08-02
 1.2,EGHE:MOGAS_SUPER,EGHE,MOGAS_SUPER,Nein,Nein,,,scilly.gov.uk/general-aviation-ppr + airfield.directory + openAIP + peter2000 (vier Quellen),2026-08-02,2026-08-02
 1.2,EGHE:UL91,EGHE,UL91,Nein,Nein,,,scilly.gov.uk/general-aviation-ppr + airfield.directory + openAIP + peter2000 (vier Quellen),2026-08-02,2026-08-02
 1.2,EGHN:AVGAS,EGHN,AVGAS,Ja,Ja,,,https://www.eghn.org.uk/pilots,2026-08-02,2026-08-02
-1.2,EGHN:JET_A1,EGHN,JET_A1,Nein,Nein,,,https://www.eghn.org.uk/pilots,2026-08-02,2026-08-02
 1.2,EGHN:MOGAS_SUPER,EGHN,MOGAS_SUPER,Prüfen,Prüfen,,,https://www.eghn.org.uk/pilots,2026-08-02,2026-08-02
 1.2,EGHN:UL91,EGHN,UL91,Prüfen,Prüfen,,,https://www.eghn.org.uk/pilots,2026-08-02,2026-08-02
 1.2,EGHR:AVGAS,EGHR,AVGAS,Ja,Ja,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
-1.2,EGHR:JET_A1,EGHR,JET_A1,Prüfen,Prüfen,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
 1.2,EGHR:MOGAS_SUPER,EGHR,MOGAS_SUPER,Nein,Nein,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
 1.2,EGHR:UL91,EGHR,UL91,Prüfen,Prüfen,,,https://www.goodwood.com/flying/pilot-information/,2026-08-02,2026-08-02
 1.2,EGJA:AVGAS,EGJA,AVGAS,Nein,Nein,,,flyalderney.com/pilot-info (Betreiberseite),2026-08-02,2026-08-02
-1.2,EGJA:JET_A1,EGJA,JET_A1,Nein,Nein,,,flyalderney.com/pilot-info (Betreiberseite),2026-08-02,2026-08-02
 1.2,EGJA:MOGAS_SUPER,EGJA,MOGAS_SUPER,Nein,Nein,,,flyalderney.com/pilot-info (Betreiberseite),2026-08-02,2026-08-02
 1.2,EGJA:UL91,EGJA,UL91,Nein,Nein,,,flyalderney.com/pilot-info (Betreiberseite),2026-08-02,2026-08-02
 1.2,EGJB:AVGAS,EGJB,AVGAS,Ja,Ja,,,flyalderney.com/pilot-info + en.wikipedia (zwei Quellen),2026-08-02,2026-08-02
-1.2,EGJB:JET_A1,EGJB,JET_A1,Ja,Ja,,,flyalderney.com/pilot-info + en.wikipedia (zwei Quellen),2026-08-02,2026-08-02
 1.2,EGJB:MOGAS_SUPER,EGJB,MOGAS_SUPER,Nein,Nein,,,flyalderney.com/pilot-info + en.wikipedia (zwei Quellen),2026-08-02,2026-08-02
 1.2,EGJB:UL91,EGJB,UL91,Prüfen,Prüfen,,,flyalderney.com/pilot-info + en.wikipedia (zwei Quellen),2026-08-02,2026-08-02
 1.2,EGJJ:AVGAS,EGJJ,AVGAS,Ja,Ja,,,flyalderney.com/pilot-info + IVAO Channel Islands + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
-1.2,EGJJ:JET_A1,EGJJ,JET_A1,Ja,Ja,,,flyalderney.com/pilot-info + IVAO Channel Islands + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,EGJJ:MOGAS_SUPER,EGJJ,MOGAS_SUPER,Nein,Nein,,,flyalderney.com/pilot-info + IVAO Channel Islands + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,EGJJ:UL91,EGJJ,UL91,Prüfen,Prüfen,,,flyalderney.com/pilot-info + IVAO Channel Islands + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,EGKA:AVGAS,EGKA,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
-1.2,EGKA:JET_A1,EGKA,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EGKA:MOGAS_SUPER,EGKA,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EGKA:UL91,EGKA,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/03",2026-08-02,2026-08-02
 1.2,EHAL:AVGAS,EHAL,AVGAS,Nein,Nein,,,,,2026-08-02
-1.2,EHAL:JET_A1,EHAL,JET_A1,,,,,,,2026-08-02
 1.2,EHAL:MOGAS_SUPER,EHAL,MOGAS_SUPER,Nein,Nein,,,,,2026-08-02
 1.2,EHAL:UL91,EHAL,UL91,Nein,Nein,,,,,2026-08-02
 1.2,EHHV:AVGAS,EHHV,AVGAS,Ja,AVGAS 100LL,,,https://www.ehhv.nl/for-pilots/fuel-and-oil,2026-08-03,2026-08-03
-1.2,EHHV:JET_A1,EHHV,JET_A1,Ja,Jet A1,,,https://www.ehhv.nl/for-pilots/fuel-and-oil,2026-08-03,2026-08-03
 1.2,EHHV:MOGAS_SUPER,EHHV,MOGAS_SUPER,Ja,Mogas Euro 98 bleifrei,,,https://www.ehhv.nl/for-pilots/fuel-and-oil,2026-08-03,2026-08-03
 1.2,EHHV:UL91,EHHV,UL91,Nein,Nicht verfügbar,,,https://www.ehhv.nl/for-pilots/fuel-and-oil,2026-08-03,2026-08-03
 1.2,EHLE:AVGAS,EHLE,AVGAS,Ja,AVGAS 100LL,"3,474 €/l",,https://www.lelystadairport.nl/en/for-pilots/fuel/,2026-08-03,2026-08-03
 1.2,EHLE:AVGAS_UL94,EHLE,AVGAS_UL94,Ja,AVGAS UL94,"3,093 €/l",,https://www.lelystadairport.nl/en/for-pilots/fuel/,2026-08-03,2026-08-03
-1.2,EHLE:JET_A1,EHLE,JET_A1,Ja,Jet A1,"2,953 €/l",,https://www.lelystadairport.nl/en/for-pilots/fuel/,2026-08-03,2026-08-03
 1.2,EHLE:MOGAS_SUPER,EHLE,MOGAS_SUPER,Nein,Nicht verfügbar,,,https://www.lelystadairport.nl/en/for-pilots/fuel/,2026-08-03,2026-08-03
 1.2,EHLE:UL91,EHLE,UL91,Nein,Kein UL91; AVGAS UL94 vorhanden,,AVGAS UL94,https://www.lelystadairport.nl/en/for-pilots/fuel/,2026-08-03,2026-08-03
 1.2,EHMZ:AVGAS,EHMZ,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
-1.2,EHMZ:JET_A1,EHMZ,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
 1.2,EHMZ:MOGAS_SUPER,EHMZ,MOGAS_SUPER,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
 1.2,EHMZ:UL91,EHMZ,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
 1.2,EHTX:AVGAS,EHTX,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/11",2026-08-02,2026-08-02
-1.2,EHTX:JET_A1,EHTX,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/11",2026-08-02,2026-08-02
 1.2,EHTX:MOGAS_SUPER,EHTX,MOGAS_SUPER,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/11",2026-08-02,2026-08-02
 1.2,EHTX:UL91,EHTX,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/11",2026-08-02,2026-08-02
 1.2,EKAE:AVGAS,EKAE,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 10/03",2026-08-02,2026-08-02
-1.2,EKAE:JET_A1,EKAE,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 10/03",2026-08-02,2026-08-02
 1.2,EKAE:MOGAS_SUPER,EKAE,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 10/03",2026-08-02,2026-08-02
 1.2,EKAE:UL91,EKAE,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 10/03",2026-08-02,2026-08-02
 1.2,EKRN:AVGAS,EKRN,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
-1.2,EKRN:JET_A1,EKRN,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,EKRN:MOGAS_SUPER,EKRN,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,EKRN:UL91,EKRN,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,EKSB:AVGAS,EKSB,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/08",2026-08-02,2026-08-02
-1.2,EKSB:JET_A1,EKSB,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/08",2026-08-02,2026-08-02
 1.2,EKSB:MOGAS_SUPER,EKSB,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/08",2026-08-02,2026-08-02
 1.2,EKSB:UL91,EKSB,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 08/08",2026-08-02,2026-08-02
 1.2,EKSS:AVGAS,EKSS,AVGAS,Nein,Nein,,,,,2026-08-02
-1.2,EKSS:JET_A1,EKSS,JET_A1,,,,,,,2026-08-02
 1.2,EKSS:MOGAS_SUPER,EKSS,MOGAS_SUPER,Nein,Nein,,,,,2026-08-02
 1.2,EKSS:UL91,EKSS,UL91,Nein,Nein,,,,,2026-08-02
 1.2,EKVJ:AVGAS,EKVJ,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/03",2026-08-02,2026-08-02
-1.2,EKVJ:JET_A1,EKVJ,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/03",2026-08-02,2026-08-02
 1.2,EKVJ:MOGAS_SUPER,EKVJ,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/03",2026-08-02,2026-08-02
 1.2,EKVJ:UL91,EKVJ,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/03",2026-08-02,2026-08-02
 1.2,EPJA:AVGAS,EPJA,AVGAS,offen,offen,,,,,2026-08-02
-1.2,EPJA:JET_A1,EPJA,JET_A1,offen,offen,,,,,2026-08-02
 1.2,EPJA:MOGAS_SUPER,EPJA,MOGAS_SUPER,offen,offen,,,,,2026-08-02
 1.2,EPJA:UL91,EPJA,UL91,offen,offen,,,,,2026-08-02
 1.2,ESMH:AVGAS,ESMH,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 05/08",2026-08-02,2026-08-02
-1.2,ESMH:JET_A1,ESMH,JET_A1,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 05/08",2026-08-02,2026-08-02
 1.2,ESMH:MOGAS_SUPER,ESMH,MOGAS_SUPER,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 05/08",2026-08-02,2026-08-02
 1.2,ESMH:UL91,ESMH,UL91,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 05/08",2026-08-02,2026-08-02
-1.2,ETSI:AVGAS,ETSI,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber/Handling,Jet A1,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,ETSI:JET_A1,ETSI,JET_A1,Jet A1,Jet A1,Aktuelle Preise beim Betreiber/Handling,Jet A1,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,ETSI:MOGAS_SUPER,ETSI,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber/Handling,Jet A1,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,ETSI:UL91,ETSI,UL91,Nein,Nein,Aktuelle Preise beim Betreiber/Handling,Jet A1,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,ETSI:AVGAS,ETSI,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber/Handling,,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,ETSI:MOGAS_SUPER,ETSI,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber/Handling,,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
+1.2,ETSI:UL91,ETSI,UL91,Nein,Nein,Aktuelle Preise beim Betreiber/Handling,,https://www.etsi-airport.de/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,LDLO:AVGAS,LDLO,AVGAS,Ja,Ja,,,AOPA European Fuel Price Survey (tmdg.co.uk): LDLO Losinj /INA/,2026-08-02,2026-08-02
-1.2,LDLO:JET_A1,LDLO,JET_A1,,,,,AOPA European Fuel Price Survey (tmdg.co.uk): LDLO Losinj /INA/,2026-08-02,2026-08-02
 1.2,LDLO:MOGAS_SUPER,LDLO,MOGAS_SUPER,Nein,Nein,,,AOPA European Fuel Price Survey (tmdg.co.uk): LDLO Losinj /INA/,2026-08-02,2026-08-02
 1.2,LDLO:UL91,LDLO,UL91,Nein,Nein,,,AOPA European Fuel Price Survey (tmdg.co.uk): LDLO Losinj /INA/,2026-08-02,2026-08-02
 1.2,LDPV:AVGAS,LDPV,AVGAS,Prüfen,Prüfen,,,"openAIP + en.wikipedia + de.wikipedia (drei Quellen, s. Konflikte)",2026-08-02,2026-08-02
-1.2,LDPV:JET_A1,LDPV,JET_A1,Prüfen,Prüfen,,,"openAIP + en.wikipedia + de.wikipedia (drei Quellen, s. Konflikte)",2026-08-02,2026-08-02
 1.2,LDPV:MOGAS_SUPER,LDPV,MOGAS_SUPER,Prüfen,Prüfen,,,"openAIP + en.wikipedia + de.wikipedia (drei Quellen, s. Konflikte)",2026-08-02,2026-08-02
 1.2,LDPV:UL91,LDPV,UL91,Prüfen,Prüfen,,,"openAIP + en.wikipedia + de.wikipedia (drei Quellen, s. Konflikte)",2026-08-02,2026-08-02
 1.2,LDRI:AVGAS,LDRI,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/06",2026-08-02,2026-08-02
-1.2,LDRI:JET_A1,LDRI,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/06",2026-08-02,2026-08-02
 1.2,LDRI:MOGAS_SUPER,LDRI,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/06",2026-08-02,2026-08-02
 1.2,LDRI:UL91,LDRI,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/06",2026-08-02,2026-08-02
 1.2,LFAT:AVGAS,LFAT,AVGAS,Ja,Ja,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_19_MAR_2026/FRANCE/AIRAC-2026-03-19/pdf/FR-AD-2.LFAT-fr-FR.pdf,2026-08-02,2026-08-02
-1.2,LFAT:JET_A1,LFAT,JET_A1,Ja,Ja,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_19_MAR_2026/FRANCE/AIRAC-2026-03-19/pdf/FR-AD-2.LFAT-fr-FR.pdf,2026-08-02,2026-08-02
 1.2,LFAT:MOGAS_SUPER,LFAT,MOGAS_SUPER,Nein,Nein,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_19_MAR_2026/FRANCE/AIRAC-2026-03-19/pdf/FR-AD-2.LFAT-fr-FR.pdf,2026-08-02,2026-08-02
 1.2,LFAT:UL91,LFAT,UL91,Nein,Nein,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_19_MAR_2026/FRANCE/AIRAC-2026-03-19/pdf/FR-AD-2.LFAT-fr-FR.pdf,2026-08-02,2026-08-02
 1.2,LFGA:AVGAS,LFGA,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/12",2026-08-02,2026-08-02
-1.2,LFGA:JET_A1,LFGA,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/12",2026-08-02,2026-08-02
 1.2,LFGA:MOGAS_SUPER,LFGA,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/12",2026-08-02,2026-08-02
 1.2,LFGA:UL91,LFGA,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/12",2026-08-02,2026-08-02
 1.2,LFKB:AVGAS,LFKB,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/13",2026-08-02,2026-08-02
-1.2,LFKB:JET_A1,LFKB,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/13",2026-08-02,2026-08-02
 1.2,LFKB:MOGAS_SUPER,LFKB,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/13",2026-08-02,2026-08-02
 1.2,LFKB:UL91,LFKB,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/13",2026-08-02,2026-08-02
 1.2,LFKF:AVGAS,LFKF,AVGAS,Ja,Ja,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
-1.2,LFKF:JET_A1,LFKF,JET_A1,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,LFKF:MOGAS_SUPER,LFKF,MOGAS_SUPER,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,LFKF:UL91,LFKF,UL91,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,LFKJ:AVGAS,LFKJ,AVGAS,Ja,Ja,,,AIP/VAC LFKJ (acula.corsica) + ops.group France Summer Parking (zwei Quellen),2026-08-02,2026-08-02
-1.2,LFKJ:JET_A1,LFKJ,JET_A1,Ja,Ja,,,AIP/VAC LFKJ (acula.corsica) + ops.group France Summer Parking (zwei Quellen),2026-08-02,2026-08-02
 1.2,LFKJ:MOGAS_SUPER,LFKJ,MOGAS_SUPER,Nein,Nein,,,AIP/VAC LFKJ (acula.corsica) + ops.group France Summer Parking (zwei Quellen),2026-08-02,2026-08-02
 1.2,LFKJ:UL91,LFKJ,UL91,Nein,Nein,,,AIP/VAC LFKJ (acula.corsica) + ops.group France Summer Parking (zwei Quellen),2026-08-02,2026-08-02
 1.2,LFLP:AVGAS,LFLP,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/00",2026-08-02,2026-08-02
-1.2,LFLP:JET_A1,LFLP,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/00",2026-08-02,2026-08-02
 1.2,LFLP:MOGAS_SUPER,LFLP,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/00",2026-08-02,2026-08-02
 1.2,LFLP:UL91,LFLP,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/00",2026-08-02,2026-08-02
 1.2,LFMD:AVGAS,LFMD,AVGAS,Ja,Ja,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_30_OCT_2025/Atlas-VAC/PDF_AIPparSSection/VAC/AD/AD-2.LFMD.pdf,2026-08-02,2026-08-02
-1.2,LFMD:JET_A1,LFMD,JET_A1,Ja,Ja,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_30_OCT_2025/Atlas-VAC/PDF_AIPparSSection/VAC/AD/AD-2.LFMD.pdf,2026-08-02,2026-08-02
 1.2,LFMD:MOGAS_SUPER,LFMD,MOGAS_SUPER,Nein,Nein,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_30_OCT_2025/Atlas-VAC/PDF_AIPparSSection/VAC/AD/AD-2.LFMD.pdf,2026-08-02,2026-08-02
 1.2,LFMD:UL91,LFMD,UL91,Nein,Nein,,,https://www.sia.aviation-civile.gouv.fr/media/dvd/eAIP_30_OCT_2025/Atlas-VAC/PDF_AIPparSSection/VAC/AD/AD-2.LFMD.pdf,2026-08-02,2026-08-02
 1.2,LFMP:AVGAS,LFMP,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/11",2026-08-02,2026-08-02
-1.2,LFMP:JET_A1,LFMP,JET_A1,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/11",2026-08-02,2026-08-02
 1.2,LFMP:MOGAS_SUPER,LFMP,MOGAS_SUPER,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/11",2026-08-02,2026-08-02
 1.2,LFMP:UL91,LFMP,UL91,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/11",2026-08-02,2026-08-02
 1.2,LFMU:AVGAS,LFMU,AVGAS,Ja,Ja,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
-1.2,LFMU:JET_A1,LFMU,JET_A1,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,LFMU:MOGAS_SUPER,LFMU,MOGAS_SUPER,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,LFMU:UL91,LFMU,UL91,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,LFRD:AVGAS,LFRD,AVGAS,Ja,Ja,,,AIP France AD 2 LFRD (dircam) + Carte VAC France Carburant (zwei Quellen),2026-08-02,2026-08-02
-1.2,LFRD:JET_A1,LFRD,JET_A1,Ja,Ja,,,AIP France AD 2 LFRD (dircam) + Carte VAC France Carburant (zwei Quellen),2026-08-02,2026-08-02
 1.2,LFRD:MOGAS_SUPER,LFRD,MOGAS_SUPER,Nein,Nein,,,AIP France AD 2 LFRD (dircam) + Carte VAC France Carburant (zwei Quellen),2026-08-02,2026-08-02
 1.2,LFRD:UL91,LFRD,UL91,Nein,Nein,,,AIP France AD 2 LFRD (dircam) + Carte VAC France Carburant (zwei Quellen),2026-08-02,2026-08-02
 1.2,LFRF:AVGAS,LFRF,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/00",2026-08-02,2026-08-02
-1.2,LFRF:JET_A1,LFRF,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/00",2026-08-02,2026-08-02
 1.2,LFRF:MOGAS_SUPER,LFRF,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/00",2026-08-02,2026-08-02
 1.2,LFRF:UL91,LFRF,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/00",2026-08-02,2026-08-02
 1.2,LFRG:AVGAS,LFRG,AVGAS,Ja,Ja,,,"AIP France AD 2 LFRG (SIA, AIRAC 27-NOV-2025) + dircam MIAC (zwei Quellen)",2026-08-02,2026-08-02
-1.2,LFRG:JET_A1,LFRG,JET_A1,Ja,Ja,,,"AIP France AD 2 LFRG (SIA, AIRAC 27-NOV-2025) + dircam MIAC (zwei Quellen)",2026-08-02,2026-08-02
 1.2,LFRG:MOGAS_SUPER,LFRG,MOGAS_SUPER,Nein,Nein,,,"AIP France AD 2 LFRG (SIA, AIRAC 27-NOV-2025) + dircam MIAC (zwei Quellen)",2026-08-02,2026-08-02
 1.2,LFRG:UL91,LFRG,UL91,Nein,Nein,,,"AIP France AD 2 LFRG (SIA, AIRAC 27-NOV-2025) + dircam MIAC (zwei Quellen)",2026-08-02,2026-08-02
 1.2,LFTH:AVGAS,LFTH,AVGAS,Ja,Ja,,,https://www.toulon-hyeres.aeroport.fr/en/business-aviation/business-aviation-1,2026-08-02,2026-08-02
-1.2,LFTH:JET_A1,LFTH,JET_A1,Ja,Ja,,,https://www.toulon-hyeres.aeroport.fr/en/business-aviation/business-aviation-1,2026-08-02,2026-08-02
 1.2,LFTH:MOGAS_SUPER,LFTH,MOGAS_SUPER,Nein,Nein,,,https://www.toulon-hyeres.aeroport.fr/en/business-aviation/business-aviation-1,2026-08-02,2026-08-02
 1.2,LFTH:UL91,LFTH,UL91,Nein,Nein,,,https://www.toulon-hyeres.aeroport.fr/en/business-aviation/business-aviation-1,2026-08-02,2026-08-02
 1.2,LIDT:AVGAS,LIDT,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/06",2026-08-02,2026-08-02
-1.2,LIDT:JET_A1,LIDT,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/06",2026-08-02,2026-08-02
 1.2,LIDT:MOGAS_SUPER,LIDT,MOGAS_SUPER,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/06",2026-08-02,2026-08-02
 1.2,LIDT:UL91,LIDT,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/06",2026-08-02,2026-08-02
 1.2,LIEA:AVGAS,LIEA,AVGAS,Nein,Nein,,,fliegen-in-italien.de/sardinien + PPRuNe Sardinien-Threads (zwei Quellen),2026-08-02,2026-08-02
-1.2,LIEA:JET_A1,LIEA,JET_A1,Ja,Ja,,,fliegen-in-italien.de/sardinien + PPRuNe Sardinien-Threads (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEA:MOGAS_SUPER,LIEA,MOGAS_SUPER,Nein,Nein,,,fliegen-in-italien.de/sardinien + PPRuNe Sardinien-Threads (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEA:UL91,LIEA,UL91,Nein,Nein,,,fliegen-in-italien.de/sardinien + PPRuNe Sardinien-Threads (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEE:AVGAS,LIEE,AVGAS,Ja,Ja,,,fliegen-in-italien.de/sardinien + peter2000.co.uk Sardinien-Reisebericht (zwei Quellen),2026-08-02,2026-08-02
-1.2,LIEE:JET_A1,LIEE,JET_A1,Ja,Ja,,,fliegen-in-italien.de/sardinien + peter2000.co.uk Sardinien-Reisebericht (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEE:MOGAS_SUPER,LIEE,MOGAS_SUPER,Nein,Nein,,,fliegen-in-italien.de/sardinien + peter2000.co.uk Sardinien-Reisebericht (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEE:UL91,LIEE,UL91,Nein,Nein,,,fliegen-in-italien.de/sardinien + peter2000.co.uk Sardinien-Reisebericht (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEO:AVGAS,LIEO,AVGAS,Ja,Ja,,,eccelsa.com/fbo-services + fliegen-in-italien.de (zwei Quellen),2026-08-02,2026-08-02
-1.2,LIEO:JET_A1,LIEO,JET_A1,Ja,Ja,,,eccelsa.com/fbo-services + fliegen-in-italien.de (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEO:MOGAS_SUPER,LIEO,MOGAS_SUPER,Nein,Nein,,,eccelsa.com/fbo-services + fliegen-in-italien.de (zwei Quellen),2026-08-02,2026-08-02
 1.2,LIEO:UL91,LIEO,UL91,Nein,Nein,,,eccelsa.com/fbo-services + fliegen-in-italien.de (zwei Quellen),2026-08-02,2026-08-02
 1.2,LILQ:AVGAS,LILQ,AVGAS,Ja,Ja,,,it.wikipedia + ENAC Regolamento di Scalo + qnhfly (drei Quellen),2026-08-02,2026-08-02
-1.2,LILQ:JET_A1,LILQ,JET_A1,Ja,Ja,,,it.wikipedia + ENAC Regolamento di Scalo + qnhfly (drei Quellen),2026-08-02,2026-08-02
 1.2,LILQ:MOGAS_SUPER,LILQ,MOGAS_SUPER,Nein,Nein,,,it.wikipedia + ENAC Regolamento di Scalo + qnhfly (drei Quellen),2026-08-02,2026-08-02
 1.2,LILQ:UL91,LILQ,UL91,Prüfen,Prüfen,,,it.wikipedia + ENAC Regolamento di Scalo + qnhfly (drei Quellen),2026-08-02,2026-08-02
 1.2,LIMW:AVGAS,LIMW,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/99",2026-08-02,2026-08-02
-1.2,LIMW:JET_A1,LIMW,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/99",2026-08-02,2026-08-02
 1.2,LIMW:MOGAS_SUPER,LIMW,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/99",2026-08-02,2026-08-02
 1.2,LIMW:UL91,LIMW,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/99",2026-08-02,2026-08-02
 1.2,LIPB:AVGAS,LIPB,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
-1.2,LIPB:JET_A1,LIPB,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
 1.2,LIPB:MOGAS_SUPER,LIPB,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
 1.2,LIPB:UL91,LIPB,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
 1.2,LIPV:AVGAS,LIPV,AVGAS,Ja,Ja,,,https://www.aeroportonicelli.com/wp-content/uploads/2021/11/AIP.pdf,2026-08-02,2026-08-02
-1.2,LIPV:JET_A1,LIPV,JET_A1,Ja,Ja,,,https://www.aeroportonicelli.com/wp-content/uploads/2021/11/AIP.pdf,2026-08-02,2026-08-02
 1.2,LIPV:MOGAS_SUPER,LIPV,MOGAS_SUPER,Nein,Nein,,,https://www.aeroportonicelli.com/wp-content/uploads/2021/11/AIP.pdf,2026-08-02,2026-08-02
 1.2,LIPV:UL91,LIPV,UL91,Nein,Nein,,,https://www.aeroportonicelli.com/wp-content/uploads/2021/11/AIP.pdf,2026-08-02,2026-08-02
 1.2,LIRJ:AVGAS,LIRJ,AVGAS,Ja,Ja,,,AIP Italia AD 2 LIRJ 1-1 + elbaisland-airport.it + infoelba.net (drei Quellen),2026-08-02,2026-08-02
-1.2,LIRJ:JET_A1,LIRJ,JET_A1,Ja,Ja,,,AIP Italia AD 2 LIRJ 1-1 + elbaisland-airport.it + infoelba.net (drei Quellen),2026-08-02,2026-08-02
 1.2,LIRJ:MOGAS_SUPER,LIRJ,MOGAS_SUPER,Ja,Ja,,,AIP Italia AD 2 LIRJ 1-1 + elbaisland-airport.it + infoelba.net (drei Quellen),2026-08-02,2026-08-02
 1.2,LIRJ:UL91,LIRJ,UL91,Prüfen,Prüfen,,,AIP Italia AD 2 LIRJ 1-1 + elbaisland-airport.it + infoelba.net (drei Quellen),2026-08-02,2026-08-02
 1.2,LJBL:AVGAS,LJBL,AVGAS,Prüfen,Prüfen,,,,,2026-08-02
-1.2,LJBL:JET_A1,LJBL,JET_A1,,,,,,,2026-08-02
 1.2,LJBL:MOGAS_SUPER,LJBL,MOGAS_SUPER,Nein,Nein,,,,,2026-08-02
 1.2,LJBL:UL91,LJBL,UL91,Nein,Nein,,,,,2026-08-02
 1.2,LJBO:AVGAS,LJBO,AVGAS,Prüfen,Prüfen,,,,2026-08-02,2026-08-02
-1.2,LJBO:JET_A1,LJBO,JET_A1,Prüfen,Prüfen,,,,2026-08-02,2026-08-02
 1.2,LJBO:MOGAS_SUPER,LJBO,MOGAS_SUPER,Prüfen,Prüfen,,,,2026-08-02,2026-08-02
 1.2,LJBO:UL91,LJBO,UL91,Prüfen,Prüfen,,,,2026-08-02,2026-08-02
 1.2,LJMB:AVGAS,LJMB,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/03",2026-08-02,2026-08-02
-1.2,LJMB:JET_A1,LJMB,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/03",2026-08-02,2026-08-02
 1.2,LJMB:MOGAS_SUPER,LJMB,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/03",2026-08-02,2026-08-02
 1.2,LJMB:UL91,LJMB,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 01/03",2026-08-02,2026-08-02
 1.2,LJPZ:AVGAS,LJPZ,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/14",2026-08-02,2026-08-02
-1.2,LJPZ:JET_A1,LJPZ,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/14",2026-08-02,2026-08-02
 1.2,LJPZ:MOGAS_SUPER,LJPZ,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/14",2026-08-02,2026-08-02
 1.2,LJPZ:UL91,LJPZ,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/14",2026-08-02,2026-08-02
 1.2,LKKV:AVGAS,LKKV,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
-1.2,LKKV:JET_A1,LKKV,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
 1.2,LKKV:MOGAS_SUPER,LKKV,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
 1.2,LKKV:UL91,LKKV,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/10",2026-08-02,2026-08-02
 1.2,LOGM:AVGAS,LOGM,AVGAS,Ja,Ja,,,https://de.wikipedia.org/wiki/Flugplatz_Mariazell,2026-08-02,2026-08-02
-1.2,LOGM:JET_A1,LOGM,JET_A1,Nein,Nein,,,https://de.wikipedia.org/wiki/Flugplatz_Mariazell,2026-08-02,2026-08-02
 1.2,LOGM:MOGAS_SUPER,LOGM,MOGAS_SUPER,Ja,Ja,,,https://de.wikipedia.org/wiki/Flugplatz_Mariazell,2026-08-02,2026-08-02
 1.2,LOGM:UL91,LOGM,UL91,Prüfen,Prüfen,,,https://de.wikipedia.org/wiki/Flugplatz_Mariazell,2026-08-02,2026-08-02
 1.2,LOGO:AVGAS,LOGO,AVGAS,Ja,Ja,,,https://www.fliegermagazin.de/flugplaetze/flugplatz-niederoeblarn-logo/,2026-08-02,2026-08-02
-1.2,LOGO:JET_A1,LOGO,JET_A1,Ja,Ja,,,https://www.fliegermagazin.de/flugplaetze/flugplatz-niederoeblarn-logo/,2026-08-02,2026-08-02
 1.2,LOGO:MOGAS_SUPER,LOGO,MOGAS_SUPER,Ja,Ja,,,https://www.fliegermagazin.de/flugplaetze/flugplatz-niederoeblarn-logo/,2026-08-02,2026-08-02
 1.2,LOGO:UL91,LOGO,UL91,Prüfen,Prüfen,,,https://www.fliegermagazin.de/flugplaetze/flugplatz-niederoeblarn-logo/,2026-08-02,2026-08-02
 1.2,LOIH:AVGAS,LOIH,AVGAS,Ja,Ja,,,fliegen-in-italien.de/sprit + AOPA European Fuel Price Survey (zwei Quellen),2026-08-02,2026-08-02
-1.2,LOIH:JET_A1,LOIH,JET_A1,Nein,Nein,,,fliegen-in-italien.de/sprit + AOPA European Fuel Price Survey (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOIH:MOGAS_SUPER,LOIH,MOGAS_SUPER,Ja,Ja,,,fliegen-in-italien.de/sprit + AOPA European Fuel Price Survey (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOIH:UL91,LOIH,UL91,Nein,Nein,,,fliegen-in-italien.de/sprit + AOPA European Fuel Price Survey (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOIJ:AVGAS,LOIJ,AVGAS,Ja,Ja,,,ulForum Italienflug-Thread + fliegermagazin (zwei Quellen),2026-08-02,2026-08-02
-1.2,LOIJ:JET_A1,LOIJ,JET_A1,Prüfen,Prüfen,,,ulForum Italienflug-Thread + fliegermagazin (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOIJ:MOGAS_SUPER,LOIJ,MOGAS_SUPER,Ja,Ja,,,ulForum Italienflug-Thread + fliegermagazin (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOIJ:UL91,LOIJ,UL91,Nein,Nein,,,ulForum Italienflug-Thread + fliegermagazin (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOKL:AVGAS,LOKL,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
-1.2,LOKL:JET_A1,LOKL,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
 1.2,LOKL:MOGAS_SUPER,LOKL,MOGAS_SUPER,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
 1.2,LOKL:UL91,LOKL,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
 1.2,LOLU:AVGAS,LOLU,AVGAS,Ja,Ja,,,fliegerclub-traunsee.at/pilots + de.wikipedia + salzkammergut.at (drei Quellen),2026-08-02,2026-08-02
-1.2,LOLU:JET_A1,LOLU,JET_A1,Ja,Ja,,,fliegerclub-traunsee.at/pilots + de.wikipedia + salzkammergut.at (drei Quellen),2026-08-02,2026-08-02
 1.2,LOLU:MOGAS_SUPER,LOLU,MOGAS_SUPER,Ja,Ja,,,fliegerclub-traunsee.at/pilots + de.wikipedia + salzkammergut.at (drei Quellen),2026-08-02,2026-08-02
 1.2,LOLU:UL91,LOLU,UL91,Prüfen,Prüfen,,,fliegerclub-traunsee.at/pilots + de.wikipedia + salzkammergut.at (drei Quellen),2026-08-02,2026-08-02
 1.2,LOSM:AVGAS,LOSM,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
-1.2,LOSM:JET_A1,LOSM,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
 1.2,LOSM:MOGAS_SUPER,LOSM,MOGAS_SUPER,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
 1.2,LOSM:UL91,LOSM,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/04",2026-08-02,2026-08-02
 1.2,LOWI:AVGAS,LOWI,AVGAS,Ja,Ja,,,AOPA European Fuel Price Survey + fliegen-in-italien.de/sprit (zwei Quellen),2026-08-02,2026-08-02
-1.2,LOWI:JET_A1,LOWI,JET_A1,Ja,Ja,,,AOPA European Fuel Price Survey + fliegen-in-italien.de/sprit (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOWI:MOGAS_SUPER,LOWI,MOGAS_SUPER,Nein,Nein,,,AOPA European Fuel Price Survey + fliegen-in-italien.de/sprit (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOWI:UL91,LOWI,UL91,Nein,Nein,,,AOPA European Fuel Price Survey + fliegen-in-italien.de/sprit (zwei Quellen),2026-08-02,2026-08-02
 1.2,LOWK:AVGAS,LOWK,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/06",2026-08-02,2026-08-02
-1.2,LOWK:JET_A1,LOWK,JET_A1,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/06",2026-08-02,2026-08-02
 1.2,LOWK:MOGAS_SUPER,LOWK,MOGAS_SUPER,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/06",2026-08-02,2026-08-02
 1.2,LOWK:UL91,LOWK,UL91,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/06",2026-08-02,2026-08-02
 1.2,LOWS:AVGAS,LOWS,AVGAS,Ja,Ja,,,fliegen-in-italien.de/sprit (eine Quelle - zweite noetig),2026-08-02,2026-08-02
-1.2,LOWS:JET_A1,LOWS,JET_A1,Ja,Ja,,,fliegen-in-italien.de/sprit (eine Quelle - zweite noetig),2026-08-02,2026-08-02
 1.2,LOWS:MOGAS_SUPER,LOWS,MOGAS_SUPER,Nein,Nein,,,fliegen-in-italien.de/sprit (eine Quelle - zweite noetig),2026-08-02,2026-08-02
 1.2,LOWS:UL91,LOWS,UL91,Nein,Nein,,,fliegen-in-italien.de/sprit (eine Quelle - zweite noetig),2026-08-02,2026-08-02
 1.2,LOWZ:AVGAS,LOWZ,AVGAS,Ja,Ja,,,fliegen-in-italien.de/sprit + ulForum + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
-1.2,LOWZ:JET_A1,LOWZ,JET_A1,Ja,Ja,,,fliegen-in-italien.de/sprit + ulForum + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,LOWZ:MOGAS_SUPER,LOWZ,MOGAS_SUPER,Ja,Ja,,,fliegen-in-italien.de/sprit + ulForum + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,LOWZ:UL91,LOWZ,UL91,Nein,Nein,,,fliegen-in-italien.de/sprit + ulForum + en.wikipedia (drei Quellen),2026-08-02,2026-08-02
 1.2,LSGL:AVGAS,LSGL,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/08",2026-08-02,2026-08-02
-1.2,LSGL:JET_A1,LSGL,JET_A1,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/08",2026-08-02,2026-08-02
 1.2,LSGL:MOGAS_SUPER,LSGL,MOGAS_SUPER,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/08",2026-08-02,2026-08-02
 1.2,LSGL:UL91,LSGL,UL91,offen,offen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 04/08",2026-08-02,2026-08-02
 1.2,LSGS:AVGAS,LSGS,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/05",2026-08-02,2026-08-02
-1.2,LSGS:JET_A1,LSGS,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/05",2026-08-02,2026-08-02
 1.2,LSGS:MOGAS_SUPER,LSGS,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/05",2026-08-02,2026-08-02
 1.2,LSGS:UL91,LSGS,UL91,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/05",2026-08-02,2026-08-02
 1.2,LSGT:AVGAS,LSGT,AVGAS,Prüfen,Prüfen,,,https://airfield.directory/airfield/LSGT,2026-08-02,2026-08-02
-1.2,LSGT:JET_A1,LSGT,JET_A1,Prüfen,Prüfen,,,https://airfield.directory/airfield/LSGT,2026-08-02,2026-08-02
 1.2,LSGT:MOGAS_SUPER,LSGT,MOGAS_SUPER,Prüfen,Prüfen,,,https://airfield.directory/airfield/LSGT,2026-08-02,2026-08-02
 1.2,LSGT:UL91,LSGT,UL91,Prüfen,Prüfen,,,https://airfield.directory/airfield/LSGT,2026-08-02,2026-08-02
 1.2,LSZB:AVGAS,LSZB,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.bernairport.ch/de/,2026-08-03,2026-08-03
-1.2,LSZB:JET_A1,LSZB,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.bernairport.ch/de/,2026-08-03,2026-08-03
 1.2,LSZB:MOGAS_SUPER,LSZB,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.bernairport.ch/de/,2026-08-03,2026-08-03
 1.2,LSZB:UL91,LSZB,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.bernairport.ch/de/,2026-08-03,2026-08-03
 1.2,LSZG:AVGAS,LSZG,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.airport-grenchen.ch/de/piloten/briefing-betriebslage/,2026-08-03,2026-08-03
-1.2,LSZG:JET_A1,LSZG,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.airport-grenchen.ch/de/piloten/briefing-betriebslage/,2026-08-03,2026-08-03
 1.2,LSZG:MOGAS_SUPER,LSZG,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.airport-grenchen.ch/de/piloten/briefing-betriebslage/,2026-08-03,2026-08-03
 1.2,LSZG:UL91,LSZG,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.airport-grenchen.ch/de/piloten/briefing-betriebslage/,2026-08-03,2026-08-03
 1.2,LSZL:AVGAS,LSZL,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
-1.2,LSZL:JET_A1,LSZL,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
 1.2,LSZL:MOGAS_SUPER,LSZL,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
 1.2,LSZL:UL91,LSZL,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 09/14",2026-08-02,2026-08-02
 1.2,LSZR:AVGAS,LSZR,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
-1.2,LSZR:JET_A1,LSZR,JET_A1,,,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,LSZR:MOGAS_SUPER,LSZR,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,LSZR:UL91,LSZR,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
