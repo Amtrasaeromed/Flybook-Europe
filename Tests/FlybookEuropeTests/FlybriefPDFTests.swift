@@ -15,8 +15,8 @@ final class FlybriefPDFTests: XCTestCase {
         )
         XCTAssertEqual(document.pageCount, 1)
         let page = try XCTUnwrap(document.page(at: 0))
-        XCTAssertEqual(page.bounds(for: .mediaBox).width, 841.89, accuracy: 0.1)
-        XCTAssertEqual(page.bounds(for: .mediaBox).height, 595.28, accuracy: 0.1)
+        XCTAssertEqual(page.bounds(for: .mediaBox).width, 595.28, accuracy: 0.1)
+        XCTAssertEqual(page.bounds(for: .mediaBox).height, 841.89, accuracy: 0.1)
         XCTAssertGreaterThan(data.count, 10_000)
         let text = document.string ?? ""
         XCTAssertTrue(text.contains("FLYBRIEF"))

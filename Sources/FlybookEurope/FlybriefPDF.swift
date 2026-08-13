@@ -110,7 +110,7 @@ enum FlybriefAlertLevel {
 
 @MainActor
 enum FlybriefPDFExporter {
-    static let pageSize = CGSize(width: 841.89, height: 595.28)
+    static let pageSize = CGSize(width: 595.28, height: 841.89)
 
     static func export(_ snapshot: FlybriefSnapshot) throws -> URL? {
         let panel = NSSavePanel()
@@ -162,10 +162,10 @@ private struct FlybriefPDFPage: View {
     let snapshot: FlybriefSnapshot
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             header
 
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 ForEach(snapshot.legs) { leg in
                     FlybriefLegCard(leg: leg)
                 }
@@ -174,30 +174,34 @@ private struct FlybriefPDFPage: View {
 
             footer
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 18)
         .foregroundStyle(FlybookColor.navy)
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(snapshot.title.uppercased())
-                    .font(.system(size: 19, weight: .black))
+                    .font(.system(size: 22, weight: .black))
                 Text(snapshot.route)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                Spacer()
+                Text(Self.date(snapshot.flightDate))
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
             }
 
-            Spacer()
-
-            HStack(spacing: 16) {
+            HStack(spacing: 0) {
                 headerValue("MODUS", snapshot.planningMode)
+                Spacer()
                 headerValue("ZEITEN", snapshot.timeBasis)
+                Spacer()
                 headerValue("FLUGZEUG", snapshot.aircraft)
+                Spacer()
                 headerValue("BASIS", snapshot.base)
             }
         }
-        .padding(.bottom, 7)
+        .padding(.bottom, 8)
         .overlay(alignment: .bottom) {
             Rectangle().fill(FlybookColor.navy).frame(height: 2)
         }
@@ -206,12 +210,20 @@ private struct FlybriefPDFPage: View {
     private func headerValue(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label)
-                .font(.system(size: 6.5, weight: .bold))
+                .font(.system(size: 7, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
             Text(value)
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: 9.5, weight: .bold))
                 .lineLimit(1)
         }
+    }
+
+    private static func date(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = DestinationTimeZone.edfz
+        formatter.dateFormat = "dd.MM.yyyy"
+        return formatter.string(from: date)
     }
 
     private var footer: some View {
@@ -242,7 +254,7 @@ private struct FlybriefLegCard: View {
     let leg: FlybriefLegSnapshot
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 7) {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(leg.title.uppercased())
@@ -267,14 +279,14 @@ private struct FlybriefLegCard: View {
                 )
             }
 
+            routeMetrics
+
             HStack(alignment: .top, spacing: 8) {
                 FlybriefEndpointCard(endpoint: leg.departure)
-                routeMetrics
-                    .frame(width: 182)
                 FlybriefEndpointCard(endpoint: leg.arrival)
             }
         }
-        .padding(8)
+        .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 9)
                 .fill(FlybookColor.blue.opacity(0.035))
@@ -286,33 +298,32 @@ private struct FlybriefLegCard: View {
     }
 
     private var routeMetrics: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 5) {
             HStack(spacing: 5) {
                 metric("REISE", leg.travelTimeText)
                 metric("BLOCK", leg.blockTimeText)
-            }
-            HStack(spacing: 5) {
                 metric("TRACK", leg.trackText)
                 metric("HÖHE", leg.altitudeText)
-            }
-            HStack(spacing: 5) {
                 metric("BEST LEVEL", leg.bestLevelText)
                 metric("ETOPS-PIPI", leg.etopsText, level: leg.etopsLevel)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("STRECKENWIND")
-                    .font(.system(size: 6.5, weight: .bold))
+                    .font(.system(size: 7, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
                 Text(leg.routeWindText)
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 10.5, weight: .black))
                 Text(leg.routeWindDetail)
-                    .font(.system(size: 7, weight: .semibold))
+                    .font(.system(size: 7.5, weight: .semibold))
                     .foregroundStyle(FlybookColor.muted)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color.white)
@@ -327,14 +338,14 @@ private struct FlybriefLegCard: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(label)
-                .font(.system(size: 6, weight: .bold))
+                .font(.system(size: 6.5, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
             Text(value)
-                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .font(.system(size: 9.5, weight: .black, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 31, alignment: .leading)
         .padding(.horizontal, 5)
         .background(
             RoundedRectangle(cornerRadius: 5)
@@ -376,16 +387,16 @@ private struct FlybriefEndpointCard: View {
             HStack(alignment: .top, spacing: 5) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(endpoint.role.uppercased())
-                        .font(.system(size: 6.5, weight: .bold))
+                        .font(.system(size: 7, weight: .bold))
                         .foregroundStyle(FlybookColor.muted)
                     Text(endpoint.icao + " · " + endpoint.name)
-                        .font(.system(size: 10, weight: .black))
+                        .font(.system(size: 10.5, weight: .black))
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                 }
                 Spacer(minLength: 2)
                 Text(endpoint.timeText)
-                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
             }
 
             HStack(spacing: 5) {
@@ -404,8 +415,8 @@ private struct FlybriefEndpointCard: View {
                         activeRunway: endpoint.activeRunway,
                         emphasizesActiveRunway: true
                     )
-                    .scaleEffect(0.66)
-                    .frame(width: 86, height: 75)
+                    .scaleEffect(0.79)
+                    .frame(width: 104, height: 94)
                     .clipped()
                 } else {
                     VStack(spacing: 2) {
@@ -415,7 +426,7 @@ private struct FlybriefEndpointCard: View {
                             .font(.system(size: 7, weight: .bold))
                     }
                     .foregroundStyle(FlybookColor.muted)
-                    .frame(width: 86, height: 75)
+                    .frame(width: 104, height: 94)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -432,18 +443,19 @@ private struct FlybriefEndpointCard: View {
             }
 
             Text(endpoint.sunText)
-                .font(.system(size: 6.7, weight: .semibold, design: .monospaced))
+                .font(.system(size: 7.2, weight: .semibold, design: .monospaced))
                 .foregroundStyle(FlybookColor.muted)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             HStack {
                 Text(endpoint.weather.validTimeText)
-                    .font(.system(size: 6.5, weight: .semibold))
+                    .font(.system(size: 7, weight: .semibold))
                     .foregroundStyle(FlybookColor.muted)
                 Spacer()
                 if let warning = endpoint.weather.warningText {
                     Text(warning)
-                        .font(.system(size: 6.5, weight: .bold))
+                        .font(.system(size: 7, weight: .bold))
                         .foregroundStyle(Color.red)
                         .lineLimit(1)
                 }
@@ -465,7 +477,7 @@ private struct FlybriefEndpointCard: View {
         HStack(spacing: 3) {
             Circle().fill(level.color).frame(width: 5, height: 5)
             Text(text)
-                .font(.system(size: 6.5, weight: .bold))
+                .font(.system(size: 7, weight: .bold))
                 .lineLimit(1)
         }
         .padding(.horizontal, 5)
@@ -475,7 +487,7 @@ private struct FlybriefEndpointCard: View {
 
     private func weatherLine(_ text: String, bold: Bool = false) -> some View {
         Text(text)
-            .font(.system(size: 7.5, weight: bold ? .bold : .semibold))
+            .font(.system(size: 8.3, weight: bold ? .bold : .semibold))
             .lineLimit(1)
             .minimumScaleFactor(0.75)
     }
