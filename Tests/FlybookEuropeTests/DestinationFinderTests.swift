@@ -69,6 +69,16 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testMissingTargetWeatherNeverMatchesActiveWeatherFilter() {
+        XCTAssertFalse(
+            DestinationFinderEvaluator.weatherMatches(
+                Optional<[DestinationFinderWeatherHour]>.none,
+                criteria: criteria(minimumWeather: .mvfr),
+                destination: destination
+            )
+        )
+    }
+
     func testRainFreeCoverageRequiresSixtySixPercentOnEveryDay() {
         let firstDay = utcDate(year: 2026, month: 8, day: 17)
         let secondDay = utcDate(year: 2026, month: 8, day: 18)

@@ -239,6 +239,19 @@ enum DestinationFinderEvaluator {
     }
 
     static func weatherMatches(
+        _ hours: [DestinationFinderWeatherHour]?,
+        criteria: DestinationFinderCriteria,
+        destination: AirportReference
+    ) -> Bool {
+        guard let hours else { return false }
+        return weatherMatches(
+            hours,
+            criteria: criteria,
+            destination: destination
+        )
+    }
+
+    static func weatherMatches(
         _ hours: [DestinationFinderWeatherHour],
         criteria: DestinationFinderCriteria,
         destination: AirportReference
@@ -877,21 +890,8 @@ enum DestinationFinderService {
         for (destination, travelMinutes, stopCount, price, priceStops)
             in filteredTravelCandidates
         {
-            guard let hours = weatherByICAO[destination.icao] else {
-                unavailable += 1
-                matches.append(
-                    DestinationFinderMatch(
-                        destinationICAO: destination.icao,
-                        destinationName: destination.name,
-                        travelMinutes: travelMinutes,
-                        stopCount: stopCount,
-                        roundTripPriceEUR: price,
-                        priceStopCount: priceStops,
-                        weatherWasChecked: false
-                    )
-                )
-                continue
-            }
+            let hours = weatherByICAO[destination.icao]
+            if hours == nil { unavailable += 1 }
             let reference = AirportReference(
                 icao: destination.icao,
                 name: destination.name,
@@ -1049,8 +1049,70 @@ actor DestinationFinderWeatherCache {
             do {
                 try await fetchBatch(batch, from: from, until: until)
             } catch {
-                // Ein fehlender Wetterbatch darf statische Treffer nicht
-                // ausblenden und erzeugt bewusst keine Einzelrequest-Kaskade.
+                // Open-Meteo kann einen kompletten Batch etwa bei erreichtem
+                // Tageslimit ablehnen. Die noch offenen Ziele werden danach
+                // gesammelt über den vorhandenen MET-Norway-Pfad geladen.
+            }
+        }
+
+        let unresolved = eligible.filter {
+            guard let cached = cache[$0.icao],
+                  Date().timeIntervalSince(cached.0) < lifetime
+            else { return true }
+            return !Self.covers(cached.1, from: from, until: until)
+        }
+        for start in stride(from: 0, to: unresolved.count, by: 4) {
+            guard !Task.isCancelled else { break }
+            let end = min(start + 4, unresolved.count)
+            let batch = Array(unresolved[start..<end])
+            let fallbacks = await withTaskGroup(
+                of: (String, [DestinationFinderWeatherHour])?.self,
+                returning: [(String, [DestinationFinderWeatherHour])].self
+            ) { group in
+                for destination in batch {
+                    group.addTask {
+                        guard let latitude = destination.latitude,
+                              let longitude = destination.longitude
+                        else { return nil }
+                        let reference = AirportReference(
+                            icao: destination.icao,
+                            name: destination.name,
+                            latitude: latitude,
+                            longitude: longitude,
+                            elevationFeet: destination.elevationFeet,
+                            timeZone: DestinationTimeZone.value(
+                                for: destination,
+                                weatherTimeZone: nil
+                            ),
+                            referenceRunway: destination.referenceRunway
+                        )
+                        do {
+                            let forecast = try await EDFZWeatherService.shared
+                                .metNorwayForecast(airport: reference)
+                            let hours = Self.fallbackHours(
+                                forecast,
+                                from: from,
+                                until: until
+                            )
+                            guard Self.covers(
+                                hours,
+                                from: from,
+                                until: until
+                            ) else { return nil }
+                            return (destination.icao, hours)
+                        } catch {
+                            return nil
+                        }
+                    }
+                }
+                var values: [(String, [DestinationFinderWeatherHour])] = []
+                for await value in group {
+                    if let value { values.append(value) }
+                }
+                return values
+            }
+            for (icao, hours) in fallbacks {
+                cache[icao] = (Date(), hours)
             }
         }
 
@@ -1075,6 +1137,48 @@ actor DestinationFinderWeatherCache {
         else { return false }
         return first <= from.addingTimeInterval(60 * 60)
             && last >= until.addingTimeInterval(-60 * 60)
+    }
+
+    private static func fallbackHours(
+        _ forecast: EDFZForecast,
+        from: Date,
+        until: Date
+    ) -> [DestinationFinderWeatherHour] {
+        guard until >= from else { return [] }
+        let first = Calendar.current.dateInterval(of: .hour, for: from)?.start
+            ?? from
+        let last = Calendar.current.dateInterval(of: .hour, for: until)?.end
+            ?? until
+        var instant = first
+        var result: [DestinationFinderWeatherHour] = []
+        while instant <= last {
+            if let sample = forecast.sample(nearestTo: instant) {
+                let precipitation: Double?
+                switch sample.weatherCode {
+                case 61, 67, 71, 95:
+                    precipitation = 0.1
+                case .some:
+                    precipitation = 0
+                case nil:
+                    precipitation = nil
+                }
+                result.append(
+                    DestinationFinderWeatherHour(
+                        instant: instant,
+                        temperatureCelsius: sample.temperatureCelsius,
+                        steadyWindKnots: sample.windSpeedKnots,
+                        gustKnots: sample.windGustKnots,
+                        precipitationMillimeters: precipitation,
+                        totalCloudCoverPercent: sample.totalCloudCoverPercent,
+                        visibilityMeters: sample.visibilityMeters,
+                        lowCloudCoverPercent: sample.lowCloudCoverPercent,
+                        dewPointCelsius: sample.dewPointCelsius
+                    )
+                )
+            }
+            instant = instant.addingTimeInterval(60 * 60)
+        }
+        return result
     }
 
     private func fetchBatch(
@@ -2063,8 +2167,8 @@ struct DestinationFinderView: View {
             if unavailableWeatherCount > 0 {
                 Text(
                     ignoresRouteWeather
-                        ? "\(unavailableWeatherCount) passende Ziele wurden ohne Zielwetterprüfung eingeschlossen."
-                        : "\(unavailableWeatherCount) Ziele konnten wegen unvollständiger Wetterdaten nicht vollständig geprüft werden."
+                        ? "\(unavailableWeatherCount) Ziele wurden ausgeschlossen, weil Zielwetterdaten nicht verfügbar waren."
+                        : "\(unavailableWeatherCount) Ziele wurden wegen unvollständiger Wetterdaten ausgeschlossen."
                 )
                     .font(.caption)
                     .foregroundStyle(.orange)
