@@ -77,10 +77,12 @@ private final class DestinationFinderSession {
     var ignoresTravelTime = false
     var appliesETOPS = true
     var maximumRoundTripPrice = 1_000.0
-    var ignoresPrice = false
+    var ignoresPrice = true
     var priceAppliesETOPS = true
     var requiresLandingVoucher = false
-    var requiredFeatures: Set<DestinationFeature> = []
+    var requiredFeatures: Set<DestinationFeature> = [
+        .beachSea, .lakeNature, .mountainHiking, .wellness
+    ]
     var requiresBicycleAtAirport = false
     var requiresRentalCarAtAirport = false
     var requiresApp2DriveAtAirport = false
@@ -102,8 +104,6 @@ private final class DestinationFinderSession {
     var requiresCloudless = false
     var requiresRainFree = false
     var requiresRainFreeCoverage = false
-    var daylightOnly = true
-    var daytimeOnly = false
     var filterUserRaw = ""
     var maximumRouteWeatherRisk = RouteWeatherRisk.green
     var ignoresRouteWeather = true
@@ -138,10 +138,12 @@ private final class DestinationFinderSession {
         ignoresTravelTime = false
         appliesETOPS = true
         maximumRoundTripPrice = 1_000
-        ignoresPrice = false
+        ignoresPrice = true
         priceAppliesETOPS = true
         requiresLandingVoucher = false
-        requiredFeatures = []
+        requiredFeatures = [
+            .beachSea, .lakeNature, .mountainHiking, .wellness
+        ]
         requiresBicycleAtAirport = false
         requiresRentalCarAtAirport = false
         requiresApp2DriveAtAirport = false
@@ -163,8 +165,6 @@ private final class DestinationFinderSession {
         requiresCloudless = false
         requiresRainFree = false
         requiresRainFreeCoverage = false
-        daylightOnly = true
-        daytimeOnly = false
         filterUserRaw = activeUserRaw
         maximumRouteWeatherRisk = .green
         ignoresRouteWeather = true
@@ -1206,10 +1206,12 @@ struct DestinationFinderView: View {
     @State private var ignoresTravelTime = false
     @State private var appliesETOPS = true
     @State private var maximumRoundTripPrice = 1_000.0
-    @State private var ignoresPrice = false
+    @State private var ignoresPrice = true
     @State private var priceAppliesETOPS = true
     @State private var requiresLandingVoucher = false
-    @State private var requiredFeatures: Set<DestinationFeature> = []
+    @State private var requiredFeatures: Set<DestinationFeature> = [
+        .beachSea, .lakeNature, .mountainHiking, .wellness
+    ]
     @State private var requiresBicycleAtAirport = false
     @State private var requiresRentalCarAtAirport = false
     @State private var requiresApp2DriveAtAirport = false
@@ -1231,8 +1233,6 @@ struct DestinationFinderView: View {
     @State private var requiresCloudless = false
     @State private var requiresRainFree = false
     @State private var requiresRainFreeCoverage = false
-    @State private var daylightOnly = true
-    @State private var daytimeOnly = false
     @State private var maximumRouteWeatherRisk = RouteWeatherRisk.green
     @State private var ignoresRouteWeather = true
     @State private var isFiltering = false
@@ -1295,8 +1295,6 @@ struct DestinationFinderView: View {
         _requiresRainFreeCoverage = State(
             initialValue: session.requiresRainFreeCoverage
         )
-        _daylightOnly = State(initialValue: session.daylightOnly)
-        _daytimeOnly = State(initialValue: session.daytimeOnly)
         _maximumRouteWeatherRisk = State(initialValue: session.maximumRouteWeatherRisk)
         _ignoresRouteWeather = State(initialValue: session.ignoresRouteWeather)
         _filterUserRaw = State(initialValue: session.filterUserRaw)
@@ -1813,8 +1811,12 @@ struct DestinationFinderView: View {
                 }
                 GridRow {
                     Color.clear.frame(width: 135, height: 1)
-                    Toggle("Zeitfenster 06:00–22:00", isOn: $daytimeOnly)
-                        .toggleStyle(.checkbox)
+                    Label(
+                        "Immer Sonnenaufgang–Sonnenuntergang",
+                        systemImage: "sunrise.fill"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     Color.clear.frame(width: 210, height: 1)
                 }
             }
@@ -1861,25 +1863,10 @@ struct DestinationFinderView: View {
                     .toggleStyle(.checkbox)
                 Spacer()
             }
-            Toggle(isOn: $daylightOnly) {
-                Label(
-                    "Nur Sonnenaufgang–Sonnenuntergang berücksichtigen",
-                    systemImage: "sunrise.fill"
-                )
-            }
-            .toggleStyle(.checkbox)
-            .disabled(usesMinimumWeatherCoverageRule)
-            .help(
-                usesMinimumWeatherCoverageRule
-                    ? "Die 66-%-Tagesregel verwendet immer die Stunden zwischen Sonnenaufgang und Sonnenuntergang."
-                    : "Wendet den Flugwetterfilter nur auf Stunden zwischen Sonnenaufgang und Sonnenuntergang am Ziel an."
-            )
-
             Toggle(isOn: Binding(
                 get: { usesMinimumWeatherCoverageRule },
                 set: { enabled in
                     usesMinimumWeatherCoverageRule = enabled
-                    if enabled { daylightOnly = true }
                 }
             )) {
                 Label(
@@ -1904,23 +1891,17 @@ struct DestinationFinderView: View {
         if usesMinimumWeatherCoverageRule {
             return "Mindestens 66 % der Stunden zwischen Sonnenaufgang und Sonnenuntergang müssen \(minimumWeather.rawValue) oder besser sein. Bis zu 34 % schlechtere Stunden bleiben zulässig."
         }
-        let period = daylightOnly
-            ? "zwischen Sonnenaufgang und Sonnenuntergang"
-            : "im gesamten gewählten Zeitraum"
-        return "Jede Wetterstunde \(period) muss \(minimumWeather.rawValue) oder besser sein."
+        return "Jede Wetterstunde zwischen Sonnenaufgang und Sonnenuntergang muss \(minimumWeather.rawValue) oder besser sein."
     }
 
     private var targetWeatherFilterSummary: String {
         var conditions: [String] = []
         if !ignoresMinimumWeather {
-            let period = daylightOnly
-                ? "Sonnenaufgang–Sonnenuntergang"
-                : (daytimeOnly ? "06:00–22:00" : "gesamter Zeitraum")
             let rule = usesMinimumWeatherCoverageRule
                 ? "mindestens 66 % der Stunden"
                 : "jede Stunde"
             conditions.append(
-                "mind. \(minimumWeather.rawValue) · \(period) · \(rule)"
+                "mind. \(minimumWeather.rawValue) · Sonnenaufgang–Sonnenuntergang · \(rule)"
             )
         }
         if requiresRainFree {
@@ -2276,8 +2257,6 @@ struct DestinationFinderView: View {
         session.requiresCloudless = requiresCloudless
         session.requiresRainFree = requiresRainFree
         session.requiresRainFreeCoverage = requiresRainFreeCoverage
-        session.daylightOnly = daylightOnly
-        session.daytimeOnly = daytimeOnly
         session.filterUserRaw = filterUserRaw
         session.maximumRouteWeatherRisk = maximumRouteWeatherRisk
         session.ignoresRouteWeather = ignoresRouteWeather
@@ -2323,8 +2302,6 @@ struct DestinationFinderView: View {
         requiresCloudless = session.requiresCloudless
         requiresRainFree = session.requiresRainFree
         requiresRainFreeCoverage = session.requiresRainFreeCoverage
-        daylightOnly = session.daylightOnly
-        daytimeOnly = session.daytimeOnly
         filterUserRaw = session.filterUserRaw
         maximumRouteWeatherRisk = session.maximumRouteWeatherRisk
         ignoresRouteWeather = session.ignoresRouteWeather
@@ -2372,8 +2349,8 @@ struct DestinationFinderView: View {
             requiresCloudless: requiresCloudless,
             requiresRainFree: requiresRainFree,
             requiresRainFreeCoverage: requiresRainFreeCoverage,
-            daylightOnly: daylightOnly,
-            daytimeOnly: daytimeOnly,
+            daylightOnly: true,
+            daytimeOnly: false,
             maximumRouteWeatherRisk: maximumRouteWeatherRisk,
             ignoresRouteWeather: ignoresRouteWeather
         )
