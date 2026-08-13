@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @main
 struct FlybookEuropeApp: App {
@@ -16,7 +17,7 @@ struct FlybookEuropeApp: App {
     @State private var destinationFilterIsActive = true
     @State private var destinationSearchText = ""
     @State private var plannedMainDestinationArrival: Date?
-    @FocusState private var destinationSearchIsFocused: Bool
+    @State private var destinationSearchIsFocused = false
     @AppStorage(UnitSystemSettingsKey.displaySystem)
     private var displayUnitSystemRaw = DisplayUnitSystem.eu.rawValue
     @AppStorage(CalculationSettingsKey.fuelDisplayUnit)
@@ -414,19 +415,13 @@ struct FlybookEuropeApp: App {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(FlybookColor.muted)
 
-            TextField(
-                "Ziel suchen · ICAO oder Name",
-                text: $destinationSearchText
+            DestinationSearchTextField(
+                text: $destinationSearchText,
+                isEditing: $destinationSearchIsFocused,
+                placeholder: "Ziel suchen · ICAO oder Name",
+                onSubmit: selectTypedDestination
             )
-            .textFieldStyle(.plain)
-            .font(.system(size: 14, weight: .semibold))
-            .focused($destinationSearchIsFocused)
-            .onSubmit { selectTypedDestination() }
-            .onChange(of: destinationSearchIsFocused) { isFocused in
-                if !isFocused {
-                    restoreDestinationSearchTextIfNeeded()
-                }
-            }
+            .frame(maxWidth: .infinity, minHeight: 28, maxHeight: 28)
             .onChange(of: destinationSearchText) { value in
                 let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
                     .uppercased()
@@ -549,14 +544,6 @@ struct FlybookEuropeApp: App {
         destinationSearchText = "\(destination.icao) · \(destination.name)"
     }
 
-    private func restoreDestinationSearchTextIfNeeded() {
-        guard store.destinations.indices.contains(selectedIndex) else { return }
-        let selected = store.destinations[selectedIndex]
-        let displayed = "\(selected.icao) · \(selected.name)"
-        guard destinationSearchText != displayed else { return }
-        synchronizeDestinationSearchText()
-    }
-
     private func previous() {
         let indices = selectableDestinationIndices
         guard !indices.isEmpty else {
@@ -665,6 +652,74 @@ struct FlybookEuropeApp: App {
             fuelDisplayUnitRaw = FuelDisplayUnit.usGallons.rawValue
             pressureDisplayUnitRaw =
                 PressureDisplayUnit.inHg.rawValue
+        }
+    }
+}
+
+private struct DestinationSearchTextField: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var isEditing: Bool
+    let placeholder: String
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField()
+        field.delegate = context.coordinator
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.placeholderString = placeholder
+        field.font = .systemFont(ofSize: 14, weight: .semibold)
+        field.lineBreakMode = .byTruncatingTail
+        field.maximumNumberOfLines = 1
+        field.stringValue = text
+        return field
+    }
+
+    func updateNSView(_ field: NSTextField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+        if !isEditing,
+           field.window?.firstResponder === field.currentEditor() {
+            field.window?.makeFirstResponder(nil)
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: DestinationSearchTextField
+
+        init(parent: DestinationSearchTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidBeginEditing(_ notification: Notification) {
+            parent.isEditing = true
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            parent.isEditing = false
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
+
+        func control(
+            _ control: NSControl,
+            textView: NSTextView,
+            doCommandBy commandSelector: Selector
+        ) -> Bool {
+            guard commandSelector == #selector(NSResponder.insertNewline(_:))
+            else { return false }
+            parent.onSubmit()
+            return true
         }
     }
 }
