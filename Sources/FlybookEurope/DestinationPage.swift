@@ -66,7 +66,9 @@ struct DestinationPage: View {
         ) ?? Date()
     @State private var outboundStartText = "09:00"
     @State private var desiredHomeArrivalText = "17:00"
+    @State private var multiStopFirstArrivalText = ""
     @State private var multiStopDepartureText = ""
+    @State private var multiStopSecondArrivalText = ""
     @State private var outboundStops = 0
     @State private var returnStops = 0
     @State private var outboundStop1ICAO = ""
@@ -959,6 +961,9 @@ struct DestinationPage: View {
             outboundTrackMilesOverride = nil
             returnTrackMilesOverride = nil
             normalizeFlightAltitudes()
+            if mode == .multiStop {
+                initializeMultiStopTimes()
+            }
         }
         .onChange(of: intermediateICAO) { _ in
             resetRefuelEntry()
@@ -1576,11 +1581,20 @@ struct DestinationPage: View {
     }
 
     private var outboundArrivalInstantForWeather: Date {
-        outboundStartInstant.addingTimeInterval(
-            TimeInterval(
-                outboundTravelMinutesForWeather * 60
-            )
+        let automatic = outboundStartInstant.addingTimeInterval(
+            TimeInterval(outboundTravelMinutesForWeather * 60)
         )
+        if flightPlanningMode == .multiStop {
+            return MultiStopTimeResolver.instant(
+                manualText: multiStopFirstArrivalText,
+                date: outboundFlightDate,
+                timeZone: timeDisplayMode == .utc
+                    ? TimeZone(secondsFromGMT: 0)!
+                    : firstLegDestination.timeZone,
+                automatic: automatic
+            ) ?? automatic
+        }
+        return automatic
     }
 
     private var plannedMainDestinationArrivalInstant: Date {
@@ -1591,9 +1605,17 @@ struct DestinationPage: View {
 
     private var returnArrivalInstant: Date {
         if flightPlanningMode == .multiStop {
-            return returnDepartureInstantForWeather.addingTimeInterval(
+            let automatic = returnDepartureInstantForWeather.addingTimeInterval(
                 TimeInterval(returnTravelMinutesForWeather * 60)
             )
+            return MultiStopTimeResolver.instant(
+                manualText: multiStopSecondArrivalText,
+                date: returnFlightDate,
+                timeZone: timeDisplayMode == .utc
+                    ? TimeZone(secondsFromGMT: 0)!
+                    : secondLegDestination.timeZone,
+                automatic: automatic
+            ) ?? automatic
         }
         return FlightDateTime.instant(
             date: returnFlightDate,
@@ -2641,10 +2663,13 @@ struct DestinationPage: View {
 
         outboundFlightDate = tomorrow
         outboundStartText = "09:00"
+        multiStopFirstArrivalText = ""
         multiStopDepartureText = ""
+        multiStopSecondArrivalText = ""
 
         if flightPlanningMode == .multiStop {
             returnFlightDate = tomorrow
+            initializeMultiStopTimes()
         } else {
             returnFlightDate =
                 Calendar.current.date(
@@ -2656,6 +2681,50 @@ struct DestinationPage: View {
                 on: returnFlightDate
             )
         }
+    }
+
+    private func initializeMultiStopTimes() {
+        guard flightPlanningMode == .multiStop else { return }
+
+        let firstDeparture = FlightDateTime.instant(
+            date: outboundFlightDate,
+            timeText: outboundStartText,
+            timeZone: timeDisplayMode == .utc
+                ? TimeZone(secondsFromGMT: 0)!
+                : planningOrigin.timeZone
+        ) ?? outboundFlightDate
+        let firstArrival = firstDeparture.addingTimeInterval(
+            TimeInterval(outboundTravelMinutesForWeather * 60)
+        )
+        let rawSecondDeparture = firstArrival.addingTimeInterval(
+            TimeInterval(tankStopMinutes * 60)
+        )
+        let secondDeparture = Date(
+            timeIntervalSince1970:
+                ceil(rawSecondDeparture.timeIntervalSince1970 / 300) * 300
+        )
+        let secondArrival = secondDeparture.addingTimeInterval(
+            TimeInterval(returnTravelMinutesForWeather * 60)
+        )
+
+        multiStopFirstArrivalText = FlightDateTime.clock(
+            instant: firstArrival,
+            timeZone: timeDisplayMode == .utc
+                ? TimeZone(secondsFromGMT: 0)!
+                : firstLegDestination.timeZone
+        )
+        multiStopDepartureText = FlightDateTime.clock(
+            instant: secondDeparture,
+            timeZone: timeDisplayMode == .utc
+                ? TimeZone(secondsFromGMT: 0)!
+                : secondLegOrigin.timeZone
+        )
+        multiStopSecondArrivalText = FlightDateTime.clock(
+            instant: secondArrival,
+            timeZone: timeDisplayMode == .utc
+                ? TimeZone(secondsFromGMT: 0)!
+                : secondLegDestination.timeZone
+        )
     }
 
     private func standardArrivalText(
@@ -2727,7 +2796,6 @@ struct DestinationPage: View {
                                 returnOriginICAO = planningDestination.icao
                                 returnDestinationICAO = destinationReference.icao
                                 returnFlightDate = outboundFlightDate
-                                multiStopDepartureText = ""
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(
@@ -2783,7 +2851,9 @@ struct DestinationPage: View {
                     returnFlightDate: $returnFlightDate,
                     outboundStartText: $outboundStartText,
                     desiredHomeArrivalText: $desiredHomeArrivalText,
+                    multiStopFirstArrivalText: $multiStopFirstArrivalText,
                     multiStopDepartureText: $multiStopDepartureText,
+                    multiStopSecondArrivalText: $multiStopSecondArrivalText,
                     outboundStops: outboundStopsBinding,
                     returnStops: returnStopsBinding,
                     outboundStop1ICAO: $outboundStop1ICAO,
@@ -3429,35 +3499,84 @@ struct DestinationPage: View {
             set: { newMode in
                 guard newMode != timeDisplayMode else { return }
 
-                let oldZone = timeDisplayMode == .utc
-                    ? TimeZone(secondsFromGMT: 0)!
-                    : planningOrigin.timeZone
-                let newZone = newMode == .utc
-                    ? TimeZone(secondsFromGMT: 0)!
-                    : planningOrigin.timeZone
-
                 outboundStartText = convertedClock(
                     outboundStartText,
-                    from: oldZone,
-                    to: newZone
+                    date: outboundFlightDate,
+                    from: timeZone(
+                        for: planningOrigin,
+                        mode: timeDisplayMode
+                    ),
+                    to: timeZone(for: planningOrigin, mode: newMode)
                 )
                 desiredHomeArrivalText = convertedClock(
                     desiredHomeArrivalText,
-                    from: oldZone,
-                    to: newZone
+                    date: returnFlightDate,
+                    from: timeZone(
+                        for: secondLegDestination,
+                        mode: timeDisplayMode
+                    ),
+                    to: timeZone(
+                        for: secondLegDestination,
+                        mode: newMode
+                    )
+                )
+                multiStopFirstArrivalText = convertedManualClock(
+                    multiStopFirstArrivalText,
+                    date: outboundFlightDate,
+                    airport: firstLegDestination,
+                    from: timeDisplayMode,
+                    to: newMode
+                )
+                multiStopDepartureText = convertedManualClock(
+                    multiStopDepartureText,
+                    date: returnFlightDate,
+                    airport: secondLegOrigin,
+                    from: timeDisplayMode,
+                    to: newMode
+                )
+                multiStopSecondArrivalText = convertedManualClock(
+                    multiStopSecondArrivalText,
+                    date: returnFlightDate,
+                    airport: secondLegDestination,
+                    from: timeDisplayMode,
+                    to: newMode
                 )
                 timeDisplayMode = newMode
             }
         )
     }
 
+    private func timeZone(
+        for airport: AirportReference,
+        mode: TimeDisplayMode
+    ) -> TimeZone {
+        mode == .utc ? TimeZone(secondsFromGMT: 0)! : airport.timeZone
+    }
+
+    private func convertedManualClock(
+        _ clock: String,
+        date: Date,
+        airport: AirportReference,
+        from oldMode: TimeDisplayMode,
+        to newMode: TimeDisplayMode
+    ) -> String {
+        guard !clock.isEmpty else { return "" }
+        return convertedClock(
+            clock,
+            date: date,
+            from: timeZone(for: airport, mode: oldMode),
+            to: timeZone(for: airport, mode: newMode)
+        )
+    }
+
     private func convertedClock(
         _ clock: String,
+        date: Date,
         from sourceTimeZone: TimeZone,
         to destinationTimeZone: TimeZone
     ) -> String {
         guard let instant = FlightDateTime.instant(
-            date: clock == outboundStartText ? outboundFlightDate : returnFlightDate,
+            date: date,
             timeText: clock,
             timeZone: sourceTimeZone
         ) else {
@@ -4945,7 +5064,9 @@ private struct FlightTimePlanningRows: View {
     @Binding var returnFlightDate: Date
     @Binding var outboundStartText: String
     @Binding var desiredHomeArrivalText: String
+    @Binding var multiStopFirstArrivalText: String
     @Binding var multiStopDepartureText: String
+    @Binding var multiStopSecondArrivalText: String
     @Binding var outboundStops: Int
     @Binding var returnStops: Int
     @Binding var outboundStop1ICAO: String
@@ -5084,16 +5205,55 @@ private struct FlightTimePlanningRows: View {
         )
     }
 
-    private var outboundArrivalInstant: Date? {
+    private var automaticOutboundArrivalInstant: Date? {
         outboundStartInstant?.addingTimeInterval(
             TimeInterval(outboundTravelMinutes * 60)
         )
     }
 
+    private var firstArrivalTimeZone: TimeZone {
+        timeDisplayMode == .utc
+            ? TimeZone(secondsFromGMT: 0)!
+            : firstArrivalAirport.timeZone
+    }
+
+    private var multiStopFirstArrivalBinding: Binding<String> {
+        Binding(
+            get: {
+                guard multiStopFirstArrivalText.isEmpty else {
+                    return multiStopFirstArrivalText
+                }
+                return FlightDateTime.clock(
+                    instant: automaticOutboundArrivalInstant,
+                    timeZone: firstArrivalTimeZone
+                )
+            },
+            set: { multiStopFirstArrivalText = $0 }
+        )
+    }
+
+    private var outboundArrivalInstant: Date? {
+        if planningMode == .multiStop {
+            return MultiStopTimeResolver.instant(
+                manualText: multiStopFirstArrivalText,
+                date: outboundFlightDate,
+                timeZone: firstArrivalTimeZone,
+                automatic: automaticOutboundArrivalInstant
+            )
+        }
+        return automaticOutboundArrivalInstant
+    }
+
     private var homeArrivalInstant: Date? {
         if planningMode == .multiStop {
-            return returnDepartureInstant?.addingTimeInterval(
+            let automatic = returnDepartureInstant?.addingTimeInterval(
                 TimeInterval(returnTravelMinutes * 60)
+            )
+            return MultiStopTimeResolver.instant(
+                manualText: multiStopSecondArrivalText,
+                date: returnFlightDate,
+                timeZone: secondArrivalTimeZone,
+                automatic: automatic
             )
         }
         return FlightDateTime.instant(
@@ -5121,6 +5281,12 @@ private struct FlightTimePlanningRows: View {
             : secondDepartureAirport.timeZone
     }
 
+    private var secondArrivalTimeZone: TimeZone {
+        timeDisplayMode == .utc
+            ? TimeZone(secondsFromGMT: 0)!
+            : secondArrivalAirport.timeZone
+    }
+
     private var multiStopDepartureBinding: Binding<String> {
         Binding(
             get: {
@@ -5138,19 +5304,36 @@ private struct FlightTimePlanningRows: View {
 
     private var returnDepartureInstant: Date? {
         if planningMode == .multiStop {
-            if !multiStopDepartureText.isEmpty,
-               let manualDeparture = FlightDateTime.instant(
-                    date: returnFlightDate,
-                    timeText: multiStopDepartureText,
-                    timeZone: multiStopDepartureTimeZone
-               )
-            {
-                return manualDeparture
-            }
-            return automaticMultiStopDepartureInstant
+            return MultiStopTimeResolver.instant(
+                manualText: multiStopDepartureText,
+                date: returnFlightDate,
+                timeZone: multiStopDepartureTimeZone,
+                automatic: automaticMultiStopDepartureInstant
+            )
         }
         return homeArrivalInstant?.addingTimeInterval(
             TimeInterval(-returnTravelMinutes * 60)
+        )
+    }
+
+    private var automaticMultiStopSecondArrivalInstant: Date? {
+        returnDepartureInstant?.addingTimeInterval(
+            TimeInterval(returnTravelMinutes * 60)
+        )
+    }
+
+    private var multiStopSecondArrivalBinding: Binding<String> {
+        Binding(
+            get: {
+                guard multiStopSecondArrivalText.isEmpty else {
+                    return multiStopSecondArrivalText
+                }
+                return FlightDateTime.clock(
+                    instant: automaticMultiStopSecondArrivalInstant,
+                    timeZone: secondArrivalTimeZone
+                )
+            },
+            set: { multiStopSecondArrivalText = $0 }
         )
     }
 
@@ -5462,11 +5645,6 @@ private struct FlightTimePlanningRows: View {
         }
     }
 
-    private func synchronizeMultiStopDepartureDate() {
-        guard planningMode == .multiStop else { return }
-        returnFlightDate = outboundFlightDate
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             FlightPlanningLine(
@@ -5619,17 +5797,26 @@ private struct FlightTimePlanningRows: View {
                     )
                 },
                 trailing: {
-                    CalculatedFlightTime(
-                        value: FlightDateTime.clock(
-                            instant: outboundArrivalInstant,
-                            timeZone: timeDisplayMode == .utc
-                                ? TimeZone(secondsFromGMT: 0)!
-                                : firstArrivalAirport.timeZone
-                        ),
-                        symbol: "airplane.arrival",
-                        lightCondition:
-                            outboundArrivalCondition
-                    )
+                    if planningMode == .multiStop {
+                        EditableFlightTimeField(
+                            title: "ANKUNFT \(firstArrivalAirport.icao)",
+                            text: multiStopFirstArrivalBinding,
+                            symbol: "airplane.arrival",
+                            lightCondition: outboundArrivalCondition
+                        )
+                    } else {
+                        CalculatedFlightTime(
+                            value: FlightDateTime.clock(
+                                instant: outboundArrivalInstant,
+                                timeZone: timeDisplayMode == .utc
+                                    ? TimeZone(secondsFromGMT: 0)!
+                                    : firstArrivalAirport.timeZone
+                            ),
+                            symbol: "airplane.arrival",
+                            lightCondition:
+                                outboundArrivalCondition
+                        )
+                    }
                 }
             )
             .flightLegPanel()
@@ -5792,13 +5979,10 @@ private struct FlightTimePlanningRows: View {
                 },
                 trailing: {
                     if planningMode == .multiStop {
-                        CalculatedFlightTime(
-                            value: FlightDateTime.clock(
-                                instant: homeArrivalInstant,
-                                timeZone: timeDisplayMode == .utc
-                                    ? TimeZone(secondsFromGMT: 0)!
-                                    : secondArrivalAirport.timeZone
-                            ),
+                        EditableFlightTimeField(
+                            title:
+                                "ANKUNFT \(secondArrivalAirport.icao)",
+                            text: multiStopSecondArrivalBinding,
                             symbol: "airplane.arrival",
                             lightCondition: homeArrivalCondition
                         )
@@ -5831,6 +6015,13 @@ private struct FlightTimePlanningRows: View {
                 desiredHomeArrivalText = filtered
             }
         }
+        .onChange(of: multiStopFirstArrivalText) { newValue in
+            let filtered = TimeInput.filtered(newValue)
+
+            if filtered != newValue {
+                multiStopFirstArrivalText = filtered
+            }
+        }
         .onChange(of: multiStopDepartureText) { newValue in
             let filtered = TimeInput.filtered(newValue)
 
@@ -5838,26 +6029,12 @@ private struct FlightTimePlanningRows: View {
                 multiStopDepartureText = filtered
             }
         }
-        .onChange(of: planningMode) { _ in
-            synchronizeMultiStopDepartureDate()
-        }
-        .onChange(of: intermediateAirportICAO) { _ in
-            synchronizeMultiStopDepartureDate()
-        }
-        .onChange(of: outboundFlightDate) { _ in
-            synchronizeMultiStopDepartureDate()
-        }
-        .onChange(of: outboundStartText) { _ in
-            synchronizeMultiStopDepartureDate()
-        }
-        .onChange(of: outboundTravelMinutes) { _ in
-            synchronizeMultiStopDepartureDate()
-        }
-        .onChange(of: tankStopMinutes) { _ in
-            synchronizeMultiStopDepartureDate()
-        }
-        .onAppear {
-            synchronizeMultiStopDepartureDate()
+        .onChange(of: multiStopSecondArrivalText) { newValue in
+            let filtered = TimeInput.filtered(newValue)
+
+            if filtered != newValue {
+                multiStopSecondArrivalText = filtered
+            }
         }
     }
 }

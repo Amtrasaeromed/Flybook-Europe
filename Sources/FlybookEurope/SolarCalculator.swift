@@ -344,3 +344,19 @@ enum FlightDateTime {
         return formatter.string(from: instant)
     }
 }
+
+enum MultiStopTimeResolver {
+    static func instant(
+        manualText: String,
+        date: Date,
+        timeZone: TimeZone,
+        automatic: Date?
+    ) -> Date? {
+        guard !manualText.isEmpty else { return automatic }
+        return FlightDateTime.instant(
+            date: date,
+            timeText: manualText,
+            timeZone: timeZone
+        ) ?? automatic
+    }
+}
