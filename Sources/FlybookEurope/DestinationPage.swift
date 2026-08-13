@@ -82,6 +82,7 @@ struct DestinationPage: View {
     @State private var returnFlightAltitudeFeet = FlightAltitudeRules.defaultFeet
     @State private var timeDisplayMode: TimeDisplayMode = .local
     @State private var showsRestaurantHours = false
+    @State private var showsAirportInformation = false
     @State private var flightPlanningMode = FlightPlanningMode.roundTrip
     @State private var isOneWay = true
     @State private var outboundReserveNotConsumed = false
@@ -2273,6 +2274,7 @@ struct DestinationPage: View {
                     isOneWay: isOneWay,
                     intermediateAirportICAO: $intermediateICAO,
                     airportOptions: allRouteAirportOptions,
+                    destinationInformation: availableDestinations,
                     outboundOriginSelection: planningOriginSelection,
                     outboundDestinationSelection: planningDestinationSelection,
                     returnOriginSelection: returnOriginSelection,
@@ -2632,9 +2634,23 @@ struct DestinationPage: View {
                             .foregroundStyle(FlybookColor.muted)
                     }
                     Spacer()
-                    Image(systemName: "list.bullet.rectangle.portrait")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(FlybookColor.blue)
+                    Button {
+                        showsAirportInformation = true
+                    } label: {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(FlybookColor.blue)
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Alle hinterlegten Flugplatzinformationen anzeigen")
+                    .popover(isPresented: $showsAirportInformation) {
+                        AirportInformationPopover(
+                            destination: destination,
+                            airport: destinationReference,
+                            instant: plannedMainDestinationArrivalInstant
+                        )
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -3751,6 +3767,243 @@ private struct RouteWindSummary: View {
     }
 }
 
+private struct AirportInformationPopover: View {
+    let destination: Destination
+    let airport: AirportReference
+    let instant: Date?
+
+    private var operatingStatus: AirportOperatingStatus? {
+        AirportOperatingHoursEvaluator.status(
+            airport: airport,
+            at: instant,
+            operation: .arrival
+        )
+    }
+
+    private var operatingStatusText: String {
+        switch operatingStatus {
+        case .open: return "Zum gewählten Zeitpunkt geöffnet"
+        case .closingSoon: return "Geöffnet, schließt innerhalb von 30 Minuten"
+        case .flyingWithoutFlightDirector: return "Fliegen ohne Flugleiter möglich"
+        case .closedOrPPR: return "Zum gewählten Zeitpunkt geschlossen / PPR"
+        case .none: return "Betriebsstatus nicht sicher hinterlegt"
+        }
+    }
+
+    private var operatingStatusColor: Color {
+        switch operatingStatus {
+        case .open: return .green
+        case .closingSoon: return .orange
+        case .flyingWithoutFlightDirector: return FlybookColor.blue
+        case .closedOrPPR: return .red
+        case .none: return FlybookColor.muted
+        }
+    }
+
+    private var openingHoursText: String {
+        guard let instant else { return "Kein Planungszeitpunkt gewählt" }
+        switch AirportOperatingHoursEvaluator.dailyOpeningHours(
+            airport: airport,
+            at: instant
+        ) {
+        case .confirmed(let windows):
+            let local = windows.map {
+                "\(clock($0.opening, timeZone: airport.timeZone))–"
+                    + clock($0.closing, timeZone: airport.timeZone)
+            }.joined(separator: ", ")
+            let utc = windows.map {
+                "\(clock($0.opening, timeZone: TimeZone(secondsFromGMT: 0)!))–"
+                    + clock($0.closing, timeZone: TimeZone(secondsFromGMT: 0)!)
+            }.joined(separator: ", ")
+            return "\(local) Ortszeit  ·  \(utc) UTC"
+        case .confirmedClosed:
+            return "Für diesen Tag ist keine reguläre Betriebszeit hinterlegt"
+        case .unclear:
+            return "Keine belastbare Tagesöffnungszeit hinterlegt"
+        }
+    }
+
+    private var planningTimeText: String? {
+        guard let instant else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = airport.timeZone
+        formatter.dateFormat = "EEE, dd.MM.yyyy · HH:mm 'lokal'"
+        return formatter.string(from: instant)
+    }
+
+    private var fuelText: String {
+        [
+            fuelLine("AVGAS", availability: destination.avgas, price: destination.avgasPricePerLiterEUR),
+            fuelLine("UL91", availability: destination.ul91, price: destination.ul91PricePerLiterEUR),
+            fuelLine("MOGAS", availability: destination.mogas, price: destination.mogasPricePerLiterEUR)
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: "  ·  ")
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("FLUGPLATZINFORMATIONEN")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(FlybookColor.navy)
+                        Text("\(destination.icao) · \(destination.name)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(FlybookColor.muted)
+                    }
+                    Spacer()
+                    Image(systemName: "list.bullet.rectangle.portrait.fill")
+                        .font(.system(size: 25, weight: .semibold))
+                        .foregroundStyle(FlybookColor.blue)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(operatingStatusColor)
+                            .frame(width: 11, height: 11)
+                        Text(operatingStatusText)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(operatingStatusColor)
+                    }
+                    if let planningTimeText {
+                        Text(planningTimeText)
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    detailRow("Betriebszeit", openingHoursText)
+                    if !destination.ppr.isEmpty {
+                        detailRow("PPR", destination.ppr)
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(operatingStatusColor.opacity(0.08))
+                )
+
+                informationSection("PLATZ") {
+                    detailRow("Piste", destination.referenceRunway.isEmpty ? "–" : destination.referenceRunway)
+                    detailRow("Abmessungen", destination.runwayDimensionsDisplay)
+                    detailRow("LDA", destination.ldaDisplay)
+                    detailRow("Belag", destination.surface + (destination.grassOnly ? " · Grasplatz" : ""))
+                    detailRow("Platzhöhe", "\(Int(destination.elevationFeet.rounded())) ft")
+                    if !destination.status.isEmpty { detailRow("Datenstatus", destination.status) }
+                }
+
+                informationSection("VERSORGUNG & MOBILITÄT") {
+                    if !fuelText.isEmpty { detailRow("Kraftstoff", fuelText) }
+                    if !destination.transfer.isEmpty {
+                        detailRow(
+                            "Transfer",
+                            destination.transfer
+                                + (destination.transferMinutes > 0
+                                   ? " · ca. \(destination.transferMinutes) min"
+                                   : "")
+                        )
+                    }
+                    detailRow("Fahrrad", destination.bikeDirect)
+                    detailRow("Mietwagen", destination.rentalCarDirect)
+                    detailRow("app2drive", destination.app2DriveDirect)
+                    if !destination.restaurantDirect.isEmpty {
+                        detailRow("Restaurant", destination.restaurantDirect)
+                    }
+                    if !destination.restaurantName.isEmpty {
+                        detailRow("Gastronomie", destination.restaurantName)
+                    }
+                    if !destination.restaurantOpeningHours.isEmpty {
+                        detailRow("Gastrozeiten", destination.restaurantOpeningHours)
+                    }
+                }
+
+                informationSection("HINWEISE") {
+                    if !destination.highlights.isEmpty {
+                        detailRow("Highlights", destination.highlights)
+                    }
+                    if !destination.activities.isEmpty {
+                        detailRow("Aktivitäten", destination.activities)
+                    }
+                    if !destination.airportNote.isEmpty {
+                        detailRow("Flugplatz", destination.airportNote)
+                    }
+                    if !destination.restaurantNotes.isEmpty {
+                        detailRow("Gastronomie", destination.restaurantNotes)
+                    }
+                }
+
+                HStack(spacing: 18) {
+                    if let url = URL(string: destination.airportSource),
+                       !destination.airportSource.isEmpty {
+                        Link("Flugplatzquelle öffnen", destination: url)
+                    }
+                    if let url = URL(string: destination.tourismSource),
+                       !destination.tourismSource.isEmpty {
+                        Link("Tourismusquelle öffnen", destination: url)
+                    }
+                }
+                .font(.system(size: 12, weight: .bold))
+
+                Text("Betriebszeiten, PPR, NOTAM und Pistenzustand vor dem Flug beim Betreiber bestätigen.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(18)
+        }
+        .frame(width: 500, height: 620)
+    }
+
+    @ViewBuilder
+    private func informationSection<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+            content()
+        }
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(label)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+                .frame(width: 92, alignment: .leading)
+            Text(value.isEmpty ? "–" : value)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(FlybookColor.navy)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func clock(_ date: Date, timeZone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func fuelLine(
+        _ name: String,
+        availability: String,
+        price: Double?
+    ) -> String {
+        guard !availability.isEmpty || price != nil else { return "" }
+        var result = "\(name): \(availability.isEmpty ? "Preis hinterlegt" : availability)"
+        if let price {
+            result += String(format: " (%.2f €/l)", price)
+        }
+        return result
+    }
+}
+
 private struct PlanningWeather {
     let direction: Double?
     let speed: Double?
@@ -4147,6 +4400,7 @@ private struct FlightTimePlanningRows: View {
     let isOneWay: Bool
     @Binding var intermediateAirportICAO: String
     let airportOptions: [AirportReference]
+    let destinationInformation: [Destination]
     @Binding var outboundOriginSelection: String
     @Binding var outboundDestinationSelection: String
     @Binding var returnOriginSelection: String
@@ -4218,6 +4472,10 @@ private struct FlightTimePlanningRows: View {
 
     private var firstArrivalAirport: AirportReference {
         destinationReference
+    }
+
+    private func information(for airport: AirportReference) -> Destination? {
+        destinationInformation.first { $0.icao == airport.icao }
     }
 
     private var secondDepartureAirport: AirportReference {
@@ -4808,6 +5066,10 @@ private struct FlightTimePlanningRows: View {
                     plannedHomeReturn: homeArrivalInstant,
                     legOriginICAO: origin.icao
                 ),
+                leadingAirportInformation: information(for: origin),
+                trailingAirportInformation: information(for: firstArrivalAirport),
+                leadingInformationInstant: outboundStartInstant,
+                trailingInformationInstant: outboundArrivalInstant,
                 leadingAirportSelection: $outboundOriginSelection,
                 trailingAirportSelection: $outboundDestinationSelection,
                 airportOptions: airportOptions,
@@ -4962,6 +5224,10 @@ private struct FlightTimePlanningRows: View {
                     plannedHomeReturn: homeArrivalInstant,
                     legOriginICAO: secondDepartureAirport.icao
                 ),
+                leadingAirportInformation: information(for: secondDepartureAirport),
+                trailingAirportInformation: information(for: secondArrivalAirport),
+                leadingInformationInstant: returnDepartureInstant,
+                trailingInformationInstant: homeArrivalInstant,
                 leadingAirportSelection: $returnOriginSelection,
                 trailingAirportSelection: $returnDestinationSelection,
                 airportOptions: airportOptions,
@@ -5236,9 +5502,16 @@ private struct FlightPlanningLine<
     let trailingRunway: String?
     let leadingOperatingStatus: AirportOperatingStatus?
     let trailingOperatingStatus: AirportOperatingStatus?
+    let leadingAirportInformation: Destination?
+    let trailingAirportInformation: Destination?
+    let leadingInformationInstant: Date?
+    let trailingInformationInstant: Date?
     let leadingAirportSelection: Binding<String>?
     let trailingAirportSelection: Binding<String>?
     let airportOptions: [AirportReference]
+
+    @State private var showsLeadingAirportInformation = false
+    @State private var showsTrailingAirportInformation = false
 
     @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
     private var greenYellowMinutes =
@@ -5365,7 +5638,10 @@ private struct FlightPlanningLine<
                         selection: leadingAirportSelection,
                         runway: leadingRunway,
                         warning: leadingWeather.runwayCrosswindWarning,
-                        operatingStatus: leadingOperatingStatus
+                        operatingStatus: leadingOperatingStatus,
+                        airportInformation: leadingAirportInformation,
+                        informationInstant: leadingInformationInstant,
+                        showsInformation: $showsLeadingAirportInformation
                     )
                 } else {
                     FlightLocationHeader(
@@ -5388,7 +5664,10 @@ private struct FlightPlanningLine<
                         selection: trailingAirportSelection,
                         runway: trailingRunway,
                         warning: trailingWeather.runwayCrosswindWarning,
-                        operatingStatus: trailingOperatingStatus
+                        operatingStatus: trailingOperatingStatus,
+                        airportInformation: trailingAirportInformation,
+                        informationInstant: trailingInformationInstant,
+                        showsInformation: $showsTrailingAirportInformation
                     )
                 } else {
                     FlightLocationHeader(
@@ -5425,7 +5704,10 @@ private struct FlightPlanningLine<
         selection: Binding<String>,
         runway: String?,
         warning: RunwayCrosswindWarning,
-        operatingStatus: AirportOperatingStatus?
+        operatingStatus: AirportOperatingStatus?,
+        airportInformation: Destination?,
+        informationInstant: Date?,
+        showsInformation: Binding<Bool>
     ) -> some View {
         VStack(spacing: 0) {
             Text(title)
@@ -5436,12 +5718,13 @@ private struct FlightPlanningLine<
                 .padding(.top, 4)
 
             HStack(spacing: 6) {
-                Circle()
-                    .fill(airportOperatingStatusColor(operatingStatus))
-                    .overlay(
-                        Circle().stroke(FlybookColor.navy.opacity(0.35), lineWidth: 1)
-                    )
-                    .frame(width: 11, height: 11)
+                airportOperatingStatusView(
+                    selection: selection,
+                    status: operatingStatus,
+                    information: airportInformation,
+                    instant: informationInstant,
+                    isPresented: showsInformation
+                )
 
                 RunwayRecommendationButton(
                     runway: runway,
@@ -5456,6 +5739,47 @@ private struct FlightPlanningLine<
             }
             .frame(height: 28)
             .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder
+    private func airportOperatingStatusView(
+        selection: Binding<String>,
+        status: AirportOperatingStatus?,
+        information: Destination?,
+        instant: Date?,
+        isPresented: Binding<Bool>
+    ) -> some View {
+        let statusCircle = Circle()
+            .fill(airportOperatingStatusColor(status))
+            .overlay(
+                Circle().stroke(FlybookColor.navy.opacity(0.35), lineWidth: 1)
+            )
+            .frame(width: 11, height: 11)
+
+        if let information,
+           let airport = airportOptions.first(where: {
+               $0.icao == selection.wrappedValue
+           }) {
+            Button {
+                isPresented.wrappedValue = true
+            } label: {
+                statusCircle
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Betriebszeit und alle Flugplatzinformationen anzeigen")
+            .popover(isPresented: isPresented) {
+                AirportInformationPopover(
+                    destination: information,
+                    airport: airport,
+                    instant: instant
+                )
+            }
+        } else {
+            statusCircle
+                .help(airportOperatingStatusHelp(status))
         }
     }
 
@@ -5504,6 +5828,18 @@ private struct FlightPlanningLine<
         case .flyingWithoutFlightDirector: return FlybookColor.blue
         case .closedOrPPR: return Color.red
         case .none: return Color.gray
+        }
+    }
+
+    private func airportOperatingStatusHelp(
+        _ status: AirportOperatingStatus?
+    ) -> String {
+        switch status {
+        case .open: return "Flugplatz zum Planungszeitpunkt geöffnet"
+        case .closingSoon: return "Flugplatz schließt innerhalb von 30 Minuten"
+        case .flyingWithoutFlightDirector: return "Fliegen ohne Flugleiter möglich"
+        case .closedOrPPR: return "Flugplatz geschlossen oder PPR"
+        case .none: return "Betriebszeit nicht hinterlegt"
         }
     }
 

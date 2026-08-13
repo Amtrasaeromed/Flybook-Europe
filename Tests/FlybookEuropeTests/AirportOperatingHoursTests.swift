@@ -73,6 +73,44 @@ final class AirportOperatingHoursTests: XCTestCase {
         XCTAssertEqual(formatter.string(from: window.closing), "21:00")
     }
 
+    func testAmelandOpensAt0930LocalInSummer() throws {
+        let airport = AirportReference(
+            icao: "EHAL",
+            name: "Ameland",
+            latitude: 53.4517,
+            longitude: 5.6772,
+            elevationFeet: 11,
+            timeZone: try XCTUnwrap(TimeZone(identifier: "Europe/Amsterdam"))
+        )
+
+        XCTAssertEqual(
+            assessment(airport, "2026-08-14T07:22:00Z", .ehal),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-14T07:30:00Z", .ehal),
+            .confirmedOpen
+        )
+
+        let instant = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2026-08-14T12:00:00Z")
+        )
+        guard case .confirmed(let windows) =
+            AirportOperatingHoursEvaluator.dailyOpeningHours(
+                airport: airport,
+                at: instant
+            )
+        else {
+            return XCTFail("Expected confirmed Ameland opening hours")
+        }
+        let window = try XCTUnwrap(windows.first)
+        let formatter = DateFormatter()
+        formatter.timeZone = airport.timeZone
+        formatter.dateFormat = "HH:mm"
+        XCTAssertEqual(formatter.string(from: window.opening), "09:30")
+        XCTAssertEqual(formatter.string(from: window.closing), "19:00")
+    }
+
     func testAlternateOpeningHoursFilterHasStrictConfirmedMode() {
         XCTAssertTrue(
             AlternateOpeningHoursFilter.off.includes(.confirmedClosed)
