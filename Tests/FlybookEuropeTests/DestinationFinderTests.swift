@@ -23,6 +23,52 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testMinimumWeatherCoverageAllowsThreeBadOfTwelveDaylightHours() {
+        let categories = Array(repeating: FlightCategory.vfr, count: 9)
+            + Array(repeating: FlightCategory.ifr, count: 3)
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.minimumWeatherMatches(
+                categories,
+                minimum: .mvfr,
+                usesCoverageRule: true
+            )
+        )
+    }
+
+    func testMinimumWeatherCoverageRejectsLessThanSixtySixPercent() {
+        let categories = Array(repeating: FlightCategory.vfr, count: 7)
+            + Array(repeating: FlightCategory.ifr, count: 5)
+
+        XCTAssertFalse(
+            DestinationFinderEvaluator.minimumWeatherMatches(
+                categories,
+                minimum: .mvfr,
+                usesCoverageRule: true
+            )
+        )
+    }
+
+    func testStrictMinimumWeatherStillRejectsOneBadHour() {
+        XCTAssertFalse(
+            DestinationFinderEvaluator.minimumWeatherMatches(
+                [.vfr, .vfr, .ifr],
+                minimum: .mvfr,
+                usesCoverageRule: false
+            )
+        )
+    }
+
+    func testUnavailableWeatherCountsAsNotMeetingCoverage() {
+        XCTAssertFalse(
+            DestinationFinderEvaluator.minimumWeatherMatches(
+                [.vfr, .unavailable],
+                minimum: .mvfr,
+                usesCoverageRule: true
+            )
+        )
+    }
+
     private let destination = AirportReference(
         icao: "TEST",
         name: "Test",

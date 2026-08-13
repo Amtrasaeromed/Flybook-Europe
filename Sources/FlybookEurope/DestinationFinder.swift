@@ -44,6 +44,7 @@ struct DestinationFinderCriteria {
     let ignoresGusts: Bool
     let minimumWeather: DestinationFinderMinimumWeather
     var ignoresMinimumWeather = false
+    var usesMinimumWeatherCoverageRule = true
     let requiresCloudless: Bool
     let requiresRainFree: Bool
     let daylightOnly: Bool
@@ -95,6 +96,7 @@ private final class DestinationFinderSession {
     var ignoresGusts = true
     var minimumWeather = DestinationFinderMinimumWeather.vfr
     var ignoresMinimumWeather = false
+    var usesMinimumWeatherCoverageRule = true
     var requiresCloudless = false
     var requiresRainFree = false
     var daylightOnly = true
@@ -154,6 +156,7 @@ private final class DestinationFinderSession {
         ignoresGusts = true
         minimumWeather = .vfr
         ignoresMinimumWeather = false
+        usesMinimumWeatherCoverageRule = true
         requiresCloudless = false
         requiresRainFree = false
         daylightOnly = true
@@ -289,13 +292,11 @@ enum DestinationFinderEvaluator {
         }
 
         let categories = selected.map(category)
-        guard criteria.ignoresMinimumWeather || (
-              !categories.contains(.unavailable)
-              &&
-              categories.allSatisfy({
-                  $0.severity <= criteria.minimumWeather.maximumSeverity
-              })
-              )
+        guard criteria.ignoresMinimumWeather || minimumWeatherMatches(
+            categories,
+            minimum: criteria.minimumWeather,
+            usesCoverageRule: criteria.usesMinimumWeatherCoverageRule
+        )
         else { return false }
 
         if criteria.requiresCloudless {
@@ -317,6 +318,22 @@ enum DestinationFinderEvaluator {
         }
 
         return true
+    }
+
+    static func minimumWeatherMatches(
+        _ categories: [FlightCategory],
+        minimum: DestinationFinderMinimumWeather,
+        usesCoverageRule: Bool
+    ) -> Bool {
+        guard !categories.isEmpty else { return false }
+        let acceptable = categories.filter {
+            $0 != .unavailable
+                && $0.severity <= minimum.maximumSeverity
+        }.count
+        if usesCoverageRule {
+            return Double(acceptable) / Double(categories.count) >= 0.66
+        }
+        return acceptable == categories.count
     }
 
     static func category(
@@ -1141,6 +1158,7 @@ struct DestinationFinderView: View {
     @State private var ignoresGusts = true
     @State private var minimumWeather = DestinationFinderMinimumWeather.vfr
     @State private var ignoresMinimumWeather = false
+    @State private var usesMinimumWeatherCoverageRule = true
     @State private var requiresCloudless = false
     @State private var requiresRainFree = false
     @State private var daylightOnly = true
@@ -1199,6 +1217,9 @@ struct DestinationFinderView: View {
         _ignoresGusts = State(initialValue: session.ignoresGusts)
         _minimumWeather = State(initialValue: session.minimumWeather)
         _ignoresMinimumWeather = State(initialValue: session.ignoresMinimumWeather)
+        _usesMinimumWeatherCoverageRule = State(
+            initialValue: session.usesMinimumWeatherCoverageRule
+        )
         _requiresCloudless = State(initialValue: session.requiresCloudless)
         _requiresRainFree = State(initialValue: session.requiresRainFree)
         _daylightOnly = State(initialValue: session.daylightOnly)
@@ -1296,14 +1317,6 @@ struct DestinationFinderView: View {
                 DatePicker("Von", selection: $from)
                 DatePicker("Bis", selection: $until)
             }
-            Toggle(isOn: $daylightOnly) {
-                Label(
-                    "Tagsüber · Sonnenaufgang–Sonnenuntergang",
-                    systemImage: "sunrise.fill"
-                )
-            }
-            .toggleStyle(.checkbox)
-            .help("Wendet die Filter am jeweiligen Ziel nur auf Stunden zwischen Sonnenaufgang und Sonnenuntergang an.")
         }
     }
 
@@ -1760,7 +1773,66 @@ struct DestinationFinderView: View {
                     .toggleStyle(.checkbox)
                 Spacer()
             }
+            Toggle(isOn: $daylightOnly) {
+                Label(
+                    "Nur Sonnenaufgang–Sonnenuntergang berücksichtigen",
+                    systemImage: "sunrise.fill"
+                )
+            }
+            .toggleStyle(.checkbox)
+            .disabled(usesMinimumWeatherCoverageRule)
+            .help(
+                usesMinimumWeatherCoverageRule
+                    ? "Die 66-%-Tagesregel verwendet immer die Stunden zwischen Sonnenaufgang und Sonnenuntergang."
+                    : "Wendet den Flugwetterfilter nur auf Stunden zwischen Sonnenaufgang und Sonnenuntergang am Ziel an."
+            )
+
+            Toggle(isOn: Binding(
+                get: { usesMinimumWeatherCoverageRule },
+                set: { enabled in
+                    usesMinimumWeatherCoverageRule = enabled
+                    if enabled { daylightOnly = true }
+                }
+            )) {
+                Label(
+                    "66-%-Tagesregel",
+                    systemImage: "chart.pie.fill"
+                )
+            }
+            .toggleStyle(.checkbox)
+            .disabled(ignoresMinimumWeather)
+            .help("Mindestens 66 % der Tageslichtstunden müssen die gewählte Flugwetterkategorie oder besser erreichen.")
+
+            Text(minimumWeatherRuleExplanation)
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+    }
+
+    private var minimumWeatherRuleExplanation: String {
+        if ignoresMinimumWeather {
+            return "Der Filter für die Flugwetterkategorie ist deaktiviert."
+        }
+        if usesMinimumWeatherCoverageRule {
+            return "Mindestens 66 % der Stunden zwischen Sonnenaufgang und Sonnenuntergang müssen \(minimumWeather.rawValue) oder besser sein. Bis zu 34 % schlechtere Stunden bleiben zulässig."
+        }
+        let period = daylightOnly
+            ? "zwischen Sonnenaufgang und Sonnenuntergang"
+            : "im gesamten gewählten Zeitraum"
+        return "Jede Wetterstunde \(period) muss \(minimumWeather.rawValue) oder besser sein."
+    }
+
+    private var targetWeatherFilterSummary: String {
+        guard !ignoresMinimumWeather else {
+            return "Zielwetter: Flugwetterkategorie ignoriert"
+        }
+        let period = daylightOnly
+            ? "Sonnenaufgang–Sonnenuntergang"
+            : (daytimeOnly ? "06:00–22:00" : "gesamter Zeitraum")
+        let rule = usesMinimumWeatherCoverageRule
+            ? "mindestens 66 % der Stunden"
+            : "jede Stunde"
+        return "Zielwetter: mind. \(minimumWeather.rawValue) · \(period) · \(rule)"
     }
 
     private var routeWeatherSection: some View {
@@ -1812,6 +1884,11 @@ struct DestinationFinderView: View {
                 Text("\(matches.count) Ziele")
                     .font(.system(size: 14, weight: .bold))
             }
+            Label(targetWeatherFilterSummary, systemImage: "cloud.sun.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(
+                    ignoresMinimumWeather ? Color.secondary : FlybookColor.blue
+                )
             if matches.isEmpty {
                 Text(
                     isFiltering
@@ -2097,6 +2174,7 @@ struct DestinationFinderView: View {
         session.ignoresGusts = ignoresGusts
         session.minimumWeather = minimumWeather
         session.ignoresMinimumWeather = ignoresMinimumWeather
+        session.usesMinimumWeatherCoverageRule = usesMinimumWeatherCoverageRule
         session.requiresCloudless = requiresCloudless
         session.requiresRainFree = requiresRainFree
         session.daylightOnly = daylightOnly
@@ -2142,6 +2220,7 @@ struct DestinationFinderView: View {
         ignoresGusts = session.ignoresGusts
         minimumWeather = session.minimumWeather
         ignoresMinimumWeather = session.ignoresMinimumWeather
+        usesMinimumWeatherCoverageRule = session.usesMinimumWeatherCoverageRule
         requiresCloudless = session.requiresCloudless
         requiresRainFree = session.requiresRainFree
         daylightOnly = session.daylightOnly
@@ -2189,6 +2268,7 @@ struct DestinationFinderView: View {
             ignoresGusts: ignoresGusts,
             minimumWeather: minimumWeather,
             ignoresMinimumWeather: ignoresMinimumWeather,
+            usesMinimumWeatherCoverageRule: usesMinimumWeatherCoverageRule,
             requiresCloudless: requiresCloudless,
             requiresRainFree: requiresRainFree,
             daylightOnly: daylightOnly,
