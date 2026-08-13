@@ -3116,7 +3116,7 @@ struct DestinationPage: View {
         FlybookCard {
             VStack(spacing: 12) {
                 HStack(spacing: 9) {
-                    Text("FLUGPLANUNG")
+                    Text("FLUGPLAN")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
 
@@ -6571,6 +6571,7 @@ private struct FlightPlanningLine<
 
     @State private var showsLeadingAirportInformation = false
     @State private var showsTrailingAirportInformation = false
+    @State private var showsAltitudeSelection = false
 
     @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
     private var greenYellowMinutes =
@@ -7123,30 +7124,114 @@ private struct FlightPlanningLine<
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                     .frame(width: 140, alignment: .trailing)
-                Picker("Flughöhe", selection: $flightAltitudeFeet) {
-                    ForEach(altitudeOptions, id: \.self) { altitude in
-                        Text(altitudeLabel(altitude))
+                Button {
+                    showsAltitudeSelection.toggle()
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(altitudeLabel(flightAltitudeFeet))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(
-                                FlightAltitudeRules.isRecommended(
-                                    altitude,
-                                    forCourseDegrees: semicircularCourseDegrees
-                                )
+                                isRecommendedAltitude(flightAltitudeFeet)
                                     ? FlybookColor.navy
                                     : FlybookColor.muted.opacity(0.55)
                             )
-                            .tag(altitude)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(FlybookColor.muted)
                     }
+                    .padding(.horizontal, 7)
+                    .frame(width: 96, height: 23)
                 }
-                .labelsHidden()
-                .font(.system(size: 14, weight: .bold))
-                .controlSize(.small)
-                .frame(width: 96)
+                .buttonStyle(.plain)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(FlybookColor.line, lineWidth: 1)
+                )
+                .popover(isPresented: $showsAltitudeSelection, arrowEdge: .bottom) {
+                    altitudeSelectionPopover
+                }
                 Group {
                     if let headwindKnots { WindInfluenceLabel(headwindKnots: headwindKnots) }
                 }
                 .frame(width: 130, alignment: .leading)
             }
             .frame(width: 366, alignment: .center)
+    }
+
+    private var altitudeSelectionPopover: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("FLUGHÖHE")
+                .font(.system(size: 12, weight: .black))
+                .foregroundStyle(FlybookColor.navy)
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(FlybookColor.navy)
+                    .frame(width: 6, height: 6)
+                Text("passend zur Halbkreisflugregel")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(FlybookColor.muted)
+            }
+
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(altitudeOptions, id: \.self) { altitude in
+                        altitudeSelectionRow(altitude)
+                    }
+                }
+            }
+            .frame(height: 390)
+        }
+        .padding(10)
+        .frame(width: 210)
+    }
+
+    private func altitudeSelectionRow(_ altitude: Int) -> some View {
+        let recommended = isRecommendedAltitude(altitude)
+        return Button {
+            flightAltitudeFeet = altitude
+            showsAltitudeSelection = false
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .black))
+                    .opacity(flightAltitudeFeet == altitude ? 1 : 0)
+                Text(altitudeLabel(altitude))
+                    .font(.system(size: 12, weight: recommended ? .bold : .medium))
+                Spacer(minLength: 0)
+                if recommended {
+                    Text("Halbkreis")
+                        .font(.system(size: 8, weight: .bold))
+                }
+            }
+            .foregroundStyle(
+                recommended
+                    ? FlybookColor.navy
+                    : FlybookColor.muted.opacity(0.42)
+            )
+            .padding(.horizontal, 7)
+            .frame(maxWidth: .infinity, minHeight: 25)
+            .background(
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(
+                        flightAltitudeFeet == altitude
+                            ? FlybookColor.blue.opacity(0.13)
+                            : Color.clear
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func isRecommendedAltitude(_ altitude: Int) -> Bool {
+        FlightAltitudeRules.isRecommended(
+            altitude,
+            forCourseDegrees: semicircularCourseDegrees
+        )
     }
 
     private func planningActionButton(
