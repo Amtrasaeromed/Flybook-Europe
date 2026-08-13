@@ -5,21 +5,21 @@ final class FuelPriceServiceTests: XCTestCase {
     func testOfficialMarlPageParserUsesGrossPricesAndDate() {
         let html = """
         <h3>Kraftstoff AVGAS 100LL</h3>
-        <div>EUR 3,06 pro Liter (Brutto)</div>
-        <div>EUR 2,57 pro Liter (Netto)</div>
+        <div>EUR 3,14 pro Liter (Brutto)</div>
+        <div>EUR 2,64 pro Liter (Netto)</div>
         <h3>Kraftstoff JET A-1</h3>
-        <div>EUR 3,08 pro Liter (Brutto)</div>
+        <div>EUR 3,18 pro Liter (Brutto)</div>
         <h3>Kraftstoff SUPER PLUS</h3>
-        <div>EUR 2,49 pro Liter (Brutto)</div>
-        <div>EUR 2,09 pro Liter (Netto)</div>
-        <p>Datenstand: 01.07.2026</p>
+        <div>EUR 2,61 pro Liter (Brutto)</div>
+        <div>EUR 2,19 pro Liter (Netto)</div>
+        <p>Datenstand: 13.08.2026</p>
         """
 
         let record = MonthlyFuelPriceService.parseOfficialMarlPage(html)
 
-        XCTAssertEqual(record.avgas, 3.06)
-        XCTAssertEqual(record.mogas, 2.49)
-        XCTAssertEqual(record.reportedAt, "Stand 01.07.2026")
+        XCTAssertEqual(record.avgas, 3.14)
+        XCTAssertEqual(record.mogas, 2.61)
+        XCTAssertEqual(record.reportedAt, "Stand 13.08.2026")
     }
 
     func testCachedPricesOverrideSeedWithoutDroppingOtherFuelTypes() {
@@ -45,6 +45,29 @@ final class FuelPriceServiceTests: XCTestCase {
         XCTAssertEqual(result["EDKA"]?.ul91, 2.70)
         XCTAssertEqual(result["EDKA"]?.mogas, 2.81)
         XCTAssertEqual(result["EDKA"]?.reportedAt, "Stand 01.08.2026")
+    }
+
+    func testOlderCachedPriceCannotReplaceNewerSeed() {
+        let result = MonthlyFuelPriceService.mergedPrices(
+            seed: [
+                "EDLM": FuelPriceRecord(
+                    avgas: 3.14,
+                    mogas: 2.61,
+                    reportedAt: "Stand 2026-08-13"
+                )
+            ],
+            cached: [
+                "EDLM": FuelPriceRecord(
+                    avgas: 3.06,
+                    mogas: 2.49,
+                    reportedAt: "Stand 01.07.2026"
+                )
+            ]
+        )
+
+        XCTAssertEqual(result["EDLM"]?.avgas, 3.14)
+        XCTAssertEqual(result["EDLM"]?.mogas, 2.61)
+        XCTAssertEqual(result["EDLM"]?.reportedAt, "Stand 2026-08-13")
     }
 
     func testSelectedAirportIsCheckedAtMostDaily() {

@@ -26,7 +26,7 @@ enum FuelPriceSettingsKey {
 
 actor MonthlyFuelPriceService {
     static let shared = MonthlyFuelPriceService()
-    nonisolated private static let validationVersion = 7
+    nonisolated private static let validationVersion = 8
 
     private struct Cache: Codable {
         let monthKey: String
@@ -109,14 +109,53 @@ actor MonthlyFuelPriceService {
         var result = seed
         for (icao, cachedRecord) in cached {
             let fallback = result[icao]
-            result[icao] = FuelPriceRecord(
-                avgas: cachedRecord.avgas ?? fallback?.avgas,
-                ul91: cachedRecord.ul91 ?? fallback?.ul91,
-                mogas: cachedRecord.mogas ?? fallback?.mogas,
-                reportedAt: cachedRecord.reportedAt ?? fallback?.reportedAt
+            result[icao] = mergedRecord(
+                cachedRecord,
+                fallback: fallback
             )
         }
         return result
+    }
+
+    nonisolated private static func mergedRecord(
+        _ candidate: FuelPriceRecord,
+        fallback: FuelPriceRecord?
+    ) -> FuelPriceRecord {
+        if let fallback,
+           let candidateDate = reportedDate(candidate.reportedAt),
+           let fallbackDate = reportedDate(fallback.reportedAt),
+           candidateDate < fallbackDate {
+            return fallback
+        }
+        return FuelPriceRecord(
+            avgas: candidate.avgas ?? fallback?.avgas,
+            ul91: candidate.ul91 ?? fallback?.ul91,
+            mogas: candidate.mogas ?? fallback?.mogas,
+            reportedAt: candidate.reportedAt ?? fallback?.reportedAt
+        )
+    }
+
+    nonisolated private static func reportedDate(
+        _ text: String?
+    ) -> Date? {
+        guard let text else { return nil }
+        for format in ["dd.MM.yyyy", "yyyy-MM-dd"] {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = DestinationTimeZone.edfz
+            formatter.dateFormat = format
+            let pattern = format == "dd.MM.yyyy"
+                ? #"[0-9]{2}\.[0-9]{2}\.[0-9]{4}"#
+                : #"[0-9]{4}-[0-9]{2}-[0-9]{2}"#
+            guard let range = text.range(
+                of: pattern,
+                options: .regularExpression
+            ) else { continue }
+            if let date = formatter.date(from: String(text[range])) {
+                return date
+            }
+        }
+        return nil
     }
 
     static func shouldRefresh(
@@ -394,13 +433,7 @@ actor MonthlyFuelPriceService {
         _ fetched: FuelPriceRecord,
         fallback: FuelPriceRecord?
     ) -> FuelPriceRecord {
-        FuelPriceRecord(
-            avgas: fetched.avgas ?? fallback?.avgas,
-            ul91: fetched.ul91 ?? fallback?.ul91,
-            mogas: fetched.mogas ?? fallback?.mogas,
-            reportedAt:
-                fetched.reportedAt ?? fallback?.reportedAt
-        )
+        Self.mergedRecord(fetched, fallback: fallback)
     }
 
     nonisolated private static func cacheURL() throws -> URL {
