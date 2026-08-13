@@ -69,6 +69,78 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testRainFreeCoverageRequiresSixtySixPercentOnEveryDay() {
+        let firstDay = utcDate(year: 2026, month: 8, day: 17)
+        let secondDay = utcDate(year: 2026, month: 8, day: 18)
+        let firstDayHours = rainHours(
+            on: firstDay,
+            dryHours: 8,
+            rainyHours: 4
+        )
+        let secondDayHours = rainHours(
+            on: secondDay,
+            dryHours: 8,
+            rainyHours: 4
+        )
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.rainFreeCoverageMatches(
+                firstDayHours + secondDayHours,
+                from: firstDay,
+                until: secondDay.addingTimeInterval(23 * 3600),
+                destination: destination
+            )
+        )
+    }
+
+    func testGoodDayCannotCompensateForDayBelowRainFreeCoverage() {
+        let firstDay = utcDate(year: 2026, month: 8, day: 17)
+        let secondDay = utcDate(year: 2026, month: 8, day: 18)
+        let firstDayHours = rainHours(
+            on: firstDay,
+            dryHours: 7,
+            rainyHours: 5
+        )
+        let secondDayHours = rainHours(
+            on: secondDay,
+            dryHours: 12,
+            rainyHours: 0
+        )
+
+        XCTAssertFalse(
+            DestinationFinderEvaluator.rainFreeCoverageMatches(
+                firstDayHours + secondDayHours,
+                from: firstDay,
+                until: secondDay.addingTimeInterval(23 * 3600),
+                destination: destination
+            )
+        )
+    }
+
+    func testNightRainDoesNotCountAgainstRainFreeDaylightCoverage() {
+        let day = utcDate(year: 2026, month: 8, day: 17)
+        let nightRain = DestinationFinderWeatherHour(
+            instant: day.addingTimeInterval(2 * 3600),
+            temperatureCelsius: 15,
+            steadyWindKnots: 5,
+            gustKnots: 8,
+            precipitationMillimeters: 2,
+            totalCloudCoverPercent: 100,
+            visibilityMeters: 5_000,
+            lowCloudCoverPercent: 100,
+            dewPointCelsius: 14
+        )
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.rainFreeCoverageMatches(
+                [nightRain] + rainHours(on: day, dryHours: 12, rainyHours: 0),
+                from: day,
+                until: day.addingTimeInterval(23 * 3600),
+                destination: destination
+            )
+        )
+    }
+
     private let destination = AirportReference(
         icao: "TEST",
         name: "Test",
@@ -356,6 +428,36 @@ final class DestinationFinderTests: XCTestCase {
 
     private var baseDate: Date {
         Date(timeIntervalSince1970: 1_800_000_000)
+    }
+
+    private func utcDate(year: Int, month: Int, day: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar.date(from: DateComponents(
+            year: year,
+            month: month,
+            day: day
+        ))!
+    }
+
+    private func rainHours(
+        on day: Date,
+        dryHours: Int,
+        rainyHours: Int
+    ) -> [DestinationFinderWeatherHour] {
+        (0..<(dryHours + rainyHours)).map { index in
+            DestinationFinderWeatherHour(
+                instant: day.addingTimeInterval(Double(index + 6) * 3600),
+                temperatureCelsius: 20,
+                steadyWindKnots: 5,
+                gustKnots: 8,
+                precipitationMillimeters: index < dryHours ? 0 : 0.1,
+                totalCloudCoverPercent: 0,
+                visibilityMeters: 10_000,
+                lowCloudCoverPercent: 0,
+                dewPointCelsius: 10
+            )
+        }
     }
 
     private func hour(

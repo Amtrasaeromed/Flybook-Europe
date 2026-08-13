@@ -47,6 +47,7 @@ struct DestinationFinderCriteria {
     var usesMinimumWeatherCoverageRule = true
     let requiresCloudless: Bool
     let requiresRainFree: Bool
+    var requiresRainFreeCoverage = false
     let daylightOnly: Bool
     let daytimeOnly: Bool
     var maximumRouteWeatherRisk = RouteWeatherRisk.green
@@ -60,6 +61,7 @@ struct DestinationFinderCriteria {
             || !ignoresMinimumWeather
             || requiresCloudless
             || requiresRainFree
+            || requiresRainFreeCoverage
     }
 }
 
@@ -99,6 +101,7 @@ private final class DestinationFinderSession {
     var usesMinimumWeatherCoverageRule = true
     var requiresCloudless = false
     var requiresRainFree = false
+    var requiresRainFreeCoverage = false
     var daylightOnly = true
     var daytimeOnly = false
     var filterUserRaw = ""
@@ -159,6 +162,7 @@ private final class DestinationFinderSession {
         usesMinimumWeatherCoverageRule = true
         requiresCloudless = false
         requiresRainFree = false
+        requiresRainFreeCoverage = false
         daylightOnly = true
         daytimeOnly = false
         filterUserRaw = activeUserRaw
@@ -309,12 +313,22 @@ enum DestinationFinderEvaluator {
             else { return false }
         }
 
-        if criteria.requiresRainFree,
-           selected.contains(where: {
-               ($0.precipitationMillimeters ?? 0) >= 0.1
-           })
-        {
-            return false
+        if criteria.requiresRainFree {
+            guard selected.allSatisfy({ hour in
+                guard let precipitation = hour.precipitationMillimeters else {
+                    return false
+                }
+                return precipitation < 0.1
+            }) else { return false }
+        }
+
+        if criteria.requiresRainFreeCoverage {
+            guard rainFreeCoverageMatches(
+                hours,
+                from: criteria.from,
+                until: criteria.until,
+                destination: destination
+            ) else { return false }
         }
 
         return true
@@ -334,6 +348,61 @@ enum DestinationFinderEvaluator {
             return Double(acceptable) / Double(categories.count) >= 0.66
         }
         return acceptable == categories.count
+    }
+
+    static func rainFreeCoverageMatches(
+        _ hours: [DestinationFinderWeatherHour],
+        from: Date,
+        until: Date,
+        destination: AirportReference
+    ) -> Bool {
+        guard until >= from else { return false }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = destination.timeZone
+        var day = calendar.startOfDay(for: from)
+        let lastDay = calendar.startOfDay(for: until)
+        var evaluatedDay = false
+
+        while day <= lastDay {
+            let localNoon = calendar.date(
+                bySettingHour: 12,
+                minute: 0,
+                second: 0,
+                of: day
+            ) ?? day
+            if let events = SolarCalculator.events(
+                forLocalDayContaining: localNoon,
+                latitude: destination.latitude,
+                longitude: destination.longitude,
+                timeZone: destination.timeZone
+            ) {
+                let daylightStart = max(from, events.sunrise)
+                let daylightEnd = min(until, events.sunset)
+                if daylightStart <= daylightEnd {
+                    evaluatedDay = true
+                    let samples = hours.filter {
+                        $0.instant >= daylightStart
+                            && $0.instant <= daylightEnd
+                    }
+                    guard !samples.isEmpty else { return false }
+                    let rainFreeSamples = samples.filter {
+                        guard let precipitation = $0.precipitationMillimeters else {
+                            return false
+                        }
+                        return precipitation < 0.1
+                    }.count
+                    guard Double(rainFreeSamples) / Double(samples.count) >= 0.66
+                    else { return false }
+                }
+            }
+
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day)
+            else { return false }
+            day = nextDay
+        }
+
+        return evaluatedDay
     }
 
     static func category(
@@ -1161,6 +1230,7 @@ struct DestinationFinderView: View {
     @State private var usesMinimumWeatherCoverageRule = true
     @State private var requiresCloudless = false
     @State private var requiresRainFree = false
+    @State private var requiresRainFreeCoverage = false
     @State private var daylightOnly = true
     @State private var daytimeOnly = false
     @State private var maximumRouteWeatherRisk = RouteWeatherRisk.green
@@ -1222,6 +1292,9 @@ struct DestinationFinderView: View {
         )
         _requiresCloudless = State(initialValue: session.requiresCloudless)
         _requiresRainFree = State(initialValue: session.requiresRainFree)
+        _requiresRainFreeCoverage = State(
+            initialValue: session.requiresRainFreeCoverage
+        )
         _daylightOnly = State(initialValue: session.daylightOnly)
         _daytimeOnly = State(initialValue: session.daytimeOnly)
         _maximumRouteWeatherRisk = State(initialValue: session.maximumRouteWeatherRisk)
@@ -1717,9 +1790,24 @@ struct DestinationFinderView: View {
                         Toggle("Wolkenlos", isOn: $requiresCloudless)
                             .toggleStyle(.checkbox)
                             .help("Akzeptiert höchstens FEW und dies in weniger als 50 % des geprüften Zeitraums.")
-                        Toggle("Regenfrei", isOn: $requiresRainFree)
+                        Toggle("Regenfrei", isOn: Binding(
+                            get: { requiresRainFree },
+                            set: { enabled in
+                                requiresRainFree = enabled
+                                if enabled { requiresRainFreeCoverage = false }
+                            }
+                        ))
                             .toggleStyle(.checkbox)
                             .help("Schließt Ziele aus, sobald in einer geprüften Stunde mindestens 0,1 mm Niederschlag vorhergesagt ist.")
+                        Toggle("66 % regenfrei", isOn: Binding(
+                            get: { requiresRainFreeCoverage },
+                            set: { enabled in
+                                requiresRainFreeCoverage = enabled
+                                if enabled { requiresRainFree = false }
+                            }
+                        ))
+                            .toggleStyle(.checkbox)
+                            .help("Pro Kalendertag am Ziel müssen mindestens 66 % der Tageslichtstunden im gewählten Zeitraum weniger als 0,1 mm Niederschlag haben.")
                     }
                     Color.clear.frame(width: 210, height: 1)
                 }
@@ -1823,16 +1911,26 @@ struct DestinationFinderView: View {
     }
 
     private var targetWeatherFilterSummary: String {
-        guard !ignoresMinimumWeather else {
-            return "Zielwetter: Flugwetterkategorie ignoriert"
+        var conditions: [String] = []
+        if !ignoresMinimumWeather {
+            let period = daylightOnly
+                ? "Sonnenaufgang–Sonnenuntergang"
+                : (daytimeOnly ? "06:00–22:00" : "gesamter Zeitraum")
+            let rule = usesMinimumWeatherCoverageRule
+                ? "mindestens 66 % der Stunden"
+                : "jede Stunde"
+            conditions.append(
+                "mind. \(minimumWeather.rawValue) · \(period) · \(rule)"
+            )
         }
-        let period = daylightOnly
-            ? "Sonnenaufgang–Sonnenuntergang"
-            : (daytimeOnly ? "06:00–22:00" : "gesamter Zeitraum")
-        let rule = usesMinimumWeatherCoverageRule
-            ? "mindestens 66 % der Stunden"
-            : "jede Stunde"
-        return "Zielwetter: mind. \(minimumWeather.rawValue) · \(period) · \(rule)"
+        if requiresRainFree {
+            conditions.append("durchgehend regenfrei")
+        } else if requiresRainFreeCoverage {
+            conditions.append("pro Tag mind. 66 % der Tageslichtstunden regenfrei")
+        }
+        return conditions.isEmpty
+            ? "Zielwetter: Flugwetterkategorie und Regen ignoriert"
+            : "Zielwetter: " + conditions.joined(separator: " · ")
     }
 
     private var routeWeatherSection: some View {
@@ -2177,6 +2275,7 @@ struct DestinationFinderView: View {
         session.usesMinimumWeatherCoverageRule = usesMinimumWeatherCoverageRule
         session.requiresCloudless = requiresCloudless
         session.requiresRainFree = requiresRainFree
+        session.requiresRainFreeCoverage = requiresRainFreeCoverage
         session.daylightOnly = daylightOnly
         session.daytimeOnly = daytimeOnly
         session.filterUserRaw = filterUserRaw
@@ -2223,6 +2322,7 @@ struct DestinationFinderView: View {
         usesMinimumWeatherCoverageRule = session.usesMinimumWeatherCoverageRule
         requiresCloudless = session.requiresCloudless
         requiresRainFree = session.requiresRainFree
+        requiresRainFreeCoverage = session.requiresRainFreeCoverage
         daylightOnly = session.daylightOnly
         daytimeOnly = session.daytimeOnly
         filterUserRaw = session.filterUserRaw
@@ -2271,6 +2371,7 @@ struct DestinationFinderView: View {
             usesMinimumWeatherCoverageRule: usesMinimumWeatherCoverageRule,
             requiresCloudless: requiresCloudless,
             requiresRainFree: requiresRainFree,
+            requiresRainFreeCoverage: requiresRainFreeCoverage,
             daylightOnly: daylightOnly,
             daytimeOnly: daytimeOnly,
             maximumRouteWeatherRisk: maximumRouteWeatherRisk,
