@@ -158,7 +158,7 @@ final class RunwayDataTests: XCTestCase {
             uniqueKeysWithValues: store.destinations.map { ($0.icao, $0) }
         )
 
-        for icao in ["EDFE", "EDFM", "EDRY", "EDRK", "EDXE", "EDLM"] {
+        for icao in ["EDFE", "EDFM", "EDRY", "EDRK", "EDXE", "EDLM", "EDLS"] {
             let destination = try XCTUnwrap(
                 byICAO[icao],
                 "Preferred alternate \(icao) is missing from standard data"
@@ -195,6 +195,20 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(edlm.avgasPricePerLiterEUR, 3.14)
         XCTAssertEqual(edlm.mogasPricePerLiterEUR, 2.61)
         XCTAssertTrue(LandingVoucherBook.includes("EDLM"))
+    }
+
+    func testEDLSIsConfiguredAsCustomsFuelTechStop() throws {
+        let edls = try XCTUnwrap(
+            DestinationStore().destinations.first { $0.icao == "EDLS" }
+        )
+
+        XCTAssertTrue(edls.features.contains(.techStop))
+        XCTAssertEqual(edls.avgas, "Ja")
+        XCTAssertEqual(edls.jetA1, "Ja")
+        XCTAssertEqual(edls.mogas, "Ja")
+        XCTAssertEqual(edls.portOfEntry, "Ja")
+        XCTAssertEqual(edls.referenceRunway, "11/29")
+        XCTAssertEqual(edls.runwayM, 1_240)
     }
 
     func testKnownMultiRunwayReferencesUseConfiguredReferenceRunway() throws {

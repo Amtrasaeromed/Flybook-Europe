@@ -524,6 +524,37 @@ struct AirportOpeningHoursProfile: Codable, Equatable {
         )
     }()
 
+    static let edls: AirportOpeningHoursProfile = {
+        let summer = AirportOpeningPeriod(
+            fromUTC: "07:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 0,
+            latestUTC: "19:00"
+        )
+        let winter = AirportOpeningPeriod(
+            fromUTC: "08:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 0
+        )
+        func season(_ period: AirportOpeningPeriod) -> AirportSeasonHours {
+            AirportSeasonHours(
+                monday: period,
+                tuesday: period,
+                wednesday: period,
+                thursday: period,
+                friday: period,
+                saturday: period,
+                sunday: period,
+                holiday: period,
+                outsideHoursPPR: true
+            )
+        }
+        return AirportOpeningHoursProfile(
+            summer: season(summer),
+            winter: season(winter)
+        )
+    }()
+
     static let edfe: AirportOpeningHoursProfile = {
         let summer = AirportOpeningPeriod(
             fromUTC: "06:00",
@@ -812,6 +843,7 @@ enum AirportOpeningHoursStore {
             if normalized == "EDWF", profile.isCompletelyEmpty { return .edwf }
             if normalized == "EDXE", profile.isCompletelyEmpty { return .edxe }
             if normalized == "EDLM", profile.isCompletelyEmpty { return .edlm }
+            if normalized == "EDLS", profile.isCompletelyEmpty { return .edls }
             if normalized == "EDFE", profile.isCompletelyEmpty { return .edfe }
             if normalized == "EDFM", profile.isCompletelyEmpty { return .edfm }
             if normalized == "EDRY", profile.isCompletelyEmpty { return .edry }
@@ -832,6 +864,7 @@ enum AirportOpeningHoursStore {
         if normalized == "EDWF" { return .edwf }
         if normalized == "EDXE" { return .edxe }
         if normalized == "EDLM" { return .edlm }
+        if normalized == "EDLS" { return .edls }
         if normalized == "EDFE" { return .edfe }
         if normalized == "EDFM" { return .edfm }
         if normalized == "EDRY" { return .edry }
@@ -859,6 +892,7 @@ enum AirportOpeningHoursStore {
             || normalized == "EDWF"
             || normalized == "EDXE"
             || normalized == "EDLM"
+            || normalized == "EDLS"
             || normalized == "EDFE"
             || normalized == "EDFM"
             || normalized == "EDRY"

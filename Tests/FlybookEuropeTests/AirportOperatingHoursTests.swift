@@ -110,6 +110,36 @@ final class AirportOperatingHoursTests: XCTestCase {
         )
     }
 
+    func testEDLSSummerAndWinterSunsetHours() {
+        let airport = reference(
+            "EDLS", latitude: 51.9958, longitude: 6.8407
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T06:30:00Z", .edls),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T07:30:00Z", .edls),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T19:10:00Z", .edls),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T07:30:00Z", .edls),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T08:30:00Z", .edls),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T16:30:00Z", .edls),
+            .confirmedClosed
+        )
+    }
+
     func testDailyOpeningHoursUseAirportLocalTime() throws {
         let airport = reference(
             "EDFM", latitude: 49.4727, longitude: 8.5143
