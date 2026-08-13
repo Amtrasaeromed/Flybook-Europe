@@ -62,6 +62,64 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testCountryOnlyFilterFindsEveryUKMergeAirport() async {
+        let store = DestinationStore()
+        let criteria = DestinationFinderCriteria(
+            originICAO: "EDFZ",
+            from: baseDate,
+            until: baseDate.addingTimeInterval(24 * 3600),
+            maximumTravelMinutes: 0,
+            ignoresTravelTime: true,
+            appliesETOPS: false,
+            maximumRoundTripPriceEUR: 0,
+            ignoresPrice: true,
+            priceAppliesETOPS: true,
+            requiredFeatures: [],
+            allowedCountryCodes: ["GB"],
+            minimumTemperatureCelsius: 0,
+            ignoresMinimumTemperature: true,
+            maximumTemperatureCelsius: 0,
+            ignoresMaximumTemperature: true,
+            maximumSteadyWindKnots: 0,
+            ignoresWind: true,
+            maximumGustKnots: 0,
+            ignoresGusts: true,
+            minimumWeather: .vfr,
+            ignoresMinimumWeather: true,
+            requiresCloudless: false,
+            requiresRainFree: false,
+            daylightOnly: false,
+            daytimeOnly: false
+        )
+
+        let result = await DestinationFinderService.find(
+            destinations: store.destinations,
+            origins: [.edfz],
+            criteria: criteria,
+            aircraft: .a211,
+            greenYellowMinutes: 105,
+            orangeRedMinutes: 165,
+            tankStopMinutes: 60,
+            preTakeoffGroundMinutes: 7,
+            postLandingGroundMinutes: 3,
+            vatPercent: 7,
+            weekdayDiscountEnabled: false,
+            prepaymentDiscount15To29Enabled: false,
+            prepaymentDiscount30PlusEnabled: false
+        )
+        let found = Set(result.matches.map(\.destinationICAO))
+        let ukMergeICAOs = Set([
+            "EGHN", "EGHJ", "EGHF", "EGKA", "EGMD",
+            "EGHQ", "EGHR", "EGKH", "EGHA"
+        ])
+
+        XCTAssertTrue(
+            found.isSuperset(of: ukMergeICAOs),
+            "Im Länderfilter GB fehlen: \(ukMergeICAOs.subtracting(found).sorted())"
+        )
+    }
+
     func testOneTemperatureValueAboveMinimumIsEnough() {
         let hours = [hour(offset: 0, temperature: 9), hour(offset: 1, temperature: 12)]
         XCTAssertTrue(
