@@ -10,27 +10,25 @@ final class FlightAltitudeRulesTests: XCTestCase {
         XCTAssertTrue(westbound.contains(FlightAltitudeRules.defaultFeet))
     }
 
-    func testSemicircularAltitudeOptionsAreCourseCorrect() {
+    func testEveryAltitudeIsSelectableAndRecommendationsFollowCourse() {
         let eastbound = FlightAltitudeRules.options(forCourseDegrees: 90)
         let westbound = FlightAltitudeRules.options(forCourseDegrees: 270)
 
-        XCTAssertEqual(eastbound, [2_500, 3_500, 5_500, 7_500, 9_500])
-        XCTAssertEqual(westbound, [2_500, 4_500, 6_500, 8_500])
-        XCTAssertFalse(eastbound.contains(4_500))
-        XCTAssertFalse(westbound.contains(3_500))
+        XCTAssertEqual(eastbound, FlightAltitudeRules.allOptions)
+        XCTAssertEqual(westbound, FlightAltitudeRules.allOptions)
+        XCTAssertEqual(eastbound.first, 1_500)
+        XCTAssertEqual(eastbound.last, 12_000)
+        XCTAssertTrue(FlightAltitudeRules.isRecommended(5_500, forCourseDegrees: 90))
+        XCTAssertFalse(FlightAltitudeRules.isRecommended(4_500, forCourseDegrees: 90))
+        XCTAssertTrue(FlightAltitudeRules.isRecommended(4_500, forCourseDegrees: 270))
+        XCTAssertFalse(FlightAltitudeRules.isRecommended(5_500, forCourseDegrees: 270))
     }
 
-    func testLegacyFiveThousandFeetNormalizesToSelectableAltitude() {
+    func testFiveThousandFeetRemainsSelectableEvenWhenNotRecommended() {
         let eastbound = FlightAltitudeRules.options(forCourseDegrees: 90)
         let westbound = FlightAltitudeRules.options(forCourseDegrees: 270)
 
-        XCTAssertEqual(
-            FlightAltitudeRules.nearest(to: 5_000, in: eastbound),
-            5_500
-        )
-        XCTAssertEqual(
-            FlightAltitudeRules.nearest(to: 5_000, in: westbound),
-            4_500
-        )
+        XCTAssertEqual(FlightAltitudeRules.nearest(to: 5_000, in: eastbound), 5_000)
+        XCTAssertEqual(FlightAltitudeRules.nearest(to: 5_000, in: westbound), 5_000)
     }
 }

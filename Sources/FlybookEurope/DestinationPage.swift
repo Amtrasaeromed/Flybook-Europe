@@ -21,6 +21,15 @@ private enum StartingFuelPreset {
     case manual
 }
 
+private struct FlybriefPlannedSegment {
+    let origin: AirportReference
+    let destination: AirportReference
+    let departure: Date
+    let arrival: Date
+    let trackMilesNM: Double
+    let travelMinutes: Int
+}
+
 struct DestinationPage: View {
     let destination: Destination
     let availableDestinations: [Destination]
@@ -1653,23 +1662,99 @@ struct DestinationPage: View {
     }
 
     private func exportFlybrief() {
-        do {
-            _ = try FlybriefPDFExporter.export(flybriefSnapshot)
-        } catch {
-            flybriefExportError = error.localizedDescription
+        Task { @MainActor in
+            let stopForecasts = await flybriefStopForecasts()
+            do {
+                _ = try FlybriefPDFExporter.export(
+                    flybriefSnapshot(stopForecasts: stopForecasts)
+                )
+            } catch {
+                flybriefExportError = error.localizedDescription
+            }
         }
     }
 
-    private var flybriefSnapshot: FlybriefSnapshot {
-        let routeCodes = isOneWay
-            ? [planningOrigin.icao, firstLegDestination.icao]
-            : [
-                planningOrigin.icao,
-                firstLegDestination.icao,
-                secondLegDestination.icao
+    private func flybriefStopForecasts() async -> [String: EDFZForecast] {
+        var requests: [(AirportReference, Date)] = []
+        let outboundSegments = flybriefPlannedSegments(
+            origin: planningOrigin,
+            destination: firstLegDestination,
+            departureInstant: outboundStartInstant,
+            arrivalInstant: outboundArrivalInstantForWeather,
+            stopCount: outboundStops,
+            stopAirports: outboundSelectedStopAirports,
+            trackMiles: outboundTrackMiles
+        )
+        requests += flybriefStopWeatherRequests(from: outboundSegments)
+        if !isOneWay {
+            let returnSegments = flybriefPlannedSegments(
+                origin: secondLegOrigin,
+                destination: secondLegDestination,
+                departureInstant: returnDepartureInstantForWeather,
+                arrivalInstant: returnArrivalInstant,
+                stopCount: returnStops,
+                stopAirports: returnSelectedStopAirports,
+                trackMiles: returnTrackMiles
+            )
+            requests += flybriefStopWeatherRequests(from: returnSegments)
+        }
+
+        var forecasts: [String: EDFZForecast] = [:]
+        for (airport, instant) in requests {
+            let key = flybriefForecastKey(airport: airport, instant: instant)
+            guard forecasts[key] == nil else { continue }
+            forecasts[key] = try? await EDFZWeatherService.shared.forecast(
+                plannedDate: instant,
+                airport: airport
+            )
+        }
+        return forecasts
+    }
+
+    private func flybriefStopWeatherRequests(
+        from segments: [FlybriefPlannedSegment]
+    ) -> [(AirportReference, Date)] {
+        guard segments.count > 1 else { return [] }
+        return segments.dropLast().flatMap { segment in
+            let nextDeparture = segments.first {
+                $0.origin.icao == segment.destination.icao
+                    && $0.departure >= segment.arrival
+            }?.departure ?? segment.arrival
+            return [
+                (segment.destination, segment.arrival),
+                (segment.destination, nextDeparture)
             ]
-        var legs = [flybriefOutboundLeg]
-        if !isOneWay { legs.append(flybriefReturnLeg) }
+        }
+    }
+
+    private func flybriefForecastKey(
+        airport: AirportReference,
+        instant: Date
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = airport.timeZone
+        formatter.dateFormat = "yyyyMMdd"
+        return "\(airport.icao)|\(formatter.string(from: instant))"
+    }
+
+    private func flybriefSnapshot(
+        stopForecasts: [String: EDFZForecast]
+    ) -> FlybriefSnapshot {
+        var routeCodes = [planningOrigin.icao]
+        routeCodes += outboundSelectedStopAirports.map(\.icao)
+        routeCodes.append(firstLegDestination.icao)
+        if !isOneWay {
+            if routeCodes.last != secondLegOrigin.icao {
+                routeCodes.append(secondLegOrigin.icao)
+            }
+            routeCodes += returnSelectedStopAirports.map(\.icao)
+            routeCodes.append(secondLegDestination.icao)
+        }
+        var legs = [flybriefOutboundLeg(stopForecasts: stopForecasts)]
+        if !isOneWay {
+            legs.append(flybriefReturnLeg(stopForecasts: stopForecasts))
+        }
         return FlybriefSnapshot(
             title: "Flybrief",
             route: routeCodes.joined(separator: "-"),
@@ -1683,7 +1768,9 @@ struct DestinationPage: View {
         )
     }
 
-    private var flybriefOutboundLeg: FlybriefLegSnapshot {
+    private func flybriefOutboundLeg(
+        stopForecasts: [String: EDFZForecast]
+    ) -> FlybriefLegSnapshot {
         let departureSample = outboundEDFZWeatherModel.forecast?.sample(
             nearestTo: outboundStartInstant
         )
@@ -1709,11 +1796,14 @@ struct DestinationPage: View {
             altitudeFeet: outboundFlightAltitudeFeet,
             bestLevelFeet: outboundRouteWindModel.bestLevelFeet,
             routeWind: outboundRouteWindModel.wind,
-            routeAssessments: outboundRouteRiskModel.assessments
+            routeAssessments: outboundRouteRiskModel.assessments,
+            stopForecasts: stopForecasts
         )
     }
 
-    private var flybriefReturnLeg: FlybriefLegSnapshot {
+    private func flybriefReturnLeg(
+        stopForecasts: [String: EDFZForecast]
+    ) -> FlybriefLegSnapshot {
         let departureSample = destinationReturnWeatherModel.forecast?.sample(
             nearestTo: returnDepartureInstantForWeather
         )
@@ -1739,7 +1829,8 @@ struct DestinationPage: View {
             altitudeFeet: returnFlightAltitudeFeet,
             bestLevelFeet: returnRouteWindModel.bestLevelFeet,
             routeWind: returnRouteWindModel.wind,
-            routeAssessments: returnRouteRiskModel.assessments
+            routeAssessments: returnRouteRiskModel.assessments,
+            stopForecasts: stopForecasts
         )
     }
 
@@ -1762,8 +1853,18 @@ struct DestinationPage: View {
         altitudeFeet: Int,
         bestLevelFeet: Int?,
         routeWind: RouteWind?,
-        routeAssessments: [RouteWeatherSegmentAssessment]
+        routeAssessments: [RouteWeatherSegmentAssessment],
+        stopForecasts: [String: EDFZForecast]
     ) -> FlybriefLegSnapshot {
+        let plannedSegments = flybriefPlannedSegments(
+            origin: origin,
+            destination: destination,
+            departureInstant: departureInstant,
+            arrivalInstant: arrivalInstant,
+            stopCount: stopCount,
+            stopAirports: stopAirports,
+            trackMiles: trackMiles
+        )
         let selectedLegMinutes = FlightMath.adjustedPerLegMinutes(
             directNM: directNM,
             stopCount: stopCount,
@@ -1803,13 +1904,42 @@ struct DestinationPage: View {
         }
         let routeWindDetail = routeWind.map {
             String(
-                format: "Wind %03.0f°/%02.0f kt · gültig %@",
-                $0.directionDegrees,
+                format: "Wind %03d°/%02.0f kt · gültig %@",
+                flybriefRoundedWindDirection($0.directionDegrees),
                 $0.speedKnots,
                 flybriefClock($0.validTime, airport: origin)
             )
         } ?? "Keine Streckenwinddaten"
-        let etops = flybriefETOPS(minutes: selectedLegMinutes)
+        let etopsMinutes = plannedSegments.map(\.travelMinutes).max()
+            ?? selectedLegMinutes
+        let etops = flybriefETOPS(minutes: etopsMinutes)
+        let departure = flybriefEndpoint(
+            role: "Abflug",
+            airport: origin,
+            instant: departureInstant,
+            operation: .departure,
+            sample: departureSample,
+            legOriginICAO: origin.icao
+        )
+        let arrival = flybriefEndpoint(
+            role: "Ankunft",
+            airport: destination,
+            instant: arrivalInstant,
+            operation: .arrival,
+            sample: arrivalSample,
+            legOriginICAO: origin.icao
+        )
+        let segments = flybriefSegments(
+            legID: id,
+            origin: origin,
+            destination: destination,
+            departureSample: departureSample,
+            arrivalSample: arrivalSample,
+            routeWind: routeWind,
+            routeAssessments: routeAssessments,
+            stopForecasts: stopForecasts,
+            plannedSegments: plannedSegments
+        )
         return FlybriefLegSnapshot(
             id: id,
             title: title,
@@ -1825,28 +1955,218 @@ struct DestinationPage: View {
             bestLevelText: bestLevelFeet.map { flybriefAltitude($0) } ?? "-",
             routeWindText: routeWindText,
             routeWindDetail: routeWindDetail,
-            etopsText: "\(selectedLegMinutes) min",
+            etopsText: FlightMath.duration(etopsMinutes),
             etopsLevel: etops,
             routeWeather: routeWeather,
             routeWeatherSummary: worstAssessment?.explanation
                 ?? "Keine ausreichenden Routendaten",
-            departure: flybriefEndpoint(
-                role: "Abflug",
-                airport: origin,
-                instant: departureInstant,
-                operation: .departure,
-                sample: departureSample,
-                legOriginICAO: origin.icao
-            ),
-            arrival: flybriefEndpoint(
-                role: "Ankunft",
-                airport: destination,
-                instant: arrivalInstant,
-                operation: .arrival,
-                sample: arrivalSample,
-                legOriginICAO: origin.icao
-            )
+            departure: departure,
+            arrival: arrival,
+            segments: segments
         )
+    }
+
+    private func flybriefSegments(
+        legID: String,
+        origin: AirportReference,
+        destination: AirportReference,
+        departureSample: EDFZWeatherSample?,
+        arrivalSample: EDFZWeatherSample?,
+        routeWind: RouteWind?,
+        routeAssessments: [RouteWeatherSegmentAssessment],
+        stopForecasts: [String: EDFZForecast],
+        plannedSegments: [FlybriefPlannedSegment]
+    ) -> [FlybriefSegmentSnapshot] {
+        guard plannedSegments.count > 1 else { return [] }
+
+        return plannedSegments.enumerated().map { index, segment in
+            let assessments = flybriefAssessments(
+                routeAssessments,
+                segmentIndex: index,
+                segmentCount: plannedSegments.count
+            )
+            let weatherPoints = assessments.enumerated().map {
+                FlybriefRouteWeatherPoint(
+                    id: index * 100 + $0.offset,
+                    level: flybriefLevel(for: $0.element.risk)
+                )
+            }
+            let worst = assessments.max { $0.risk.rawValue < $1.risk.rawValue }
+            let course = WindMath.initialBearing(
+                latitude1: segment.origin.latitude,
+                longitude1: segment.origin.longitude,
+                latitude2: segment.destination.latitude,
+                longitude2: segment.destination.longitude
+            )
+            let component = routeWind.map {
+                WindMath.headwindComponent(
+                    windFromDegrees: $0.directionDegrees,
+                    speedKnots: $0.speedKnots,
+                    courseDegrees: course
+                )
+            }
+            let windText = component.map {
+                $0 >= 0
+                    ? "Gegenwind \(Int(abs($0).rounded())) kt"
+                    : "Rückenwind \(Int(abs($0).rounded())) kt"
+            } ?? "Nicht verfügbar"
+            let windDetail = routeWind.map {
+                String(
+                    format: "Kurs %03.0f° · Wind %03d°/%02.0f kt · gültig %@",
+                    course,
+                    flybriefRoundedWindDirection($0.directionDegrees),
+                    $0.speedKnots,
+                    flybriefClock($0.validTime, airport: segment.origin)
+                )
+            } ?? "Keine Streckenwinddaten"
+            let departureWeather = flybriefSample(
+                airport: segment.origin,
+                instant: segment.departure,
+                overallOrigin: origin,
+                overallDestination: destination,
+                departureSample: departureSample,
+                arrivalSample: arrivalSample,
+                stopForecasts: stopForecasts
+            )
+            let arrivalWeather = flybriefSample(
+                airport: segment.destination,
+                instant: segment.arrival,
+                overallOrigin: origin,
+                overallDestination: destination,
+                departureSample: departureSample,
+                arrivalSample: arrivalSample,
+                stopForecasts: stopForecasts
+            )
+            return FlybriefSegmentSnapshot(
+                id: "\(legID)-\(index)",
+                title: "Teilstrecke \(index + 1)/\(plannedSegments.count)",
+                routeText: "\(segment.origin.icao) → \(segment.destination.icao)",
+                blockTimeText: FlightMath.duration(segment.travelMinutes),
+                trackText: "\(Int(segment.trackMilesNM.rounded())) NM",
+                routeWindText: windText,
+                routeWindDetail: windDetail,
+                routeWeather: weatherPoints,
+                routeWeatherSummary: worst?.explanation
+                    ?? "Keine ausreichenden Routendaten",
+                departure: flybriefEndpoint(
+                    role: "Abflug",
+                    airport: segment.origin,
+                    instant: segment.departure,
+                    operation: .departure,
+                    sample: departureWeather,
+                    legOriginICAO: segment.origin.icao
+                ),
+                arrival: flybriefEndpoint(
+                    role: "Ankunft",
+                    airport: segment.destination,
+                    instant: segment.arrival,
+                    operation: .arrival,
+                    sample: arrivalWeather,
+                    legOriginICAO: segment.origin.icao
+                )
+            )
+        }
+    }
+
+    private func flybriefPlannedSegments(
+        origin: AirportReference,
+        destination: AirportReference,
+        departureInstant: Date,
+        arrivalInstant: Date,
+        stopCount: Int,
+        stopAirports: [AirportReference],
+        trackMiles: Double
+    ) -> [FlybriefPlannedSegment] {
+        guard stopCount > 0,
+              stopAirports.count == stopCount
+        else { return [] }
+        let waypoints = [origin] + stopAirports + [destination]
+        let distances = zip(waypoints, waypoints.dropFirst()).map {
+            AirportDistance.nauticalMiles(from: $0.0, to: $0.1)
+        }
+        let totalDistance = distances.reduce(0, +)
+        guard totalDistance > 0 else { return [] }
+
+        let totalWindowMinutes = max(
+            waypoints.count - 1,
+            Int(round(arrivalInstant.timeIntervalSince(departureInstant) / 60))
+        )
+        let segmentCount = waypoints.count - 1
+        let maximumPauseMinutes = max(
+            0,
+            (totalWindowMinutes - segmentCount) / stopCount
+        )
+        let appliedPauseMinutes = min(
+            max(0, tankStopMinutes),
+            maximumPauseMinutes
+        )
+        let totalFlightMinutes = totalWindowMinutes
+            - stopCount * appliedPauseMinutes
+        var allocated: [Int] = []
+        var remaining = totalFlightMinutes
+        for (index, distance) in distances.enumerated() {
+            let remainingSegments = distances.count - index - 1
+            let minutes = index == distances.count - 1
+                ? remaining
+                : min(
+                    remaining - remainingSegments,
+                    max(1, Int(round(Double(totalFlightMinutes) * distance / totalDistance)))
+                )
+            allocated.append(minutes)
+            remaining -= minutes
+        }
+
+        var currentDeparture = departureInstant
+        return distances.indices.map { index in
+            let segmentArrival = index == distances.count - 1
+                ? arrivalInstant
+                : currentDeparture.addingTimeInterval(
+                    TimeInterval(allocated[index] * 60)
+                )
+            let planned = FlybriefPlannedSegment(
+                origin: waypoints[index],
+                destination: waypoints[index + 1],
+                departure: currentDeparture,
+                arrival: segmentArrival,
+                trackMilesNM: trackMiles * distances[index] / totalDistance,
+                travelMinutes: allocated[index]
+            )
+            currentDeparture = segmentArrival.addingTimeInterval(
+                TimeInterval(appliedPauseMinutes * 60)
+            )
+            return planned
+        }
+    }
+
+    private func flybriefAssessments(
+        _ assessments: [RouteWeatherSegmentAssessment],
+        segmentIndex: Int,
+        segmentCount: Int
+    ) -> [RouteWeatherSegmentAssessment] {
+        guard !assessments.isEmpty, segmentCount > 0 else { return [] }
+        let lower = Int(
+            floor(Double(segmentIndex * assessments.count) / Double(segmentCount))
+        )
+        let upper = max(
+            lower + 1,
+            Int(floor(Double((segmentIndex + 1) * assessments.count) / Double(segmentCount)))
+        )
+        return Array(assessments[lower..<min(upper, assessments.count)])
+    }
+
+    private func flybriefSample(
+        airport: AirportReference,
+        instant: Date,
+        overallOrigin: AirportReference,
+        overallDestination: AirportReference,
+        departureSample: EDFZWeatherSample?,
+        arrivalSample: EDFZWeatherSample?,
+        stopForecasts: [String: EDFZForecast]
+    ) -> EDFZWeatherSample? {
+        if airport.icao == overallOrigin.icao { return departureSample }
+        if airport.icao == overallDestination.icao { return arrivalSample }
+        let key = flybriefForecastKey(airport: airport, instant: instant)
+        return stopForecasts[key]?.sample(nearestTo: instant)
     }
 
     private func flybriefEndpoint(
@@ -1906,6 +2226,10 @@ struct DestinationPage: View {
             role: role,
             icao: airport.icao,
             name: airport.name,
+            openingHoursText: flybriefOpeningHoursText(
+                airport: airport,
+                instant: instant
+            ),
             timeText: flybriefDateTime(instant, airport: airport),
             operatingStatus: flybriefOperatingStatus(status).0,
             operatingLevel: flybriefOperatingStatus(status).1,
@@ -1973,8 +2297,8 @@ struct DestinationPage: View {
         if let direction = sample?.windDirectionDegrees,
            let speed = sample?.windSpeedKnots {
             windText = String(
-                format: "%03.0f°/%02.0f%@ kt",
-                direction,
+                format: "%03d°/%02.0f%@ kt",
+                flybriefRoundedWindDirection(direction),
                 speed,
                 sample?.windGustKnots.map {
                     " G" + String(format: "%.0f", $0)
@@ -2009,6 +2333,28 @@ struct DestinationPage: View {
             } ?? "Wetter nicht verfügbar",
             warningText: foehn.map { $0.level.title }
         )
+    }
+
+    private func flybriefRoundedWindDirection(_ degrees: Double) -> Int {
+        Int((WindMath.normalized(degrees) / 5).rounded() * 5) % 360
+    }
+
+    private func flybriefOpeningHoursText(
+        airport: AirportReference,
+        instant: Date
+    ) -> String? {
+        guard case .confirmed(let windows) =
+            AirportOperatingHoursEvaluator.dailyOpeningHours(
+                airport: airport,
+                at: instant
+            ),
+            !windows.isEmpty
+        else { return nil }
+        let hours = windows.map {
+            "\(flybriefClock($0.opening, airport: airport))-"
+                + flybriefClock($0.closing, airport: airport)
+        }.joined(separator: ", ")
+        return "Regulär \(hours) \(timeDisplayMode == .utc ? "UTC" : "LCL")"
     }
 
     private func flybriefWeatherDescription(_ code: Int?) -> String {
@@ -2830,7 +3176,7 @@ struct DestinationPage: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Aktuelle Flugplanung als einseitiges Flybrief-PDF sichern")
+                    .help("Aktuelle Flugplanung als seitenweises Flybrief-PDF sichern")
                     .accessibilityLabel("Flybrief als PDF erstellen")
                 }
                 .font(.system(size: 13, weight: .semibold))
@@ -6319,6 +6665,15 @@ private struct FlightPlanningLine<
         ) + " ft"
     }
 
+    private var semicircularCourseDegrees: Double {
+        WindMath.initialBearing(
+            latitude1: stopSortOrigin.latitude,
+            longitude1: stopSortOrigin.longitude,
+            latitude2: stopSortDestination.latitude,
+            longitude2: stopSortDestination.longitude
+        )
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             planningHeaderRow
@@ -6769,7 +7124,18 @@ private struct FlightPlanningLine<
                     .minimumScaleFactor(0.9)
                     .frame(width: 140, alignment: .trailing)
                 Picker("Flughöhe", selection: $flightAltitudeFeet) {
-                    ForEach(altitudeOptions, id: \.self) { altitude in Text(altitudeLabel(altitude)).tag(altitude) }
+                    ForEach(altitudeOptions, id: \.self) { altitude in
+                        Text(altitudeLabel(altitude))
+                            .foregroundStyle(
+                                FlightAltitudeRules.isRecommended(
+                                    altitude,
+                                    forCourseDegrees: semicircularCourseDegrees
+                                )
+                                    ? FlybookColor.navy
+                                    : FlybookColor.muted.opacity(0.55)
+                            )
+                            .tag(altitude)
+                    }
                 }
                 .labelsHidden()
                 .font(.system(size: 14, weight: .bold))
