@@ -300,7 +300,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EDWY:lake,EDWY,lake,Nein,,,,,,,,,,,,,https://www.norderney.de/,2026-08-02
 1.2,EDWY:mountain,EDWY,mountain,Nein,,,,,,,,,,,,,https://www.norderney.de/,2026-08-02
 1.2,EDWY:wellness,EDWY,wellness,Ja,bade:haus Norderney,Fahrrad,29,53.704337,7.144015,5.67,89,29,9,Fahrrad,29,bade:haus Norderney,https://www.norderney.de/,2026-08-02
-1.2,EDXE:techstop,EDXE,techstop,Nein,,,,,,,,,,,,,,2026-08-03
+1.2,EDXE:techstop,EDXE,techstop,Ja,Technischer Zwischenstopp Rheine-Eschendorf,,,,,,,,,,,Technischer Zwischenstopp Rheine-Eschendorf,https://edxe.de/hp/flugplatz/informationen-fuer-piloten,2026-08-13
 1.2,EDXE:breakfast,EDXE,breakfast,Ja,,,,,,,,,,,,,https://gets-am-flugplatz.de/,2026-08-03
 1.2,EDXE:city,EDXE,city,Nein,,,,,,,,,,,,,,2026-08-04
 1.2,EDXE:beach,EDXE,beach,Nein,,,,,,,,,,,,,,2026-08-03
@@ -930,3 +930,10 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGHA:lake,EGHA,lake,Ja,Stourhead Landschaftsgarten und See,Taxi/Auto,30,,,,,,,Taxi/Auto,30,Stourhead Landschaftsgarten und See,https://www.nationaltrust.org.uk/visit/wiltshire/stourhead,2026-08-13
 1.2,EGHA:mountain,EGHA,mountain,Nein,,,,,,,,,,,,,https://cranbornechase.org.uk/,2026-08-13
 1.2,EGHA:wellness,EGHA,wellness,Ja,The Newt in Somerset Hotel Spa,Taxi/Auto,45,,,,,,,Taxi/Auto,45,The Newt in Somerset Hotel Spa,https://thenewtinsomerset.com/hotel/spa/,2026-08-13
+1.2,EDLM:techstop,EDLM,techstop,Ja,Technischer Zwischenstopp Marl-Loemühle,,,,,,,,,,,Technischer Zwischenstopp Marl-Loemühle,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13
+1.2,EDLM:breakfast,EDLM,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EDLM:city,EDLM,city,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EDLM:beach,EDLM,beach,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EDLM:lake,EDLM,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EDLM:mountain,EDLM,mountain,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EDLM:wellness,EDLM,wellness,Nein,,,,,,,,,,,,,,2026-08-13

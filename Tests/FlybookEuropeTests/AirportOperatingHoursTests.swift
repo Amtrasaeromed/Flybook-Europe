@@ -50,6 +50,66 @@ final class AirportOperatingHoursTests: XCTestCase {
         )
     }
 
+    func testEDXESummerWeekAndWeekendAndWinterPPR() {
+        let airport = reference(
+            "EDXE", latitude: 52.276389, longitude: 7.492778
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T12:00:00Z", .edxe),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T10:30:00Z", .edxe),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T11:30:00Z", .edxe),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-15T07:30:00Z", .edxe),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-15T08:30:00Z", .edxe),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T12:00:00Z", .edxe),
+            .confirmedClosed
+        )
+    }
+
+    func testEDLMSummerAndWinterSunsetHours() {
+        let airport = reference(
+            "EDLM", latitude: 51.647, longitude: 7.163667
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T05:30:00Z", .edlm),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T06:30:00Z", .edlm),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-11T20:30:00Z", .edlm),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T07:00:00Z", .edlm),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T08:00:00Z", .edlm),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-13T17:00:00Z", .edlm),
+            .confirmedClosed
+        )
+    }
+
     func testDailyOpeningHoursUseAirportLocalTime() throws {
         let airport = reference(
             "EDFM", latitude: 49.4727, longitude: 8.5143

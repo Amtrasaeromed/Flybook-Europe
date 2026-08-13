@@ -24,7 +24,7 @@ private struct CSVTable {
 @MainActor
 final class DestinationStore: ObservableObject {
     private static let schemaVersion = "1.2"
-    private static let expectedDestinationCount = 133
+    private static let expectedDestinationCount = 134
     private static let bundledSeedPrices: [String: FuelPriceRecord] = [
         "EDFZ": FuelPriceRecord(
             avgas: 3.03,

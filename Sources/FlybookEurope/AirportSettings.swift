@@ -466,6 +466,64 @@ struct AirportOpeningHoursProfile: Codable, Equatable {
         )
     }()
 
+    static let edxe: AirportOpeningHoursProfile = {
+        let weekday = AirportOpeningPeriod(
+            fromUTC: "11:00",
+            closingReference: .fixed,
+            fixedUntilUTC: "17:00"
+        )
+        let weekendHoliday = AirportOpeningPeriod(
+            fromUTC: "08:00",
+            closingReference: .fixed,
+            fixedUntilUTC: "17:00"
+        )
+        return AirportOpeningHoursProfile(
+            summer: AirportSeasonHours(
+                monday: AirportOpeningPeriod(),
+                tuesday: weekday,
+                wednesday: weekday,
+                thursday: weekday,
+                friday: weekday,
+                saturday: weekendHoliday,
+                sunday: weekendHoliday,
+                holiday: weekendHoliday,
+                outsideHoursPPR: true
+            ),
+            winter: AirportSeasonHours(outsideHoursPPR: true)
+        )
+    }()
+
+    static let edlm: AirportOpeningHoursProfile = {
+        let summer = AirportOpeningPeriod(
+            fromUTC: "06:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "20:00"
+        )
+        let winter = AirportOpeningPeriod(
+            fromUTC: "07:30",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30
+        )
+        func season(_ period: AirportOpeningPeriod) -> AirportSeasonHours {
+            AirportSeasonHours(
+                monday: period,
+                tuesday: period,
+                wednesday: period,
+                thursday: period,
+                friday: period,
+                saturday: period,
+                sunday: period,
+                holiday: period,
+                outsideHoursPPR: true
+            )
+        }
+        return AirportOpeningHoursProfile(
+            summer: season(summer),
+            winter: season(winter)
+        )
+    }()
+
     static let edfe: AirportOpeningHoursProfile = {
         let summer = AirportOpeningPeriod(
             fromUTC: "06:00",
@@ -752,6 +810,8 @@ enum AirportOpeningHoursStore {
             if normalized == "EDWL", profile.isCompletelyEmpty { return .edwl }
             if normalized == "EDWG", profile.isCompletelyEmpty { return .edwg }
             if normalized == "EDWF", profile.isCompletelyEmpty { return .edwf }
+            if normalized == "EDXE", profile.isCompletelyEmpty { return .edxe }
+            if normalized == "EDLM", profile.isCompletelyEmpty { return .edlm }
             if normalized == "EDFE", profile.isCompletelyEmpty { return .edfe }
             if normalized == "EDFM", profile.isCompletelyEmpty { return .edfm }
             if normalized == "EDRY", profile.isCompletelyEmpty { return .edry }
@@ -770,6 +830,8 @@ enum AirportOpeningHoursStore {
         if normalized == "EDWL" { return .edwl }
         if normalized == "EDWG" { return .edwg }
         if normalized == "EDWF" { return .edwf }
+        if normalized == "EDXE" { return .edxe }
+        if normalized == "EDLM" { return .edlm }
         if normalized == "EDFE" { return .edfe }
         if normalized == "EDFM" { return .edfm }
         if normalized == "EDRY" { return .edry }
@@ -795,6 +857,8 @@ enum AirportOpeningHoursStore {
             || normalized == "EDWL"
             || normalized == "EDWG"
             || normalized == "EDWF"
+            || normalized == "EDXE"
+            || normalized == "EDLM"
             || normalized == "EDFE"
             || normalized == "EDFM"
             || normalized == "EDRY"

@@ -7,10 +7,10 @@ final class RunwayDataTests: XCTestCase {
         let store = DestinationStore()
 
         XCTAssertNil(store.loadError)
-        XCTAssertEqual(store.destinations.count, 134)
+        XCTAssertEqual(store.destinations.count, 135)
         XCTAssertEqual(
             store.destinations.filter { $0.icao != "EDFZ" }.count,
-            133
+            134
         )
 
         for destination in store.destinations {
@@ -158,7 +158,7 @@ final class RunwayDataTests: XCTestCase {
             uniqueKeysWithValues: store.destinations.map { ($0.icao, $0) }
         )
 
-        for icao in ["EDFE", "EDFM", "EDRY", "EDRK"] {
+        for icao in ["EDFE", "EDFM", "EDRY", "EDRK", "EDXE", "EDLM"] {
             let destination = try XCTUnwrap(
                 byICAO[icao],
                 "Preferred alternate \(icao) is missing from standard data"
@@ -168,6 +168,31 @@ final class RunwayDataTests: XCTestCase {
                 "Preferred alternate \(icao) is missing the TechStop feature"
             )
         }
+    }
+
+    func testEDXEAndEDLMAreConfiguredTechStops() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map {
+                ($0.icao, $0)
+            }
+        )
+
+        let edxe = try XCTUnwrap(byICAO["EDXE"])
+        XCTAssertTrue(edxe.features.contains(.techStop))
+        XCTAssertEqual(edxe.avgas, "Ja")
+        XCTAssertEqual(edxe.mogas, "Ja")
+        XCTAssertEqual(edxe.jetA1, "Nein")
+        XCTAssertTrue(LandingVoucherBook.includes("EDXE"))
+
+        let edlm = try XCTUnwrap(byICAO["EDLM"])
+        XCTAssertTrue(edlm.features.contains(.techStop))
+        XCTAssertEqual(edlm.referenceRunway, "07/25")
+        XCTAssertEqual(edlm.runwayM, 830)
+        XCTAssertEqual(edlm.runwayLDAM, 700)
+        XCTAssertEqual(edlm.avgas, "Ja")
+        XCTAssertEqual(edlm.jetA1, "Ja")
+        XCTAssertEqual(edlm.mogas, "Nein")
+        XCTAssertTrue(LandingVoucherBook.includes("EDLM"))
     }
 
     func testKnownMultiRunwayReferencesUseConfiguredReferenceRunway() throws {

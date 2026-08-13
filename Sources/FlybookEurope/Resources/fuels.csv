@@ -173,10 +173,10 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDWY:JET_A1,EDWY,JET_A1,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz",2026-08-02,2026-08-02
 1.2,EDWY:MOGAS_SUPER,EDWY,MOGAS_SUPER,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz",2026-08-02,2026-08-02
 1.2,EDWY:UL91,EDWY,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz",2026-08-02,2026-08-02
-1.2,EDXE:AVGAS,EDXE,AVGAS,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
-1.2,EDXE:JET_A1,EDXE,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
-1.2,EDXE:MOGAS_SUPER,EDXE,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
-1.2,EDXE:UL91,EDXE,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://edxe.de/,2026-08-03,2026-08-03
+1.2,EDXE:AVGAS,EDXE,AVGAS,Ja,AVGAS 100LL,,,https://edxe.de/hp/flugplatz/informationen-fuer-piloten,2026-08-13,2026-08-13
+1.2,EDXE:JET_A1,EDXE,JET_A1,Nein,Nicht veröffentlicht,,,https://edxe.de/hp/flugplatz/informationen-fuer-piloten,2026-08-13,2026-08-13
+1.2,EDXE:MOGAS_SUPER,EDXE,MOGAS_SUPER,Ja,Super Plus bleifrei/unleaded,,,https://edxe.de/hp/flugplatz/informationen-fuer-piloten,2026-08-13,2026-08-13
+1.2,EDXE:UL91,EDXE,UL91,Nein,Nicht veröffentlicht,,,https://edxe.de/hp/flugplatz/informationen-fuer-piloten,2026-08-13,2026-08-13
 1.2,EDXH:AVGAS,EDXH,AVGAS,Ja,Ja,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
 1.2,EDXH:JET_A1,EDXH,JET_A1,Nein,Nein,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
 1.2,EDXH:MOGAS_SUPER,EDXH,MOGAS_SUPER,Nein,Nein,,,https://www.flugplatz-helgoland.de/startseite,2026-08-02,2026-08-02
@@ -494,3 +494,7 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EGHA:JET_A1,EGHA,JET_A1,Prüfen,Vor Abflug beim Betreiber prüfen,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
 1.2,EGHA:MOGAS_SUPER,EGHA,MOGAS_SUPER,Prüfen,Vor Abflug beim Betreiber prüfen,,UL94,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
 1.2,EGHA:UL91,EGHA,UL91,Nein,UL91 nicht als UL94 ausweisen,,UL94 verfügbar,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13,2026-08-13
+1.2,EDLM:AVGAS,EDLM,AVGAS,Ja,AVGAS 100LL,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
+1.2,EDLM:JET_A1,EDLM,JET_A1,Ja,Jet A1,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
+1.2,EDLM:MOGAS_SUPER,EDLM,MOGAS_SUPER,Nein,Nicht in den übermittelten AIP-Kraftstoffangaben,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
+1.2,EDLM:UL91,EDLM,UL91,Nein,Nicht veröffentlicht,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
