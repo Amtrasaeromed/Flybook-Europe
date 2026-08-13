@@ -141,6 +141,34 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testNightRainCountsWhenDaytimeWeatherBlockIsDisabled() {
+        let day = utcDate(year: 2026, month: 8, day: 17)
+        let dryDaylight = rainHours(on: day, dryHours: 12, rainyHours: 0)
+        let rainyNight = [0, 1, 2, 3, 4, 5, 22].map { hour in
+            DestinationFinderWeatherHour(
+                instant: day.addingTimeInterval(Double(hour) * 3600),
+                temperatureCelsius: 15,
+                steadyWindKnots: 5,
+                gustKnots: 8,
+                precipitationMillimeters: 0.1,
+                totalCloudCoverPercent: 100,
+                visibilityMeters: 5_000,
+                lowCloudCoverPercent: 100,
+                dewPointCelsius: 14
+            )
+        }
+
+        XCTAssertFalse(
+            DestinationFinderEvaluator.rainFreeCoverageMatches(
+                dryDaylight + rainyNight,
+                from: day,
+                until: day.addingTimeInterval(23 * 3600),
+                destination: destination,
+                daylightOnly: false
+            )
+        )
+    }
+
     private let destination = AirportReference(
         icao: "TEST",
         name: "Test",
@@ -330,6 +358,61 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testDaylightWeatherBlockIgnoresNighttimeViolations() {
+        let hours = [
+            hour(offset: 0, temperature: 20),
+            hour(offset: 12, temperature: 50)
+        ]
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.weatherMatches(
+                hours,
+                criteria: criteria(
+                    maximumTemperature: 30,
+                    durationHours: 16,
+                    daylightOnly: true
+                ),
+                destination: destination
+            )
+        )
+        XCTAssertFalse(
+            DestinationFinderEvaluator.weatherMatches(
+                hours,
+                criteria: criteria(
+                    maximumTemperature: 30,
+                    durationHours: 16,
+                    daylightOnly: false
+                ),
+                destination: destination
+            )
+        )
+    }
+
+    func testMinimumWeatherRemainsDaylightOnlyWhenWeatherBlockUsesWholePeriod() {
+        let hours = [
+            hour(offset: 0),
+            hour(
+                offset: 12,
+                temperature: 10,
+                lowCloud: 80,
+                dewPoint: 9
+            )
+        ]
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.weatherMatches(
+                hours,
+                criteria: criteria(
+                    minimumWeather: .mvfr,
+                    durationHours: 16,
+                    daylightOnly: false,
+                    minimumWeatherDaylightOnly: true
+                ),
+                destination: destination
+            )
+        )
+    }
+
     func testRoundTripPriceRoundsEachLegLikeCharterCalculation() {
         XCTAssertEqual(
             DestinationFinderPricing.roundTripCost(
@@ -401,12 +484,15 @@ final class DestinationFinderTests: XCTestCase {
         maximumGust: Double = 50,
         ignoresGusts: Bool = false,
         minimumWeather: DestinationFinderMinimumWeather = .vfr,
-        requiresRainFree: Bool = false
+        requiresRainFree: Bool = false,
+        durationHours: Int = 3,
+        daylightOnly: Bool = false,
+        minimumWeatherDaylightOnly: Bool = false
     ) -> DestinationFinderCriteria {
         DestinationFinderCriteria(
             originICAO: "EDFZ",
             from: baseDate,
-            until: baseDate.addingTimeInterval(3 * 3600),
+            until: baseDate.addingTimeInterval(Double(durationHours) * 3600),
             maximumTravelMinutes: 420,
             appliesETOPS: false,
             maximumRoundTripPriceEUR: 3_000,
@@ -421,8 +507,9 @@ final class DestinationFinderTests: XCTestCase {
             minimumWeather: minimumWeather,
             requiresCloudless: false,
             requiresRainFree: requiresRainFree,
-            daylightOnly: false,
-            daytimeOnly: false
+            daylightOnly: daylightOnly,
+            daytimeOnly: false,
+            minimumWeatherDaylightOnly: minimumWeatherDaylightOnly
         )
     }
 
