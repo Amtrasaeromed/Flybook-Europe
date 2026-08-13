@@ -1,5 +1,35 @@
 import Foundation
 
+enum SparseForecastTimeline {
+    static func nearestIndex(
+        in localHours: [Int],
+        to targetHour: Int,
+        maximumDistanceHours: Int = 3
+    ) -> Int? {
+        guard let index = localHours.indices.min(by: {
+            abs(localHours[$0] - targetHour)
+                < abs(localHours[$1] - targetHour)
+        }),
+        abs(localHours[index] - targetHour) <= maximumDistanceHours
+        else { return nil }
+        return index
+    }
+
+    static func sample(
+        in samples: [EDFZWeatherSample],
+        nearestToLocalHour targetHour: Int,
+        calendar: Calendar
+    ) -> EDFZWeatherSample? {
+        let localHours = samples.map {
+            calendar.component(.hour, from: $0.validTime)
+        }
+        guard let index = nearestIndex(in: localHours, to: targetHour) else {
+            return nil
+        }
+        return samples[index]
+    }
+}
+
 actor WeatherService {
     static let shared = WeatherService()
 
@@ -327,14 +357,18 @@ actor WeatherService {
             let midday = sample(on: date, nearHour: 14)
             let evening = sample(on: date, nearHour: 20)
             let hourlyWind: [Double?] = DailyWeatherTimeline.hours.map { hour in
-                samples.first {
-                    calendar.component(.hour, from: $0.validTime) == hour
-                }?.windSpeedKnots
+                SparseForecastTimeline.sample(
+                    in: samples,
+                    nearestToLocalHour: hour,
+                    calendar: calendar
+                )?.windSpeedKnots
             }
             let hourlyFogRisk: [Int?] = DailyWeatherTimeline.hours.map { hour in
-                guard let sample = samples.first(where: {
-                    calendar.component(.hour, from: $0.validTime) == hour
-                }) else { return nil }
+                guard let sample = SparseForecastTimeline.sample(
+                    in: samples,
+                    nearestToLocalHour: hour,
+                    calendar: calendar
+                ) else { return nil }
                 return fogRiskScore(for: sample)
             }
             return DailyForecast(
@@ -1418,8 +1452,15 @@ actor WeatherService {
     }
 
     private func cacheContainsFogRisk(_ weather: DestinationWeather) -> Bool {
-        weather.dailyForecast.prefix(5).contains {
-            $0.hourlyFogRiskScores != nil
+        let days = Array(weather.dailyForecast.prefix(5))
+        guard days.count == 5 else { return false }
+        return days.allSatisfy { day in
+            guard let scores = day.hourlyFogRiskScores,
+                  scores.count >= DailyWeatherTimeline.hours.count
+            else { return false }
+            return scores
+                .prefix(DailyWeatherTimeline.hours.count)
+                .allSatisfy { $0 != nil }
         }
     }
 

@@ -347,7 +347,7 @@ private struct FlybriefLegCard: View {
                 metric("GESAMTREISE", leg.travelTimeText)
                 metric("GESAMTBLOCK", leg.blockTimeText)
                 metric("GESAMT TRACK", leg.trackText)
-                metric("SPRIT FLUG", leg.fuel.flightText)
+                metric("KRAFTSTOFF FLUG", leg.fuel.flightText)
                 metric(
                     "INKL. RESERVE",
                     "\(leg.fuel.withReserveText) (\(leg.fuel.reserveMinutes) min)"
@@ -438,7 +438,7 @@ private struct FlybriefSegmentCard: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text("SPRIT")
+                Text("KRAFTSTOFF")
                     .font(.system(size: 6.5, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
                 Text(segment.fuel.flightText)

@@ -27,7 +27,7 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("ETOPS-PIPI MAX"))
         XCTAssertTrue(text.contains("08:00-18:00 LCL"))
         XCTAssertFalse(text.contains("Regulär"))
-        XCTAssertTrue(text.contains("SPRIT FLUG"))
+        XCTAssertTrue(text.contains("KRAFTSTOFF FLUG"))
         XCTAssertTrue(text.contains("74 L (45 min)"))
         XCTAssertTrue(text.contains("Seitenwind rechts 8 G12 kt"))
         XCTAssertTrue(text.contains("Erstellt:"))

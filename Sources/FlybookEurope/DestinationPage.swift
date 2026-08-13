@@ -7207,7 +7207,7 @@ private struct FlightPlanningLine<
                 Circle()
                     .fill(FlybookColor.navy)
                     .frame(width: 6, height: 6)
-                Text("passend zur Halbkreisflugregel")
+                Text("gültig für die Flugrichtung")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(FlybookColor.muted)
             }
@@ -7238,10 +7238,6 @@ private struct FlightPlanningLine<
                 Text(altitudeLabel(altitude))
                     .font(.system(size: 12, weight: recommended ? .bold : .medium))
                 Spacer(minLength: 0)
-                if recommended {
-                    Text("Halbkreis")
-                        .font(.system(size: 8, weight: .bold))
-                }
             }
             .foregroundStyle(
                 recommended

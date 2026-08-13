@@ -97,4 +97,27 @@ final class FogRiskModelTests: XCTestCase {
         XCTAssertEqual(DailyWeatherTimeline.hours, Array(6...22))
         XCTAssertEqual(DailyWeatherTimeline.hours.count, 17)
     }
+
+    func testSparseSixHourlyForecastFillsIntermediateTimelineHours() {
+        let sourceHours = [6, 12, 18]
+
+        XCTAssertEqual(
+            SparseForecastTimeline.nearestIndex(in: sourceHours, to: 9),
+            0
+        )
+        XCTAssertEqual(
+            SparseForecastTimeline.nearestIndex(in: sourceHours, to: 15),
+            1
+        )
+        XCTAssertEqual(
+            SparseForecastTimeline.nearestIndex(in: sourceHours, to: 21),
+            2
+        )
+    }
+
+    func testSparseForecastDoesNotInventDataBeyondThreeHours() {
+        XCTAssertNil(
+            SparseForecastTimeline.nearestIndex(in: [6, 18], to: 12)
+        )
+    }
 }
