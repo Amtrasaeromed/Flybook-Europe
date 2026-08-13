@@ -422,10 +422,15 @@ struct FlybookEuropeApp: App {
             .font(.system(size: 14, weight: .semibold))
             .focused($destinationSearchIsFocused)
             .onSubmit { selectTypedDestination() }
+            .onChange(of: destinationSearchIsFocused) { isFocused in
+                if !isFocused {
+                    restoreDestinationSearchTextIfNeeded()
+                }
+            }
             .onChange(of: destinationSearchText) { value in
                 let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
                     .uppercased()
-                if let destination = selectableDestinations.first(where: {
+                if let destination = store.destinations.first(where: {
                     $0.icao.uppercased() == normalized
                 }) {
                     selectDestination(destination)
@@ -512,7 +517,7 @@ struct FlybookEuropeApp: App {
     private var destinationSearchSuggestions: [Destination] {
         let query = normalizedDestinationSearch
         guard query.count >= 3 else { return [] }
-        return selectableDestinations.filter { destination in
+        return store.destinations.filter { destination in
             let searchable = "\(destination.icao) \(destination.name)"
                 .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             return searchable.contains(query)
@@ -522,8 +527,10 @@ struct FlybookEuropeApp: App {
     }
 
     private func selectTypedDestination() {
-        guard let destination = destinationSearchSuggestions.first
-        else { return }
+        guard let destination = destinationSearchSuggestions.first else {
+            synchronizeDestinationSearchText()
+            return
+        }
         selectDestination(destination)
         destinationSearchIsFocused = false
     }
@@ -540,6 +547,14 @@ struct FlybookEuropeApp: App {
         guard store.destinations.indices.contains(selectedIndex) else { return }
         let destination = store.destinations[selectedIndex]
         destinationSearchText = "\(destination.icao) · \(destination.name)"
+    }
+
+    private func restoreDestinationSearchTextIfNeeded() {
+        guard store.destinations.indices.contains(selectedIndex) else { return }
+        let selected = store.destinations[selectedIndex]
+        let displayed = "\(selected.icao) · \(selected.name)"
+        guard destinationSearchText != displayed else { return }
+        synchronizeDestinationSearchText()
     }
 
     private func previous() {
