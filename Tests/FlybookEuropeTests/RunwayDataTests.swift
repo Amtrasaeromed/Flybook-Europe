@@ -114,16 +114,42 @@ final class RunwayDataTests: XCTestCase {
             )
         }
 
-        for icao in ukICAOs where icao != "EGHA" {
+        for icao in ukICAOs where !["EGHA", "EGKH"].contains(icao) {
             XCTAssertTrue(
                 try XCTUnwrap(byICAO[icao]).features.contains(.beachSea),
                 "Strand / Meer fehlt für \(icao)"
             )
         }
-        XCTAssertFalse(
-            try XCTUnwrap(byICAO["EGHA"]).features.contains(.beachSea),
-            "Compton Abbas überschreitet die 45-Minuten-Regel zur Küste"
-        )
+        for icao in ["EGHA", "EGKH"] {
+            XCTAssertFalse(
+                try XCTUnwrap(byICAO[icao]).features.contains(.beachSea),
+                "\(icao) überschreitet die 45-Minuten-Regel zur Küste"
+            )
+        }
+    }
+
+    func testEveryBeachDestinationUsesHumanScaleAccessWithin45Minutes() throws {
+        let destinations = DestinationStore().destinations.filter {
+            $0.features.contains(.beachSea)
+        }
+        let acceptedModes = Set(["Fahrrad", "Zu Fuß", "zu Fuß", "E-Roller"])
+
+        XCTAssertEqual(destinations.count, 51)
+        for destination in destinations {
+            let beach = try XCTUnwrap(
+                destination.accessFeatures.first { $0.feature == .beachSea },
+                "Strandzugang fehlt für \(destination.icao)"
+            )
+            XCTAssertTrue(
+                acceptedModes.contains(beach.recommendedMode),
+                "Unzulässiger Strandzugang für \(destination.icao): \(beach.recommendedMode)"
+            )
+            XCTAssertLessThanOrEqual(
+                try XCTUnwrap(beach.recommendedMinutes),
+                45,
+                "Strandzugang dauert für \(destination.icao) länger als 45 Minuten"
+            )
+        }
     }
 
     func testPreferredAlternatesAreStandardTechStopDestinations() throws {
@@ -201,7 +227,7 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(byICAO["LFGA"]).features.contains(.city))
         XCTAssertTrue(try XCTUnwrap(byICAO["EDTF"]).features.contains(.city))
         XCTAssertTrue(try XCTUnwrap(byICAO["LOWS"]).features.isSuperset(of: [.city, .wellness, .mountainHiking]))
-        XCTAssertTrue(try XCTUnwrap(byICAO["EDCG"]).features.contains(.beachSea))
+        XCTAssertFalse(try XCTUnwrap(byICAO["EDCG"]).features.contains(.beachSea))
         XCTAssertTrue(try XCTUnwrap(byICAO["LIEO"]).features.contains(.beachSea))
         for icao in ["LIPB", "LIDT", "LSGS"] {
             let destination = try XCTUnwrap(byICAO[icao])

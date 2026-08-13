@@ -9,7 +9,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EDAH:techstop,EDAH,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EDAH:breakfast,EDAH,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EDAH:city,EDAH,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EDAH:beach,EDAH,beach,Ja,Strandpromenade Heringsdorf,Auto,14,53.961999,14.160416,9.28,145,48,14,Auto,14,Strandpromenade Heringsdorf,https://usedom.de/,2026-08-02
+1.2,EDAH:beach,EDAH,beach,Ja,Strandpromenade Heringsdorf,E-Roller,34,53.961999,14.160416,9.28,145,52,14,E-Roller,34,Strandpromenade Heringsdorf,https://usedom.de/,2026-08-13
 1.2,EDAH:lake,EDAH,lake,Nein,,,,,,,,,,,,,https://usedom.de/,2026-08-02
 1.2,EDAH:mountain,EDAH,mountain,Nein,,,,,,,,,,,,,https://usedom.de/,2026-08-02
 1.2,EDAH:wellness,EDAH,wellness,Ja,"OstseeTherme Usedom, Ahlbeck",Fahrrad,40,53.945662,14.178142,7.64,119,40,12,Fahrrad,40,"OstseeTherme Usedom, Ahlbeck",https://usedom.de/,2026-08-02
@@ -37,7 +37,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EDCG:techstop,EDCG,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EDCG:breakfast,EDCG,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EDCG:city,EDCG,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EDCG:beach,EDCG,beach,Ja,Ostseestrände und Seebäder Rügens,Auto,39,54.361284,13.717983,25.53,399,133,39,Auto,39,Ostseestrände und Seebäder Rügens,https://www.ruegen.de/,2026-08-02
+1.2,EDCG:beach,EDCG,beach,Nein,,,,,,,,,,,,,https://www.ruegen.de/,2026-08-13
 1.2,EDCG:lake,EDCG,lake,Nein,,,,,,,,,,,,,https://www.ruegen.de/,2026-08-02
 1.2,EDCG:mountain,EDCG,mountain,Nein,,,,,,,,,,,,,https://www.ruegen.de/,2026-08-02
 1.2,EDCG:wellness,EDCG,wellness,Nein,,,,,,,,,,,,,https://www.ruegen.de/,2026-08-02
@@ -359,7 +359,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGHR:techstop,EGHR,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EGHR:breakfast,EGHR,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EGHR:city,EGHR,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EGHR:beach,EGHR,beach,Ja,West Wittering Beach,Taxi/Auto,30,,,,,,,Taxi/Auto,30,West Wittering Beach,https://www.westwitteringestate.co.uk/,2026-08-13
+1.2,EGHR:beach,EGHR,beach,Ja,West Wittering Beach,E-Roller,38,50.7822911,-0.8920664,12.66,,53,30,E-Roller,38,West Wittering Beach,https://www.westwitteringestate.co.uk/,2026-08-13
 1.2,EGHR:lake,EGHR,lake,Ja,Chichester Harbour National Landscape,Taxi/Auto,20,,,,,,,Taxi/Auto,20,Chichester Harbour National Landscape,https://www.conservancy.co.uk/,2026-08-13
 1.2,EGHR:mountain,EGHR,mountain,Nein,,,,,,,,,,,,,https://www.goodwood.com/,2026-08-02
 1.2,EGHR:wellness,EGHR,wellness,Ja,Goodwood Hotel Health Club & Spa,Fahrrad/Taxi,10,50.867408,-0.733678,2.01,31,10,3,Fahrrad/Taxi,10,Goodwood Hotel Health Club & Spa,https://www.goodwood.com/visit-eat-stay/health-wellbeing/health-club/spa-treatments/,2026-08-13
@@ -415,7 +415,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EHMZ:techstop,EHMZ,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EHMZ:breakfast,EHMZ,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EHMZ:city,EHMZ,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EHMZ:beach,EHMZ,beach,Ja,Nollestrand Vlissingen,Auto,22,51.450667,3.551362,14.2,222,74,22,Auto,22,Nollestrand Vlissingen,https://www.zeeland.com/en/visit,2026-08-02
+1.2,EHMZ:beach,EHMZ,beach,Ja,Nollestrand Vlissingen,E-Roller,43,51.450667,3.551362,14.2,222,62,22,E-Roller,43,Nollestrand Vlissingen,https://www.zeeland.com/en/visit,2026-08-13
 1.2,EHMZ:lake,EHMZ,lake,Ja,Veerse Meer bei Veere,Fahrrad,32,51.54795,3.663546,6.14,96,32,9,Fahrrad,32,Veerse Meer bei Veere,https://www.zeeland.com/en/visit,2026-08-02
 1.2,EHMZ:mountain,EHMZ,mountain,Nein,,,,,,,,,,,,,https://www.zeeland.com/en/visit,2026-08-02
 1.2,EHMZ:wellness,EHMZ,wellness,Nein,,,,,,,,,,,,,https://www.zeeland.com/en/visit,2026-08-02
@@ -443,7 +443,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EKSB:techstop,EKSB,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EKSB:breakfast,EKSB,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EKSB:city,EKSB,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EKSB:beach,EKSB,beach,Ja,Vemmingbund Strand,Auto,15,54.894798,9.702674,9.6,150,50,15,Auto,15,Vemmingbund Strand,https://www.visitsonderborg.com/,2026-08-02
+1.2,EKSB:beach,EKSB,beach,Ja,Vemmingbund Strand,E-Roller,42,54.894798,9.702674,9.6,150,64,15,E-Roller,42,Vemmingbund Strand,https://www.visitsonderborg.com/,2026-08-13
 1.2,EKSB:lake,EKSB,lake,Nein,,,,,,,,,,,,,https://www.visitsonderborg.com/,2026-08-02
 1.2,EKSB:mountain,EKSB,mountain,Nein,,,,,,,,,,,,,https://www.visitsonderborg.com/,2026-08-02
 1.2,EKSB:wellness,EKSB,wellness,Grenzfall,"Alsik Hotel & Spa, Sønderborg",Fahrrad,29,54.914975,9.782679,5.53,86,29,8,Fahrrad,29,"Alsik Hotel & Spa, Sønderborg",https://www.visitsonderborg.com/,2026-08-02
@@ -457,7 +457,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EKVJ:techstop,EKVJ,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EKVJ:breakfast,EKVJ,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EKVJ:city,EKVJ,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EKVJ:beach,EKVJ,beach,Ja,Hvide Sande Strand Süd,Auto,21,55.991528,8.131881,13.81,216,72,21,Auto,21,Hvide Sande Strand Süd,https://www.visitvesterhavet.com/,2026-08-02
+1.2,EKVJ:beach,EKVJ,beach,Nein,,,,,,,,,,,,,https://www.visitvesterhavet.com/,2026-08-13
 1.2,EKVJ:lake,EKVJ,lake,Ja,"Ringkøbing Fjord, Bork Havn",Auto,25,55.848473,8.277511,16.47,257,86,25,Auto,25,"Ringkøbing Fjord, Bork Havn",https://www.visitvesterhavet.com/,2026-08-02
 1.2,EKVJ:mountain,EKVJ,mountain,Nein,,,,,,,,,,,,,https://www.visitvesterhavet.com/,2026-08-02
 1.2,EKVJ:wellness,EKVJ,wellness,Nein,,,,,,,,,,,,,https://www.visitvesterhavet.com/,2026-08-02
@@ -520,7 +520,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,LFKB:techstop,LFKB,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,LFKB:breakfast,LFKB,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,LFKB:city,LFKB,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,LFKB:beach,LFKB,beach,Ja,Plage de la Marana,Auto,15,42.64221,9.46038,10.13,158,53,15,Auto,15,Plage de la Marana,https://www.bastia-tourisme.com/,2026-08-02
+1.2,LFKB:beach,LFKB,beach,Ja,"Plage de la Marana, Borgo",Fahrrad,38,42.5726679,9.5231268,3.9,165,38,15,Fahrrad,38,"Plage de la Marana, Borgo",https://www.bastia-tourisme.com/que-faire/plage-de-la-marana/,2026-08-13
 1.2,LFKB:lake,LFKB,lake,Nein,,,,,,,,,,,,,https://www.bastia-tourisme.com/,2026-08-02
 1.2,LFKB:mountain,LFKB,mountain,Grenzfall,"Belvédère de Bastia, Pietrabugno",Auto,28,42.717342,9.442344,18.61,291,97,28,Auto,28,"Belvédère de Bastia, Pietrabugno",https://www.bastia-tourisme.com/,2026-08-02
 1.2,LFKB:wellness,LFKB,wellness,Nein,,,,,,,,,,,,,https://www.bastia-tourisme.com/,2026-08-02
@@ -555,7 +555,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,LFMP:techstop,LFMP,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,LFMP:breakfast,LFMP,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,LFMP:city,LFMP,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,LFMP:beach,LFMP,beach,Ja,"Plage Rosselló, Canet-en-Roussillon",Auto,22,42.697334,3.036934,14.4,225,75,22,Auto,22,"Plage Rosselló, Canet-en-Roussillon",https://www.perpignantourisme.com/,2026-08-02
+1.2,LFMP:beach,LFMP,beach,Nein,,,,,,,,,,,,,https://www.perpignantourisme.com/,2026-08-13
 1.2,LFMP:lake,LFMP,lake,Ja,Lac de Villeneuve-de-la-Raho,Auto,19,42.62933,2.905113,12.67,198,66,19,Auto,19,Lac de Villeneuve-de-la-Raho,https://www.perpignantourisme.com/,2026-08-02
 1.2,LFMP:mountain,LFMP,mountain,Nein,,,,,,,,,,,,,https://www.perpignantourisme.com/,2026-08-02
 1.2,LFMP:wellness,LFMP,wellness,Ja,"Les Flamants Roses Thalasso, Canet",Auto,23,42.674599,3.033066,15.15,237,79,23,Auto,23,"Les Flamants Roses Thalasso, Canet",https://www.perpignantourisme.com/,2026-08-02
@@ -611,7 +611,7 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,LIEE:techstop,LIEE,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,LIEE:breakfast,LIEE,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,LIEE:city,LIEE,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,LIEE:beach,LIEE,beach,Ja,"Spiaggia del Poetto, Cagliari",Auto,17,39.213418,9.175716,11.28,176,59,17,Auto,17,"Spiaggia del Poetto, Cagliari",https://cagliariturismo.comune.cagliari.it/,2026-08-02
+1.2,LIEE:beach,LIEE,beach,Nein,,,,,,,,,,,,,https://cagliariturismo.comune.cagliari.it/,2026-08-13
 1.2,LIEE:lake,LIEE,lake,Nein,,,,,,,,,,,,,https://cagliariturismo.comune.cagliari.it/,2026-08-02
 1.2,LIEE:mountain,LIEE,mountain,Nein,,,,,,,,,,,,,https://cagliariturismo.comune.cagliari.it/,2026-08-02
 1.2,LIEE:wellness,LIEE,wellness,Nein,,,,,,,,,,,,,https://cagliariturismo.comune.cagliari.it/,2026-08-02
@@ -905,21 +905,21 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGMD:techstop,EGMD,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGMD:breakfast,EGMD,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGMD:city,EGMD,city,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGMD:beach,EGMD,beach,Ja,Dungeness Coast,Taxi/Auto,15,,,,,,,Taxi/Auto,15,Dungeness Coast,https://lyddairport.co.uk/pilot-information/,2026-08-13
+1.2,EGMD:beach,EGMD,beach,Ja,Dungeness Coast,Fahrrad,32,50.9141783,0.9728941,5.23,,32,15,Fahrrad,32,Dungeness Coast,https://lyddairport.co.uk/pilot-information/,2026-08-13
 1.2,EGMD:lake,EGMD,lake,Ja,Romney Marsh und Dungeness,Taxi/Auto,15,,,,,,,Taxi/Auto,15,Romney Marsh und Dungeness,https://lyddairport.co.uk/pilot-information/,2026-08-13
 1.2,EGMD:mountain,EGMD,mountain,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGMD:wellness,EGMD,wellness,Ja,Hythe Imperial Health Club & Spa,Taxi/Auto,35,,,,,,,Taxi/Auto,35,Hythe Imperial Health Club & Spa,https://www.hytheimperial.co.uk/health-wellbeing/,2026-08-13
 1.2,EGHQ:techstop,EGHQ,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHQ:breakfast,EGHQ,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHQ:city,EGHQ,city,Ja,Newquay,Mietwagen/Taxi/Bus,15,,,,,,,Mietwagen/Taxi/Bus,15,Newquay,https://www.flynqy.co.uk/general-aviation/,2026-08-13
-1.2,EGHQ:beach,EGHQ,beach,Ja,Watergate Bay und Fistral Beach,Mietwagen/Taxi/Bus,15,,,,,,,Mietwagen/Taxi/Bus,15,Watergate Bay und Fistral Beach,https://www.flynqy.co.uk/general-aviation/,2026-08-13
+1.2,EGHQ:beach,EGHQ,beach,Ja,Watergate Bay,Fahrrad,18,50.4451496,-5.0559785,4.32,,18,15,Fahrrad,18,Watergate Bay,https://www.visitnewquay.org/explore/south-west-coast-path,2026-08-13
 1.2,EGHQ:lake,EGHQ,lake,Ja,Gannel Estuary und River Gannel,Mietwagen/Taxi,20,,,,,,,Mietwagen/Taxi,20,Gannel Estuary und River Gannel,https://www.visitnewquay.org/explore/the-gannel,2026-08-13
 1.2,EGHQ:mountain,EGHQ,mountain,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHQ:wellness,EGHQ,wellness,Ja,Scarlet Hotel Eco Spa,Mietwagen/Taxi,10,,,,,,,Mietwagen/Taxi,10,Scarlet Hotel Eco Spa,https://www.scarlethotel.co.uk/spa,2026-08-13
 1.2,EGKH:techstop,EGKH,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGKH:breakfast,EGKH,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGKH:city,EGKH,city,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGKH:beach,EGKH,beach,Ja,Camber Sands,Taxi/Auto,40,,,,,,,Taxi/Auto,40,Camber Sands,https://www.rother.gov.uk/leisure-and-events/beaches-and-coastline/camber-sands/,2026-08-13
+1.2,EGKH:beach,EGKH,beach,Nein,,,,,,,,,,,,,https://www.rother.gov.uk/leisure-and-events/beaches-and-coastline/camber-sands/,2026-08-13
 1.2,EGKH:lake,EGKH,lake,Ja,Bewl Water Reservoir,Taxi/Auto,35,,,,,,,Taxi/Auto,35,Bewl Water Reservoir,https://www.bewlwater.co.uk/,2026-08-13
 1.2,EGKH:mountain,EGKH,mountain,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGKH:wellness,EGKH,wellness,Ja,Champneys Eastwell Manor,Taxi/Auto,35,,,,,,,Taxi/Auto,35,Champneys Eastwell Manor,https://www.champneys.com/hotels/eastwell-manor.html,2026-08-13

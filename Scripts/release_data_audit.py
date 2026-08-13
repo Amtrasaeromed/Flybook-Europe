@@ -145,8 +145,20 @@ def main() -> int:
     by_airport: dict[str, set[str]] = defaultdict(set)
     for row in features:
         by_airport[row["airport_id"]].add(row["feature_type"])
-        if row["status_raw"].strip().casefold() not in {"ja", "nein", "grenzfall"}:
+        status = row["status_raw"].strip().casefold()
+        if status not in {"ja", "nein", "grenzfall"}:
             error(f"Feature {row['feature_id']}: ungültiger Status {row['status_raw']!r}")
+        if row["feature_type"] == "beach" and status == "ja":
+            context = f"Strandmerkmal {row['feature_id']}"
+            mode = row["recommended_mode"].strip().casefold().replace("ß", "ss")
+            if mode not in {"fahrrad", "zu fuss", "e-roller"}:
+                error(
+                    f"{context}: Zugang muss Fahrrad, zu Fuß oder E-Roller sein, "
+                    f"nicht {row['recommended_mode']!r}"
+                )
+            minutes = number(row, "recommended_minutes", context)
+            if minutes is not None and not 0 < minutes <= 45:
+                error(f"{context}: Zugang dauert {minutes:g} Minuten statt maximal 45")
     for airport_id in sorted(airport_ids):
         missing = expected_features - by_airport[airport_id]
         extra = by_airport[airport_id] - expected_features
