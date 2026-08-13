@@ -1794,6 +1794,7 @@ struct DestinationPage: View {
             blockMinutes: outboundCalculatedBlockMinutes,
             trackMiles: outboundTrackMiles,
             altitudeFeet: outboundFlightAltitudeFeet,
+            fuelConsumptionPerHour: outboundFuelConsumptionPerHour,
             bestLevelFeet: outboundRouteWindModel.bestLevelFeet,
             routeWind: outboundRouteWindModel.wind,
             routeAssessments: outboundRouteRiskModel.assessments,
@@ -1827,6 +1828,7 @@ struct DestinationPage: View {
             blockMinutes: returnCalculatedBlockMinutes,
             trackMiles: returnTrackMiles,
             altitudeFeet: returnFlightAltitudeFeet,
+            fuelConsumptionPerHour: returnFuelConsumptionPerHour,
             bestLevelFeet: returnRouteWindModel.bestLevelFeet,
             routeWind: returnRouteWindModel.wind,
             routeAssessments: returnRouteRiskModel.assessments,
@@ -1851,6 +1853,7 @@ struct DestinationPage: View {
         blockMinutes: Int,
         trackMiles: Double,
         altitudeFeet: Int,
+        fuelConsumptionPerHour: Double,
         bestLevelFeet: Int?,
         routeWind: RouteWind?,
         routeAssessments: [RouteWeatherSegmentAssessment],
@@ -1938,7 +1941,8 @@ struct DestinationPage: View {
             routeWind: routeWind,
             routeAssessments: routeAssessments,
             stopForecasts: stopForecasts,
-            plannedSegments: plannedSegments
+            plannedSegments: plannedSegments,
+            fuelConsumptionPerHour: fuelConsumptionPerHour
         )
         return FlybriefLegSnapshot(
             id: id,
@@ -1953,6 +1957,10 @@ struct DestinationPage: View {
             trackText: "\(Int(trackMiles.rounded())) NM",
             altitudeText: flybriefAltitude(altitudeFeet),
             bestLevelText: bestLevelFeet.map { flybriefAltitude($0) } ?? "-",
+            fuel: flybriefFuel(
+                minutes: blockMinutes,
+                consumptionPerHour: fuelConsumptionPerHour
+            ),
             routeWindText: routeWindText,
             routeWindDetail: routeWindDetail,
             etopsText: FlightMath.duration(etopsMinutes),
@@ -1975,7 +1983,8 @@ struct DestinationPage: View {
         routeWind: RouteWind?,
         routeAssessments: [RouteWeatherSegmentAssessment],
         stopForecasts: [String: EDFZForecast],
-        plannedSegments: [FlybriefPlannedSegment]
+        plannedSegments: [FlybriefPlannedSegment],
+        fuelConsumptionPerHour: Double
     ) -> [FlybriefSegmentSnapshot] {
         guard plannedSegments.count > 1 else { return [] }
 
@@ -2043,6 +2052,10 @@ struct DestinationPage: View {
                 routeText: "\(segment.origin.icao) → \(segment.destination.icao)",
                 blockTimeText: FlightMath.duration(segment.travelMinutes),
                 trackText: "\(Int(segment.trackMilesNM.rounded())) NM",
+                fuel: flybriefFuel(
+                    minutes: segment.travelMinutes,
+                    consumptionPerHour: fuelConsumptionPerHour
+                ),
                 routeWindText: windText,
                 routeWindDetail: windDetail,
                 routeWeather: weatherPoints,
@@ -2339,6 +2352,28 @@ struct DestinationPage: View {
         Int((WindMath.normalized(degrees) / 5).rounded() * 5) % 360
     }
 
+    private func flybriefFuel(
+        minutes: Int,
+        consumptionPerHour: Double
+    ) -> FlybriefFuelSnapshot {
+        let flightLiters = Double(max(0, minutes))
+            * max(0, consumptionPerHour) / 60
+        let reserveLiters = Double(max(0, reserveMinutes))
+            * max(0, consumptionPerHour) / 60
+        return FlybriefFuelSnapshot(
+            flightText: flybriefFuelQuantity(flightLiters),
+            withReserveText: flybriefFuelQuantity(
+                flightLiters + reserveLiters
+            ),
+            reserveMinutes: reserveMinutes
+        )
+    }
+
+    private func flybriefFuelQuantity(_ liters: Double) -> String {
+        let amount = Int(ceil(fuelDisplayUnit.fromLiters(max(0, liters))))
+        return "\(amount) \(fuelDisplayUnit.symbol)"
+    }
+
     private func flybriefOpeningHoursText(
         airport: AirportReference,
         instant: Date
@@ -2354,7 +2389,7 @@ struct DestinationPage: View {
             "\(flybriefClock($0.opening, airport: airport))-"
                 + flybriefClock($0.closing, airport: airport)
         }.joined(separator: ", ")
-        return "Regulär \(hours) \(timeDisplayMode == .utc ? "UTC" : "LCL")"
+        return "\(hours) \(timeDisplayMode == .utc ? "UTC" : "LCL")"
     }
 
     private func flybriefWeatherDescription(_ code: Int?) -> String {

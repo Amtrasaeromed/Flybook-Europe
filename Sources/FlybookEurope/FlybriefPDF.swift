@@ -33,6 +33,7 @@ struct FlybriefLegSnapshot: Identifiable {
     let trackText: String
     let altitudeText: String
     let bestLevelText: String
+    let fuel: FlybriefFuelSnapshot
     let routeWindText: String
     let routeWindDetail: String
     let etopsText: String
@@ -50,12 +51,19 @@ struct FlybriefSegmentSnapshot: Identifiable {
     let routeText: String
     let blockTimeText: String
     let trackText: String
+    let fuel: FlybriefFuelSnapshot
     let routeWindText: String
     let routeWindDetail: String
     let routeWeather: [FlybriefRouteWeatherPoint]
     let routeWeatherSummary: String
     let departure: FlybriefEndpointSnapshot
     let arrival: FlybriefEndpointSnapshot
+}
+
+struct FlybriefFuelSnapshot {
+    let flightText: String
+    let withReserveText: String
+    let reserveMinutes: Int
 }
 
 struct FlybriefEndpointSnapshot {
@@ -339,12 +347,28 @@ private struct FlybriefLegCard: View {
                 metric("GESAMTREISE", leg.travelTimeText)
                 metric("GESAMTBLOCK", leg.blockTimeText)
                 metric("GESAMT TRACK", leg.trackText)
-                metric("HÖHE", leg.altitudeText)
-                metric("BEST LEVEL", leg.bestLevelText)
+                metric("SPRIT FLUG", leg.fuel.flightText)
+                metric(
+                    "INKL. RESERVE",
+                    "\(leg.fuel.withReserveText) (\(leg.fuel.reserveMinutes) min)"
+                )
                 metric("ETOPS-PIPI MAX", leg.etopsText, level: leg.etopsLevel)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("HÖHE")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+                Text(leg.altitudeText)
+                    .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                Text("BEST")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+                Text(leg.bestLevelText)
+                    .font(.system(size: 9.5, weight: .black, design: .monospaced))
+                Rectangle()
+                    .fill(FlybookColor.line)
+                    .frame(width: 1, height: 13)
                 Text("STRECKENWIND")
                     .font(.system(size: 7, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
@@ -414,16 +438,24 @@ private struct FlybriefSegmentCard: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 7) {
-                Text("STRECKENWIND")
+                Text("SPRIT")
                     .font(.system(size: 6.5, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
-                Text(segment.routeWindText)
+                Text(segment.fuel.flightText)
                     .font(.system(size: 9, weight: .black))
-                Text(segment.routeWindDetail)
+                Text("INKL. RESERVE")
+                    .font(.system(size: 6.5, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+                Text(
+                    "\(segment.fuel.withReserveText) "
+                        + "(\(segment.fuel.reserveMinutes) min)"
+                )
+                .font(.system(size: 9, weight: .black))
+                Spacer(minLength: 4)
+                Text("Wind " + segment.routeWindText + " · " + segment.routeWindDetail)
                     .font(.system(size: 7, weight: .semibold))
                     .foregroundStyle(FlybookColor.muted)
                     .lineLimit(1)
-                Spacer(minLength: 0)
             }
 
             HStack(alignment: .top, spacing: 8) {
@@ -490,10 +522,13 @@ private struct FlybriefEndpointCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                     if let openingHoursText = endpoint.openingHoursText {
-                        Text(openingHoursText)
-                            .font(.system(size: dense ? 5.8 : 6.8, weight: .semibold))
-                            .foregroundStyle(FlybookColor.muted)
-                            .lineLimit(1)
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock")
+                            Text(openingHoursText)
+                                .lineLimit(1)
+                        }
+                        .font(.system(size: dense ? 5.8 : 6.8, weight: .semibold))
+                        .foregroundStyle(FlybookColor.muted)
                     }
                 }
                 Spacer(minLength: 2)

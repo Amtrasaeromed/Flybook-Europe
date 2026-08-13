@@ -25,7 +25,10 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("FLYBRIEF"))
         XCTAssertTrue(text.contains("EDFZ-EDXE-EDLM-EHAM-EDFZ"))
         XCTAssertTrue(text.contains("ETOPS-PIPI MAX"))
-        XCTAssertTrue(text.contains("Regulär 08:00-18:00 LCL"))
+        XCTAssertTrue(text.contains("08:00-18:00 LCL"))
+        XCTAssertFalse(text.contains("Regulär"))
+        XCTAssertTrue(text.contains("SPRIT FLUG"))
+        XCTAssertTrue(text.contains("74 L (45 min)"))
         XCTAssertTrue(text.contains("Seitenwind rechts 8 G12 kt"))
         XCTAssertTrue(text.contains("Erstellt:"))
         XCTAssertTrue(text.contains("TEILSTRECKE 1/3"))
@@ -139,6 +142,11 @@ final class FlybriefPDFTests: XCTestCase {
             trackText: "210 NM",
             altitudeText: "FL085",
             bestLevelText: "FL080",
+            fuel: FlybriefFuelSnapshot(
+                flightText: "56 L",
+                withReserveText: "74 L",
+                reserveMinutes: 45
+            ),
             routeWindText: "Gegenwind 5 kt",
             routeWindDetail: "Wind 290°/18 kt · gültig 10:00",
             etopsText: "2:06",
@@ -169,6 +177,11 @@ final class FlybriefPDFTests: XCTestCase {
             routeText: route,
             blockTimeText: "0:58",
             trackText: "98 NM",
+            fuel: FlybriefFuelSnapshot(
+                flightText: "24 L",
+                withReserveText: "42 L",
+                reserveMinutes: 45
+            ),
             routeWindText: "Gegenwind 4 kt",
             routeWindDetail: "Kurs 340° · Wind 290°/18 kt · gültig 10:00",
             routeWeather: (0..<3).map {
@@ -191,7 +204,7 @@ final class FlybriefPDFTests: XCTestCase {
             role: role,
             icao: icao,
             name: name,
-            openingHoursText: "Regulär 08:00-18:00 LCL",
+            openingHoursText: "08:00-18:00 LCL",
             timeText: time,
             operatingStatus: "Geöffnet",
             operatingLevel: .good,
