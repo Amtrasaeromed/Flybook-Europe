@@ -12,6 +12,7 @@ enum RouteWeatherRisk: Int, Codable, Comparable, Sendable {
     case green = 0
     case blue = 1
     case red = 2
+    case purple = 3
 
     static func < (lhs: RouteWeatherRisk, rhs: RouteWeatherRisk) -> Bool {
         lhs.rawValue < rhs.rawValue
@@ -23,6 +24,7 @@ enum RouteWeatherRisk: Int, Codable, Comparable, Sendable {
         case .green: return .green
         case .blue: return FlybookColor.blue
         case .red: return .red
+        case .purple: return .purple
         }
     }
 
@@ -32,16 +34,145 @@ enum RouteWeatherRisk: Int, Codable, Comparable, Sendable {
         case .green: return "Routenwetter unkritisch"
         case .blue: return "Routenwetter marginal"
         case .red: return "Routenwetter kritisch"
+        case .purple: return "Routenwetter sehr kritisch"
         }
+    }
+}
+
+struct RouteWeatherSegmentAssessment: Equatable, Sendable {
+    let risk: RouteWeatherRisk
+    let isAlpine: Bool
+    let controllingTerrainFeetMSL: Double?
+    let ceilingClearanceFeet: Double?
+    let visibilityMeters: Double?
+    let precipitationMillimeters: Double?
+    let explanation: String
+
+    static let unavailable = RouteWeatherSegmentAssessment(
+        risk: .unavailable,
+        isAlpine: false,
+        controllingTerrainFeetMSL: nil,
+        ceilingClearanceFeet: nil,
+        visibilityMeters: nil,
+        precipitationMillimeters: nil,
+        explanation: "Keine ausreichenden Routendaten"
+    )
+}
+
+enum AlpineRouteWeatherEvaluator {
+    static func assess(
+        baseRisk: RouteWeatherRisk,
+        isAlpine: Bool,
+        controllingTerrainFeetMSL: Double?,
+        ceilingClearanceFeet: Double?,
+        visibilityMeters: Double?,
+        precipitationMillimeters: Double?
+    ) -> RouteWeatherSegmentAssessment {
+        guard isAlpine else {
+            return RouteWeatherSegmentAssessment(
+                risk: baseRisk,
+                isAlpine: false,
+                controllingTerrainFeetMSL: controllingTerrainFeetMSL,
+                ceilingClearanceFeet: ceilingClearanceFeet,
+                visibilityMeters: visibilityMeters,
+                precipitationMillimeters: precipitationMillimeters,
+                explanation: baseRisk.title
+            )
+        }
+
+        var risk = baseRisk
+        var explanation = "Alpenkorridor ohne zusätzliches Warnsignal"
+        let precipitation = precipitationMillimeters ?? 0
+
+        if let visibilityMeters {
+            if visibilityMeters < 5_000 {
+                risk = .purple
+                explanation = String(
+                    format: "Alpenroute nicht ausreichend sichtbar: %.1f km",
+                    visibilityMeters / 1_000
+                )
+            } else if visibilityMeters < 8_000 {
+                risk = max(risk, .red)
+                explanation = String(
+                    format: "Alpensicht kritisch: %.1f km",
+                    visibilityMeters / 1_000
+                )
+            } else if visibilityMeters < 10_000 {
+                risk = max(risk, .blue)
+                explanation = String(
+                    format: "Alpensicht eingeschränkt: %.1f km",
+                    visibilityMeters / 1_000
+                )
+            }
+        }
+
+        if let clearance = ceilingClearanceFeet {
+            if clearance < 1_000 {
+                risk = .purple
+                explanation = String(
+                    format: "Alpenroute geschlossen: nur %.0f ft Wolkenabstand über Gelände/Pass",
+                    max(0, clearance)
+                )
+            } else if clearance < 2_000 {
+                risk = max(risk, .red)
+                explanation = String(
+                    format: "Alpenkorridor kritisch: nur %.0f ft über Gelände/Pass",
+                    clearance
+                )
+            } else if clearance < 5_000 {
+                risk = max(risk, .blue)
+                explanation = String(
+                    format: "Alpenkorridor eingeschränkt: %.0f ft über Gelände/Pass",
+                    clearance
+                )
+            }
+
+            if precipitation >= 0.1 {
+                if clearance < 2_000 {
+                    risk = .purple
+                    explanation = String(
+                        format: "Alpenroute geschlossen: Niederschlag und nur %.0f ft über Gelände/Pass",
+                        clearance
+                    )
+                } else if clearance < 5_000 {
+                    risk = max(risk, .red)
+                    explanation = String(
+                        format: "Alpenroute kritisch: Niederschlag bei %.0f ft Geländefreiheit",
+                        clearance
+                    )
+                } else {
+                    risk = max(risk, .blue)
+                    explanation = "Niederschlag im Alpenkorridor"
+                }
+            }
+        } else if precipitation >= 2 {
+            risk = max(risk, .red)
+            explanation = "Niederschlag im Alpenkorridor; Wolkenabstand zum Gelände unbekannt"
+        } else if precipitation >= 0.1 {
+            risk = max(risk, .blue)
+            explanation = "Niederschlag im Alpenkorridor"
+        }
+
+        return RouteWeatherSegmentAssessment(
+            risk: risk,
+            isAlpine: true,
+            controllingTerrainFeetMSL: controllingTerrainFeetMSL,
+            ceilingClearanceFeet: ceilingClearanceFeet,
+            visibilityMeters: visibilityMeters,
+            precipitationMillimeters: precipitationMillimeters,
+            explanation: explanation
+        )
     }
 }
 
 @MainActor
 final class RouteWeatherRiskViewModel: ObservableObject {
-    @Published private(set) var segments = Array(
-        repeating: RouteWeatherRisk.unavailable,
+    @Published private(set) var assessments = Array(
+        repeating: RouteWeatherSegmentAssessment.unavailable,
         count: 6
     )
+
+    var segments: [RouteWeatherRisk] { assessments.map(\.risk) }
 
     func load(
         waypoints: [AirportReference],
@@ -51,11 +182,11 @@ final class RouteWeatherRiskViewModel: ObservableObject {
         forceRefresh: Bool = false
     ) async {
         guard waypoints.count >= 2 else {
-            segments = Array(repeating: .unavailable, count: 6)
+            assessments = Array(repeating: .unavailable, count: 6)
             return
         }
         do {
-            segments = try await RouteWeatherRiskService.shared.risks(
+            assessments = try await RouteWeatherRiskService.shared.assessments(
                 waypoints: waypoints,
                 start: start,
                 end: end,
@@ -63,7 +194,7 @@ final class RouteWeatherRiskViewModel: ObservableObject {
                 forceRefresh: forceRefresh
             )
         } catch {
-            segments = Array(repeating: .unavailable, count: 6)
+            assessments = Array(repeating: .unavailable, count: 6)
         }
     }
 }
@@ -71,7 +202,7 @@ final class RouteWeatherRiskViewModel: ObservableObject {
 actor RouteWeatherRiskService {
     static let shared = RouteWeatherRiskService()
     private let cacheLifetime: TimeInterval = 30 * 60
-    private var cache: [String: (Date, [RouteWeatherRisk])] = [:]
+    private var cache: [String: (Date, [RouteWeatherSegmentAssessment])] = [:]
 
     private struct SamplePoint {
         let latitude: Double
@@ -87,6 +218,22 @@ actor RouteWeatherRiskService {
         cruiseAltitudeFeet: Int,
         forceRefresh: Bool
     ) async throws -> [RouteWeatherRisk] {
+        try await assessments(
+            waypoints: waypoints,
+            start: start,
+            end: end,
+            cruiseAltitudeFeet: cruiseAltitudeFeet,
+            forceRefresh: forceRefresh
+        ).map(\.risk)
+    }
+
+    func assessments(
+        waypoints: [AirportReference],
+        start: Date,
+        end: Date,
+        cruiseAltitudeFeet: Int,
+        forceRefresh: Bool
+    ) async throws -> [RouteWeatherSegmentAssessment] {
         let key = cacheKey(
             waypoints: waypoints,
             start: start,
@@ -99,18 +246,50 @@ actor RouteWeatherRiskService {
             return cached.1
         }
         let samples = corridorSamples(waypoints: waypoints, start: start, end: end)
-        var result = Array(repeating: RouteWeatherRisk.green, count: 6)
+        var result = Array(
+            repeating: RouteWeatherSegmentAssessment(
+                risk: .green,
+                isAlpine: false,
+                controllingTerrainFeetMSL: nil,
+                ceilingClearanceFeet: nil,
+                visibilityMeters: nil,
+                precipitationMillimeters: nil,
+                explanation: RouteWeatherRisk.green.title
+            ),
+            count: 6
+        )
         var hasData = Array(repeating: false, count: 6)
         do {
             let responses = try await fetch(samples)
             guard responses.count == samples.count else { throw RiskError.noData }
-            for (sample, response) in zip(samples, responses) {
-                guard let hour = response.nearest(to: sample.instant) else { continue }
-                hasData[sample.segment] = true
-                result[sample.segment] = max(
-                    result[sample.segment],
-                    classify(hour, cruiseAltitudeFeet: cruiseAltitudeFeet)
+            let forecastPoints = zip(samples, responses).compactMap {
+                sample, response -> (SamplePoint, RiskHour, Double?)? in
+                guard let hour = response.nearest(to: sample.instant) else {
+                    return nil
+                }
+                return (
+                    sample,
+                    hour,
+                    response.elevation.map { $0 / 0.3048 }
                 )
+            }
+            for segment in 0..<6 {
+                let points = forecastPoints.filter { $0.0.segment == segment }
+                guard !points.isEmpty else { continue }
+                let controllingTerrain = points.compactMap { $0.2 }.max()
+                let segmentAssessments = points.map { sample, hour, terrain in
+                    assessment(
+                        hour,
+                        sample: sample,
+                        sampleTerrainFeetMSL: terrain,
+                        controllingTerrainFeetMSL: controllingTerrain,
+                        cruiseAltitudeFeet: cruiseAltitudeFeet
+                    )
+                }
+                guard let worst = segmentAssessments.max(by: assessmentIsLess)
+                else { continue }
+                hasData[segment] = true
+                result[segment] = worst
             }
         } catch {
             // The global forecast endpoint may throttle large corridor batches.
@@ -125,8 +304,11 @@ actor RouteWeatherRiskService {
                 ) else { continue }
                 let hour = RiskHour(cached: cached)
                 hasData[sample.segment] = true
-                result[sample.segment] = classify(
+                result[sample.segment] = assessment(
                     hour,
+                    sample: sample,
+                    sampleTerrainFeetMSL: nil,
+                    controllingTerrainFeetMSL: nil,
                     cruiseAltitudeFeet: cruiseAltitudeFeet
                 )
             }
@@ -137,12 +319,69 @@ actor RouteWeatherRiskService {
         if hasData.contains(false) {
             let fallback = await fetchMETFallback(samples)
             for (segment, risk) in fallback where !hasData[segment] {
-                result[segment] = risk
+                let center = samples.first(where: { $0.segment == segment })
+                let alpine = center.map {
+                    AlpineRegion.contains(
+                        latitude: $0.latitude,
+                        longitude: $0.longitude
+                    )
+                } ?? false
+                result[segment] = RouteWeatherSegmentAssessment(
+                    risk: risk,
+                    isAlpine: alpine,
+                    controllingTerrainFeetMSL: nil,
+                    ceilingClearanceFeet: nil,
+                    visibilityMeters: nil,
+                    precipitationMillimeters: nil,
+                    explanation: alpine
+                        ? "Alpenkorridor nur mit Ersatzwetterdaten bewertet"
+                        : risk.title
+                )
                 hasData[segment] = true
             }
         }
         cache[key] = (Date(), result)
         return result
+    }
+
+    private func assessmentIsLess(
+        _ lhs: RouteWeatherSegmentAssessment,
+        _ rhs: RouteWeatherSegmentAssessment
+    ) -> Bool {
+        if lhs.risk != rhs.risk { return lhs.risk < rhs.risk }
+        return (lhs.ceilingClearanceFeet ?? .infinity)
+            > (rhs.ceilingClearanceFeet ?? .infinity)
+    }
+
+    private func assessment(
+        _ hour: RiskHour,
+        sample: SamplePoint,
+        sampleTerrainFeetMSL: Double?,
+        controllingTerrainFeetMSL: Double?,
+        cruiseAltitudeFeet: Int
+    ) -> RouteWeatherSegmentAssessment {
+        let baseRisk = classify(
+            hour,
+            cruiseAltitudeFeet: cruiseAltitudeFeet
+        )
+        let clearance = hour.estimatedCeilingBaseFeetAGL.map { baseAGL in
+            guard let sampleTerrainFeetMSL,
+                  let controllingTerrainFeetMSL
+            else { return baseAGL }
+            return sampleTerrainFeetMSL + baseAGL
+                - controllingTerrainFeetMSL
+        }
+        return AlpineRouteWeatherEvaluator.assess(
+            baseRisk: baseRisk,
+            isAlpine: AlpineRegion.contains(
+                latitude: sample.latitude,
+                longitude: sample.longitude
+            ),
+            controllingTerrainFeetMSL: controllingTerrainFeetMSL,
+            ceilingClearanceFeet: clearance,
+            visibilityMeters: hour.visibilityMeters,
+            precipitationMillimeters: hour.precipitationMillimeters
+        )
     }
 
     private func classify(
@@ -151,9 +390,13 @@ actor RouteWeatherRiskService {
     ) -> RouteWeatherRisk {
         var risk = RouteWeatherRisk.green
         var critical = false
+        var veryCritical = false
 
         if let visibility = hour.visibilityMeters {
-            if visibility < 1_500 { critical = true }
+            if visibility < 1_500 {
+                critical = true
+                veryCritical = true
+            }
             if visibility < 8_000 { risk = .blue }
         }
         if let rain = hour.precipitationMillimeters {
@@ -162,6 +405,7 @@ actor RouteWeatherRiskService {
         }
         if let code = hour.weatherCode {
             if [45, 48, 95, 96, 99].contains(code) { critical = true }
+            if [95, 96, 99].contains(code) { veryCritical = true }
         }
         if let temperature = hour.temperatureCelsius,
            let dewPoint = hour.dewPointCelsius,
@@ -177,11 +421,9 @@ actor RouteWeatherRiskService {
             if cape >= 500 { risk = .blue }
         }
 
-        if (hour.lowCloudCoverPercent ?? 0) >= 62.5,
-           let temperature = hour.temperatureCelsius,
-           let dewPoint = hour.dewPointCelsius {
-            let baseFeetAGL = max(0, (temperature - dewPoint) * 400)
+        if let baseFeetAGL = hour.estimatedCeilingBaseFeetAGL {
             if baseFeetAGL < 1_000 { critical = true }
+            if baseFeetAGL < 500 { veryCritical = true }
             if baseFeetAGL <= 2_500 { risk = .blue }
         }
 
@@ -193,7 +435,9 @@ actor RouteWeatherRiskService {
 
         // A critical surface layer may be overflown, but it remains operationally
         // relevant for diversion and landing. Therefore red can improve only to blue.
-        return hour.isSuitableAloft(around: cruiseAltitudeFeet) ? .blue : .red
+        return hour.isSuitableAloft(around: cruiseAltitudeFeet)
+            ? .blue
+            : (veryCritical ? .purple : .red)
     }
 
     private func corridorSamples(
@@ -448,6 +692,7 @@ private enum AirportBearing {
 
 private struct RiskAPIResponse: Decodable {
     let hourly: RiskHourly
+    let elevation: Double?
 
     func nearest(to instant: Date) -> RiskHour? {
         let parser = DateFormatter()
@@ -496,6 +741,14 @@ private struct RiskHour {
         lowCloudCoverPercent = hour.lowCloudCoverPercent
         cape = nil
         pressureClouds = []
+    }
+
+    var estimatedCeilingBaseFeetAGL: Double? {
+        guard (lowCloudCoverPercent ?? 0) >= 62.5,
+              let temperatureCelsius,
+              let dewPointCelsius
+        else { return nil }
+        return max(0, (temperatureCelsius - dewPointCelsius) * 400)
     }
 
     var brokenOvercastThicknessFeet: Double? {
@@ -570,18 +823,41 @@ private struct RiskHourly: Decodable {
 }
 
 struct RouteRiskDots: View {
-    let risks: [RouteWeatherRisk]
+    let assessments: [RouteWeatherSegmentAssessment]
+
+    private var hasAlpineSegment: Bool {
+        assessments.contains(where: \.isAlpine)
+    }
+
+    private var alpineHelp: String {
+        assessments
+            .filter(\.isAlpine)
+            .max { $0.risk < $1.risk }?
+            .explanation
+            ?? "Alpenkorridor wird geländebezogen bewertet"
+    }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
+            if hasAlpineSegment {
+                Image(systemName: "mountain.2.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+                    .help(alpineHelp)
+            }
             ForEach(0..<6, id: \.self) { index in
-                let risk = risks.indices.contains(index) ? risks[index] : .unavailable
+                let assessment = assessments.indices.contains(index)
+                    ? assessments[index]
+                    : .unavailable
+                let risk = assessment.risk
                 Circle()
                     .fill(risk.color)
                     .overlay(Circle().stroke(FlybookColor.navy.opacity(0.55), lineWidth: 0.8))
                     .shadow(color: risk.color.opacity(0.35), radius: 1.5)
                     .frame(width: 11, height: 11)
-                    .help("Teilstrecke \(index + 1): \(risk.title)")
+                    .help(
+                        "Teilstrecke \(index + 1): \(assessment.explanation)"
+                    )
             }
         }
         .frame(width: 100, height: 14)

@@ -48,6 +48,8 @@ struct DestinationFinderCriteria {
     let requiresRainFree: Bool
     let daylightOnly: Bool
     let daytimeOnly: Bool
+    var maximumRouteWeatherRisk = RouteWeatherRisk.green
+    var ignoresRouteWeather = true
 
     var requiresWeatherData: Bool {
         !ignoresMinimumTemperature
@@ -57,6 +59,108 @@ struct DestinationFinderCriteria {
             || !ignoresMinimumWeather
             || requiresCloudless
             || requiresRainFree
+    }
+}
+
+@MainActor
+private final class DestinationFinderSession {
+    static let shared = DestinationFinderSession()
+
+    var originICAO = "EDFZ"
+    var from: Date
+    var until: Date
+    var minimumTravelHours = 0.0
+    var maximumTravelHours = 3.0
+    var ignoresTravelTime = false
+    var appliesETOPS = true
+    var maximumRoundTripPrice = 1_000.0
+    var ignoresPrice = false
+    var priceAppliesETOPS = true
+    var requiresLandingVoucher = false
+    var requiredFeatures: Set<DestinationFeature> = []
+    var requiresBicycleAtAirport = false
+    var requiresRentalCarAtAirport = false
+    var requiresApp2DriveAtAirport = false
+    var minimumRunwayLength = 300.0
+    var selectedCountryCodes: Set<String>?
+    var requiredFuelTypes: Set<AircraftFuelType> = []
+    var requiresFuelAtOrBelowReferencePrice = false
+    var minimumTemperature = 10.0
+    var ignoresMinimumTemperature = false
+    var maximumTemperature = 40.0
+    var ignoresMaximumTemperature = true
+    var maximumWind = 15.0
+    var ignoresWind = false
+    var maximumGust = 25.0
+    var ignoresGusts = true
+    var minimumWeather = DestinationFinderMinimumWeather.vfr
+    var ignoresMinimumWeather = false
+    var requiresCloudless = false
+    var requiresRainFree = false
+    var daylightOnly = true
+    var daytimeOnly = false
+    var filterUserRaw = ""
+    var maximumRouteWeatherRisk = RouteWeatherRisk.green
+    var ignoresRouteWeather = true
+
+    private init() {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: calendar.startOfDay(for: Date())
+        ) ?? Date()
+        from = calendar.date(
+            bySettingHour: 6, minute: 0, second: 0, of: tomorrow
+        ) ?? tomorrow
+        until = calendar.date(
+            bySettingHour: 22, minute: 0, second: 0, of: tomorrow
+        ) ?? tomorrow
+    }
+
+    func reset(countryCodes: Set<String>, activeUserRaw: String) {
+        originICAO = "EDFZ"
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: calendar.startOfDay(for: Date())
+        ) ?? Date()
+        from = calendar.date(bySettingHour: 6, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        until = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        minimumTravelHours = 0
+        maximumTravelHours = 3
+        ignoresTravelTime = false
+        appliesETOPS = true
+        maximumRoundTripPrice = 1_000
+        ignoresPrice = false
+        priceAppliesETOPS = true
+        requiresLandingVoucher = false
+        requiredFeatures = []
+        requiresBicycleAtAirport = false
+        requiresRentalCarAtAirport = false
+        requiresApp2DriveAtAirport = false
+        minimumRunwayLength = 300
+        selectedCountryCodes = countryCodes
+        requiredFuelTypes = []
+        requiresFuelAtOrBelowReferencePrice = false
+        minimumTemperature = 10
+        ignoresMinimumTemperature = false
+        maximumTemperature = 40
+        ignoresMaximumTemperature = true
+        maximumWind = 15
+        ignoresWind = false
+        maximumGust = 25
+        ignoresGusts = true
+        minimumWeather = .vfr
+        ignoresMinimumWeather = false
+        requiresCloudless = false
+        requiresRainFree = false
+        daylightOnly = true
+        daytimeOnly = false
+        filterUserRaw = activeUserRaw
+        maximumRouteWeatherRisk = .green
+        ignoresRouteWeather = true
     }
 }
 
@@ -84,6 +188,15 @@ struct DestinationFinderWeatherHour: Equatable {
 }
 
 enum DestinationFinderEvaluator {
+    static func routeWeatherMatches(
+        _ risks: [RouteWeatherRisk],
+        maximum: RouteWeatherRisk
+    ) -> Bool {
+        !risks.isEmpty
+            && !risks.contains(.unavailable)
+            && risks.allSatisfy { $0 <= maximum }
+    }
+
     static func serviceIsAvailable(_ value: String) -> Bool {
         let normalized = value.folding(
             options: [.diacriticInsensitive, .caseInsensitive],
@@ -555,8 +668,72 @@ enum DestinationFinderService {
                 )
             }
 
+        // Load the compact airport batches before the much more expensive
+        // corridor requests. Apart from making the destination filters
+        // available immediately, this gives RouteWeatherRiskService a cached
+        // fallback if the forecast provider throttles a corridor batch.
+        let weatherByICAO: [String: [DestinationFinderWeatherHour]]
+        if criteria.requiresWeatherData {
+            weatherByICAO = await DestinationFinderWeatherCache.shared.hours(
+                for: travelCandidates.map { $0.0 },
+                from: criteria.from,
+                until: criteria.until
+            )
+        } else {
+            weatherByICAO = [:]
+        }
+
+        var filteredTravelCandidates = travelCandidates
+        var unavailableRouteWeatherCount = 0
+        if !criteria.ignoresRouteWeather {
+            var routeMatches: [(Destination, Int, Int, Double, Int)] = []
+            for candidate in travelCandidates {
+                let destination = candidate.0
+                guard let latitude = destination.latitude,
+                      let longitude = destination.longitude
+                else {
+                    unavailableRouteWeatherCount += 1
+                    continue
+                }
+                let destinationReference = AirportReference(
+                    icao: destination.icao,
+                    name: destination.name,
+                    latitude: latitude,
+                    longitude: longitude,
+                    elevationFeet: destination.elevationFeet,
+                    timeZone: DestinationTimeZone.value(
+                        for: destination,
+                        weatherTimeZone: nil
+                    ),
+                    referenceRunway: destination.referenceRunway
+                )
+                do {
+                    let risks = try await RouteWeatherRiskService.shared.risks(
+                        waypoints: [origin, destinationReference],
+                        start: criteria.from,
+                        end: criteria.from.addingTimeInterval(
+                            Double(candidate.1) * 60
+                        ),
+                        cruiseAltitudeFeet: 5_000,
+                        forceRefresh: false
+                    )
+                    if risks.contains(.unavailable) {
+                        unavailableRouteWeatherCount += 1
+                    } else if DestinationFinderEvaluator.routeWeatherMatches(
+                        risks,
+                        maximum: criteria.maximumRouteWeatherRisk
+                    ) {
+                        routeMatches.append(candidate)
+                    }
+                } catch {
+                    unavailableRouteWeatherCount += 1
+                }
+            }
+            filteredTravelCandidates = routeMatches
+        }
+
         if !criteria.requiresWeatherData {
-            let matches = travelCandidates.map {
+            let matches = filteredTravelCandidates.map {
                 destination, travelMinutes, stopCount, price, priceStops in
                 DestinationFinderMatch(
                     destinationICAO: destination.icao,
@@ -575,7 +752,7 @@ enum DestinationFinderService {
             }
             return Result(
                 matches: matches,
-                unavailableWeatherCount: 0
+                unavailableWeatherCount: unavailableRouteWeatherCount
             )
         }
 
@@ -583,15 +760,10 @@ enum DestinationFinderService {
         // abgefragt. Sie laufen in kleinen Sammelrequests und nur fuer das
         // gewaehlte Zeitfenster. Zuvor startete jedes Ziel gleichzeitig einen
         // kompletten 16-Tage-Abruf und konnte den Anbieter ueberlasten.
-        let weatherByICAO = await DestinationFinderWeatherCache.shared.hours(
-            for: travelCandidates.map { $0.0 },
-            from: criteria.from,
-            until: criteria.until
-        )
         var matches: [DestinationFinderMatch] = []
         var unavailable = 0
         for (destination, travelMinutes, stopCount, price, priceStops)
-            in travelCandidates
+            in filteredTravelCandidates
         {
             guard let hours = weatherByICAO[destination.icao] else {
                 unavailable += 1
@@ -644,7 +816,7 @@ enum DestinationFinderService {
         }
         return Result(
             matches: matches,
-            unavailableWeatherCount: unavailable
+            unavailableWeatherCount: unavailable + unavailableRouteWeatherCount
         )
     }
 }
@@ -973,10 +1145,14 @@ struct DestinationFinderView: View {
     @State private var requiresRainFree = false
     @State private var daylightOnly = true
     @State private var daytimeOnly = false
+    @State private var maximumRouteWeatherRisk = RouteWeatherRisk.green
+    @State private var ignoresRouteWeather = true
     @State private var isFiltering = false
     @State private var matches: [DestinationFinderMatch] = []
     @State private var unavailableWeatherCount = 0
     @State private var filterUserRaw = ""
+    @State private var originSearchText = ""
+    @FocusState private var originSearchIsFocused: Bool
 
     init(
         destinations: [Destination],
@@ -984,32 +1160,52 @@ struct DestinationFinderView: View {
         onApply: @escaping ([DestinationFinderMatch]) -> Void,
         onClear: @escaping () -> Void
     ) {
+        let session = DestinationFinderSession.shared
         self.destinations = destinations
         self.origins = origins
         self.onApply = onApply
         self.onClear = onClear
-        _originICAO = State(initialValue: origins.first?.icao ?? "EDFZ")
-        _selectedCountryCodes = State(initialValue: Set(
+        let allCountryCodes = Set(
             destinations.map { $0.country.uppercased() } + ["ES", "PT"]
-        ))
-        let calendar = Calendar.current
-        let tomorrow = calendar.date(
-            byAdding: .day,
-            value: 1,
-            to: calendar.startOfDay(for: Date())
-        ) ?? Date()
-        _from = State(initialValue: calendar.date(
-            bySettingHour: 6,
-            minute: 0,
-            second: 0,
-            of: tomorrow
-        ) ?? tomorrow)
-        _until = State(initialValue: calendar.date(
-            bySettingHour: 22,
-            minute: 0,
-            second: 0,
-            of: tomorrow
-        ) ?? tomorrow)
+        )
+        _originICAO = State(initialValue: origins.contains(where: {
+            $0.icao == session.originICAO
+        }) ? session.originICAO : (origins.first?.icao ?? "EDFZ"))
+        _from = State(initialValue: session.from)
+        _until = State(initialValue: session.until)
+        _minimumTravelHours = State(initialValue: session.minimumTravelHours)
+        _maximumTravelHours = State(initialValue: session.maximumTravelHours)
+        _ignoresTravelTime = State(initialValue: session.ignoresTravelTime)
+        _appliesETOPS = State(initialValue: session.appliesETOPS)
+        _maximumRoundTripPrice = State(initialValue: session.maximumRoundTripPrice)
+        _ignoresPrice = State(initialValue: session.ignoresPrice)
+        _priceAppliesETOPS = State(initialValue: session.priceAppliesETOPS)
+        _requiresLandingVoucher = State(initialValue: session.requiresLandingVoucher)
+        _requiredFeatures = State(initialValue: session.requiredFeatures)
+        _requiresBicycleAtAirport = State(initialValue: session.requiresBicycleAtAirport)
+        _requiresRentalCarAtAirport = State(initialValue: session.requiresRentalCarAtAirport)
+        _requiresApp2DriveAtAirport = State(initialValue: session.requiresApp2DriveAtAirport)
+        _minimumRunwayLength = State(initialValue: session.minimumRunwayLength)
+        _selectedCountryCodes = State(initialValue: session.selectedCountryCodes ?? allCountryCodes)
+        _requiredFuelTypes = State(initialValue: session.requiredFuelTypes)
+        _requiresFuelAtOrBelowReferencePrice = State(initialValue: session.requiresFuelAtOrBelowReferencePrice)
+        _minimumTemperature = State(initialValue: session.minimumTemperature)
+        _ignoresMinimumTemperature = State(initialValue: session.ignoresMinimumTemperature)
+        _maximumTemperature = State(initialValue: session.maximumTemperature)
+        _ignoresMaximumTemperature = State(initialValue: session.ignoresMaximumTemperature)
+        _maximumWind = State(initialValue: session.maximumWind)
+        _ignoresWind = State(initialValue: session.ignoresWind)
+        _maximumGust = State(initialValue: session.maximumGust)
+        _ignoresGusts = State(initialValue: session.ignoresGusts)
+        _minimumWeather = State(initialValue: session.minimumWeather)
+        _ignoresMinimumWeather = State(initialValue: session.ignoresMinimumWeather)
+        _requiresCloudless = State(initialValue: session.requiresCloudless)
+        _requiresRainFree = State(initialValue: session.requiresRainFree)
+        _daylightOnly = State(initialValue: session.daylightOnly)
+        _daytimeOnly = State(initialValue: session.daytimeOnly)
+        _maximumRouteWeatherRisk = State(initialValue: session.maximumRouteWeatherRisk)
+        _ignoresRouteWeather = State(initialValue: session.ignoresRouteWeather)
+        _filterUserRaw = State(initialValue: session.filterUserRaw)
     }
 
     var body: some View {
@@ -1035,16 +1231,16 @@ struct DestinationFinderView: View {
                     temperatureSection
                     windSection
                     flightConditionsSection
+                    routeWeatherSection
                     resultSection
                 }
                 .padding(.trailing, 6)
             }
 
             HStack {
-                Button("Filter aufheben") {
+                Button("Filter zurücksetzen") {
                     onClear()
-                    matches = []
-                    unavailableWeatherCount = 0
+                    resetFilters()
                 }
                 .disabled(isFiltering)
 
@@ -1059,7 +1255,9 @@ struct DestinationFinderView: View {
         .frame(width: 800, height: 900)
         .onAppear {
             if filterUserRaw.isEmpty { filterUserRaw = activeUserRaw }
+            synchronizeOriginSearchText()
         }
+        .onDisappear { saveSession() }
         .task {
             await LandingVoucherBook.refreshIfNeeded()
         }
@@ -1114,13 +1312,7 @@ struct DestinationFinderView: View {
         Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 11) {
             GridRow {
                 criterionLabel("Abflugort")
-                Picker("Abflugort", selection: $originICAO) {
-                    ForEach(origins) { airport in
-                        Text("\(airport.icao) · \(airport.name)").tag(airport.icao)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 350)
+                originSearchField
                 Color.clear.frame(width: 130)
             }
             travelTimeRangeRow
@@ -1179,6 +1371,126 @@ struct DestinationFinderView: View {
             }
         }
         }
+    }
+
+    private var originSearchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(FlybookColor.muted)
+            TextField("ICAO oder Airportname", text: $originSearchText)
+                .textFieldStyle(.plain)
+                .focused($originSearchIsFocused)
+                .onSubmit { selectTypedOrigin() }
+                .onChange(of: originSearchText) { value in
+                    let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .uppercased()
+                    if let airport = origins.first(where: {
+                        $0.icao.uppercased() == normalized
+                    }) {
+                        selectOrigin(airport)
+                    }
+                }
+            Menu {
+                ForEach(origins) { airport in
+                    Button("\(airport.icao) · \(airport.name)") {
+                        selectOrigin(airport)
+                    }
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+            }
+            .menuStyle(.borderlessButton)
+        }
+        .padding(.horizontal, 9)
+        .frame(width: 350, height: 30)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(FlybookColor.line, lineWidth: 1)
+        )
+        .overlay(alignment: .topLeading) {
+            if originSearchIsFocused,
+               normalizedOriginSearch.count >= 3,
+               !originSearchSuggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(originSearchSuggestions) { airport in
+                        Button {
+                            selectOrigin(airport)
+                            originSearchIsFocused = false
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(airport.icao)
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .frame(width: 48, alignment: .leading)
+                                Text(airport.name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .lineLimit(1)
+                                Spacer()
+                            }
+                            .foregroundStyle(FlybookColor.navy)
+                            .padding(.horizontal, 9)
+                            .frame(height: 29)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 5)
+                .frame(width: 350)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(nsColor: .windowBackgroundColor))
+                        .shadow(color: .black.opacity(0.20), radius: 8, y: 4)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(FlybookColor.line, lineWidth: 1)
+                )
+                .offset(y: 32)
+                .zIndex(20)
+            }
+        }
+        .zIndex(20)
+        .help("Airport wählen oder ab drei Zeichen nach ICAO beziehungsweise Name suchen")
+    }
+
+    private var normalizedOriginSearch: String {
+        originSearchText
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var originSearchSuggestions: [AirportReference] {
+        let query = normalizedOriginSearch
+        guard query.count >= 3 else { return [] }
+        return origins.filter { airport in
+            "\(airport.icao) \(airport.name)"
+                .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+                .contains(query)
+        }
+        .prefix(8)
+        .map { $0 }
+    }
+
+    private func selectTypedOrigin() {
+        guard let airport = originSearchSuggestions.first else { return }
+        selectOrigin(airport)
+        originSearchIsFocused = false
+    }
+
+    private func selectOrigin(_ airport: AirportReference) {
+        originICAO = airport.icao
+        originSearchText = "\(airport.icao) · \(airport.name)"
+    }
+
+    private func synchronizeOriginSearchText() {
+        guard let airport = origins.first(where: { $0.icao == originICAO }) else { return }
+        originSearchText = "\(airport.icao) · \(airport.name)"
     }
 
     private var countrySection: some View {
@@ -1451,6 +1763,45 @@ struct DestinationFinderView: View {
         }
     }
 
+    private var routeWeatherSection: some View {
+        filterGroup(title: "STRECKENWETTER", symbol: "point.topleft.down.to.point.bottomright.curvepath") {
+            Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+                sliderRow(
+                    title: "Mindestwetter Strecke",
+                    value: Binding(
+                        get: { Double(maximumRouteWeatherRisk.rawValue) },
+                        set: { value in
+                            maximumRouteWeatherRisk = RouteWeatherRisk(
+                                rawValue: Int(value.rounded())
+                            ) ?? .green
+                        }
+                    ),
+                    range: 0...3,
+                    step: 1,
+                    valueText: routeWeatherFilterTitle,
+                    trailing: AnyView(
+                        Toggle("Ignorieren", isOn: $ignoresRouteWeather)
+                            .toggleStyle(.checkbox)
+                    ),
+                    colors: [.green, FlybookColor.blue, .red, .purple]
+                )
+            }
+            Text("Bewertet die sechs Wetterpunkte zwischen Abflugort und Ziel zur gewählten Startzeit. Zulässig sind die gewählte Farbe und alle besseren Stufen.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var routeWeatherFilterTitle: String {
+        switch maximumRouteWeatherRisk {
+        case .unavailable: return "Keine Daten"
+        case .green: return "Grün"
+        case .blue: return "Blau"
+        case .red: return "Rot"
+        case .purple: return "Lila"
+        }
+    }
+
     private var resultSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -1516,7 +1867,11 @@ struct DestinationFinderView: View {
                 .frame(height: 130)
             }
             if unavailableWeatherCount > 0 {
-                Text("\(unavailableWeatherCount) passende Ziele wurden ohne Wetterprüfung eingeschlossen.")
+                Text(
+                    ignoresRouteWeather
+                        ? "\(unavailableWeatherCount) passende Ziele wurden ohne Zielwetterprüfung eingeschlossen."
+                        : "\(unavailableWeatherCount) Ziele konnten wegen unvollständiger Wetterdaten nicht vollständig geprüft werden."
+                )
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
@@ -1711,7 +2066,96 @@ struct DestinationFinderView: View {
         until = calendar.date(byAdding: .second, value: -1, to: end) ?? end
     }
 
+    private func saveSession() {
+        let session = DestinationFinderSession.shared
+        session.originICAO = originICAO
+        session.from = from
+        session.until = until
+        session.minimumTravelHours = minimumTravelHours
+        session.maximumTravelHours = maximumTravelHours
+        session.ignoresTravelTime = ignoresTravelTime
+        session.appliesETOPS = appliesETOPS
+        session.maximumRoundTripPrice = maximumRoundTripPrice
+        session.ignoresPrice = ignoresPrice
+        session.priceAppliesETOPS = priceAppliesETOPS
+        session.requiresLandingVoucher = requiresLandingVoucher
+        session.requiredFeatures = requiredFeatures
+        session.requiresBicycleAtAirport = requiresBicycleAtAirport
+        session.requiresRentalCarAtAirport = requiresRentalCarAtAirport
+        session.requiresApp2DriveAtAirport = requiresApp2DriveAtAirport
+        session.minimumRunwayLength = minimumRunwayLength
+        session.selectedCountryCodes = selectedCountryCodes
+        session.requiredFuelTypes = requiredFuelTypes
+        session.requiresFuelAtOrBelowReferencePrice = requiresFuelAtOrBelowReferencePrice
+        session.minimumTemperature = minimumTemperature
+        session.ignoresMinimumTemperature = ignoresMinimumTemperature
+        session.maximumTemperature = maximumTemperature
+        session.ignoresMaximumTemperature = ignoresMaximumTemperature
+        session.maximumWind = maximumWind
+        session.ignoresWind = ignoresWind
+        session.maximumGust = maximumGust
+        session.ignoresGusts = ignoresGusts
+        session.minimumWeather = minimumWeather
+        session.ignoresMinimumWeather = ignoresMinimumWeather
+        session.requiresCloudless = requiresCloudless
+        session.requiresRainFree = requiresRainFree
+        session.daylightOnly = daylightOnly
+        session.daytimeOnly = daytimeOnly
+        session.filterUserRaw = filterUserRaw
+        session.maximumRouteWeatherRisk = maximumRouteWeatherRisk
+        session.ignoresRouteWeather = ignoresRouteWeather
+    }
+
+    private func resetFilters() {
+        let allCountryCodes = Set(
+            destinations.map { $0.country.uppercased() } + ["ES", "PT"]
+        )
+        let session = DestinationFinderSession.shared
+        session.reset(countryCodes: allCountryCodes, activeUserRaw: activeUserRaw)
+        originICAO = origins.contains(where: { $0.icao == "EDFZ" })
+            ? "EDFZ" : (origins.first?.icao ?? "EDFZ")
+        from = session.from
+        until = session.until
+        minimumTravelHours = session.minimumTravelHours
+        maximumTravelHours = session.maximumTravelHours
+        ignoresTravelTime = session.ignoresTravelTime
+        appliesETOPS = session.appliesETOPS
+        maximumRoundTripPrice = session.maximumRoundTripPrice
+        ignoresPrice = session.ignoresPrice
+        priceAppliesETOPS = session.priceAppliesETOPS
+        requiresLandingVoucher = session.requiresLandingVoucher
+        requiredFeatures = session.requiredFeatures
+        requiresBicycleAtAirport = session.requiresBicycleAtAirport
+        requiresRentalCarAtAirport = session.requiresRentalCarAtAirport
+        requiresApp2DriveAtAirport = session.requiresApp2DriveAtAirport
+        minimumRunwayLength = session.minimumRunwayLength
+        selectedCountryCodes = allCountryCodes
+        requiredFuelTypes = session.requiredFuelTypes
+        requiresFuelAtOrBelowReferencePrice = session.requiresFuelAtOrBelowReferencePrice
+        minimumTemperature = session.minimumTemperature
+        ignoresMinimumTemperature = session.ignoresMinimumTemperature
+        maximumTemperature = session.maximumTemperature
+        ignoresMaximumTemperature = session.ignoresMaximumTemperature
+        maximumWind = session.maximumWind
+        ignoresWind = session.ignoresWind
+        maximumGust = session.maximumGust
+        ignoresGusts = session.ignoresGusts
+        minimumWeather = session.minimumWeather
+        ignoresMinimumWeather = session.ignoresMinimumWeather
+        requiresCloudless = session.requiresCloudless
+        requiresRainFree = session.requiresRainFree
+        daylightOnly = session.daylightOnly
+        daytimeOnly = session.daytimeOnly
+        filterUserRaw = session.filterUserRaw
+        maximumRouteWeatherRisk = session.maximumRouteWeatherRisk
+        ignoresRouteWeather = session.ignoresRouteWeather
+        matches = []
+        unavailableWeatherCount = 0
+        synchronizeOriginSearchText()
+    }
+
     private func applyFilter() {
+        saveSession()
         isFiltering = true
         matches = []
         unavailableWeatherCount = 0
@@ -1748,7 +2192,9 @@ struct DestinationFinderView: View {
             requiresCloudless: requiresCloudless,
             requiresRainFree: requiresRainFree,
             daylightOnly: daylightOnly,
-            daytimeOnly: daytimeOnly
+            daytimeOnly: daytimeOnly,
+            maximumRouteWeatherRisk: maximumRouteWeatherRisk,
+            ignoresRouteWeather: ignoresRouteWeather
         )
         let aircraft = AircraftType(rawValue: selectedAircraftRaw) ?? .a211
         let filterUser = FlybookUser(rawValue: filterUserRaw)

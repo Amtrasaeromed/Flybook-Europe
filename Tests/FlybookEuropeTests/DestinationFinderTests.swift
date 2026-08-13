@@ -2,6 +2,27 @@ import XCTest
 @testable import FlybookEurope
 
 final class DestinationFinderTests: XCTestCase {
+    func testRouteWeatherMinimumRejectsWorseSegmentsAndMissingData() {
+        XCTAssertTrue(
+            DestinationFinderEvaluator.routeWeatherMatches(
+                [.green, .blue, .green],
+                maximum: .blue
+            )
+        )
+        XCTAssertFalse(
+            DestinationFinderEvaluator.routeWeatherMatches(
+                [.green, .red],
+                maximum: .blue
+            )
+        )
+        XCTAssertFalse(
+            DestinationFinderEvaluator.routeWeatherMatches(
+                [.green, .unavailable],
+                maximum: .purple
+            )
+        )
+    }
+
     private let destination = AirportReference(
         icao: "TEST",
         name: "Test",

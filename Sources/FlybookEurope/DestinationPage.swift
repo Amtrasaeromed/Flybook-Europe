@@ -2301,6 +2301,8 @@ struct DestinationPage: View {
                     returnRouteWind: returnRouteWindModel.wind,
                     outboundRouteRisks: outboundRouteRiskModel.segments,
                     returnRouteRisks: returnRouteRiskModel.segments,
+                    outboundRouteAssessments: outboundRouteRiskModel.assessments,
+                    returnRouteAssessments: returnRouteRiskModel.assessments,
                     outboundBestLevelFeet:
                         outboundRouteWindModel.bestLevelFeet,
                     returnBestLevelFeet:
@@ -4170,6 +4172,8 @@ private struct FlightTimePlanningRows: View {
     let returnRouteWind: RouteWind?
     let outboundRouteRisks: [RouteWeatherRisk]
     let returnRouteRisks: [RouteWeatherRisk]
+    let outboundRouteAssessments: [RouteWeatherSegmentAssessment]
+    let returnRouteAssessments: [RouteWeatherSegmentAssessment]
     let outboundBestLevelFeet: Int?
     let returnBestLevelFeet: Int?
     let outboundEDFZForecast: EDFZForecast?
@@ -4700,6 +4704,7 @@ private struct FlightTimePlanningRows: View {
                 headwindKnots: outboundRouteWind?.outboundHeadwindKnots,
                 bestLevelFeet: outboundBestLevelFeet,
                 routeRisks: outboundRouteRisks,
+                routeAssessments: outboundRouteAssessments,
                 tankStopMinutes: tankStopMinutes,
                 preTakeoffGroundMinutes: preTakeoffGroundMinutes,
                 postLandingGroundMinutes: postLandingGroundMinutes,
@@ -4863,6 +4868,7 @@ private struct FlightTimePlanningRows: View {
                 headwindKnots: returnRouteWind?.outboundHeadwindKnots,
                 bestLevelFeet: returnBestLevelFeet,
                 routeRisks: returnRouteRisks,
+                routeAssessments: returnRouteAssessments,
                 tankStopMinutes: tankStopMinutes,
                 preTakeoffGroundMinutes: preTakeoffGroundMinutes,
                 postLandingGroundMinutes: postLandingGroundMinutes,
@@ -5205,6 +5211,7 @@ private struct FlightPlanningLine<
     let headwindKnots: Double?
     let bestLevelFeet: Int?
     let routeRisks: [RouteWeatherRisk]
+    let routeAssessments: [RouteWeatherSegmentAssessment]
     let tankStopMinutes: Int
     let preTakeoffGroundMinutes: Int
     let postLandingGroundMinutes: Int
@@ -5408,7 +5415,7 @@ private struct FlightPlanningLine<
             .frame(width: 128, height: 42)
         }
         .overlay(alignment: .topLeading) {
-            RouteRiskDots(risks: routeRisks)
+            RouteRiskDots(assessments: routeAssessments)
                 .offset(x: 261, y: 1)
         }
     }
@@ -7516,7 +7523,8 @@ private struct RunwayRecommendationButton: View {
     }
 
     private var backgroundColor: Color {
-        warning.recommendationBackgroundColor
+        EDFZRunway.crosswindWarning(for: windComponents)
+            .recommendationBackgroundColor
     }
 
     private func component(
@@ -7661,7 +7669,8 @@ private struct FlightLocationHeader: View {
     }
 
     private var crosswindBackgroundColor: Color {
-        crosswindWarning.recommendationBackgroundColor
+        EDFZRunway.crosswindWarning(for: windComponents)
+            .recommendationBackgroundColor
     }
 
     private var crosswindHelp: String {

@@ -317,6 +317,15 @@ final class LayoutSmokeTests: XCTestCase {
             ),
             .red
         )
+        XCTAssertEqual(
+            EDFZRunway.crosswindWarning(for: RunwayWindComponents(
+                headwindKnots: 0,
+                crosswindKnots: 1,
+                gustCrosswindKnots: nil,
+                crosswindComesFromRight: true
+            )),
+            .none
+        )
 
         let view = AlternatesView(
             destination: destination,

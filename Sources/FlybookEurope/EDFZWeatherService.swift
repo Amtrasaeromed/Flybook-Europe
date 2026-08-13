@@ -96,6 +96,21 @@ struct RunwayWindComponents {
 }
 
 enum EDFZRunway {
+    static func crosswindWarning(
+        for components: RunwayWindComponents?
+    ) -> RunwayCrosswindWarning {
+        guard let components else { return .none }
+        let displayedSteadyCrosswind = components.crosswindKnots.rounded()
+        let displayedGustCrosswind = (components.gustCrosswindKnots ?? 0).rounded()
+        if displayedSteadyCrosswind > 15 || displayedGustCrosswind > 30 {
+            return .red
+        }
+        if displayedSteadyCrosswind >= 10 || displayedGustCrosswind > 15 {
+            return .yellow
+        }
+        return .none
+    }
+
     static func activeRunway(
         for airportICAO: String,
         referenceRunway: String? = nil,
@@ -174,19 +189,12 @@ enum EDFZRunway {
         let displayedSteadyCrosswind = steadyCrosswind.rounded()
         let displayedGustCrosswind = (gustCrosswind ?? 0).rounded()
 
-        if displayedSteadyCrosswind > 15
-            || displayedGustCrosswind > 30
-        {
-            return .red
-        }
-
-        if displayedSteadyCrosswind >= 10
-            || displayedGustCrosswind > 15
-        {
-            return .yellow
-        }
-
-        return .none
+        return crosswindWarning(for: RunwayWindComponents(
+            headwindKnots: 0,
+            crosswindKnots: displayedSteadyCrosswind,
+            gustCrosswindKnots: gustKnots == nil ? nil : displayedGustCrosswind,
+            crosswindComesFromRight: false
+        ))
     }
 
     static func windComponents(

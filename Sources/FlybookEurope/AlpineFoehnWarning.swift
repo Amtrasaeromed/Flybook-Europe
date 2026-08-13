@@ -1,6 +1,48 @@
 import Foundation
 import SwiftUI
 
+enum AlpineRegion {
+    private static let ridge: [(Double, Double)] = [
+        (46.20, 6.90),  // Westalpen
+        (45.83, 6.86),  // Mont-Blanc-Gruppe
+        (46.20, 7.50),  // Wallis
+        (46.56, 8.56),  // Gotthard
+        (46.70, 9.70),  // Graubünden
+        (47.00, 11.30), // Tirol
+        (47.30, 13.00), // Salzburger Alpen
+        (47.05, 14.50), // östliche Alpen
+        (46.65, 15.60)  // Südostalpen
+    ]
+
+    static func contains(latitude: Double, longitude: Double) -> Bool {
+        ridge.map {
+            distanceKilometers(
+                latitude1: latitude,
+                longitude1: longitude,
+                latitude2: $0.0,
+                longitude2: $0.1
+            )
+        }.min() ?? .infinity <= 85
+    }
+
+    private static func distanceKilometers(
+        latitude1: Double,
+        longitude1: Double,
+        latitude2: Double,
+        longitude2: Double
+    ) -> Double {
+        let radius = 6_371.0
+        let lat1 = latitude1 * .pi / 180
+        let lat2 = latitude2 * .pi / 180
+        let deltaLatitude = (latitude2 - latitude1) * .pi / 180
+        let deltaLongitude = (longitude2 - longitude1) * .pi / 180
+        let a = sin(deltaLatitude / 2) * sin(deltaLatitude / 2)
+            + cos(lat1) * cos(lat2)
+            * sin(deltaLongitude / 2) * sin(deltaLongitude / 2)
+        return radius * 2 * atan2(sqrt(a), sqrt(1 - a))
+    }
+}
+
 enum AlpineFoehnLevel: Int, Comparable {
     case none = 0
     case yellow = 1
@@ -141,42 +183,9 @@ final class AlpineFoehnViewModel: ObservableObject {
     }
 
     private func isNearAlps(_ airport: AirportReference) -> Bool {
-        let alpineRidge: [(Double, Double)] = [
-            (46.20, 6.90),  // Westalpen
-            (45.83, 6.86),  // Mont-Blanc-Gruppe
-            (46.20, 7.50),  // Wallis
-            (46.56, 8.56),  // Gotthard
-            (46.70, 9.70),  // Graubünden
-            (47.00, 11.30), // Tirol
-            (47.30, 13.00), // Salzburger Alpen
-            (47.05, 14.50), // östliche Alpen
-            (46.65, 15.60)  // Südostalpen
-        ]
-        let distance = alpineRidge.map {
-            distanceKilometers(
-                latitude1: airport.latitude,
-                longitude1: airport.longitude,
-                latitude2: $0.0,
-                longitude2: $0.1
-            )
-        }.min() ?? .infinity
-        return distance <= 85
-    }
-
-    private func distanceKilometers(
-        latitude1: Double,
-        longitude1: Double,
-        latitude2: Double,
-        longitude2: Double
-    ) -> Double {
-        let radius = 6_371.0
-        let lat1 = latitude1 * .pi / 180
-        let lat2 = latitude2 * .pi / 180
-        let deltaLatitude = (latitude2 - latitude1) * .pi / 180
-        let deltaLongitude = (longitude2 - longitude1) * .pi / 180
-        let a = sin(deltaLatitude / 2) * sin(deltaLatitude / 2)
-            + cos(lat1) * cos(lat2)
-            * sin(deltaLongitude / 2) * sin(deltaLongitude / 2)
-        return radius * 2 * atan2(sqrt(a), sqrt(1 - a))
+        AlpineRegion.contains(
+            latitude: airport.latitude,
+            longitude: airport.longitude
+        )
     }
 }
