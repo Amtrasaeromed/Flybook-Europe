@@ -418,6 +418,17 @@ final class CharterMathTests: XCTestCase {
         XCTAssertEqual(loss ?? -1, 3.176_033_057_9, accuracy: 0.0001)
     }
 
+    func testForeignEHALAddsPriceSurchargeAndNonReimbursedVAT() {
+        let loss = CharterMath.refuelLoss(
+            grossPricePerLiter: 3.00,
+            homeReferencePerLiter: 2.59,
+            liters: 26,
+            destinationVATPercent: 21,
+            isForeign: true
+        )
+        XCTAssertEqual(loss ?? -1, 24.197_190_082_6, accuracy: 0.0001)
+    }
+
     func testUnknownPriceProducesUnknownLoss() {
         XCTAssertNil(CharterMath.refuelLoss(
             grossPricePerLiter: nil,

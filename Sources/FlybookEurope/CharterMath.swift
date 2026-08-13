@@ -116,15 +116,20 @@ enum CharterMath {
             return nil
         }
         guard !isForeign || destinationVATPercent != nil else { return nil }
-        let reimbursablePerLiter = isForeign
-            ? min(
-                grossPricePerLiter / (1 + max(0, destinationVATPercent ?? 0) / 100),
-                homeReferencePerLiter
-            )
-            : min(grossPricePerLiter, homeReferencePerLiter)
-        return max(
+        let billedLiters = max(0, liters)
+        let priceSurcharge = max(
             0,
-            (grossPricePerLiter - reimbursablePerLiter) * max(0, liters)
-        )
+            grossPricePerLiter - homeReferencePerLiter
+        ) * billedLiters
+
+        guard isForeign else { return priceSurcharge }
+
+        // Im Ausland trägt der Nutzer zusätzlich zum Preisaufschlag die im
+        // eingegebenen Bruttopreis enthaltene, nicht erstattete lokale MwSt.
+        let vatRate = max(0, destinationVATPercent ?? 0) / 100
+        let includedVAT = max(0, grossPricePerLiter)
+            * vatRate / (1 + vatRate)
+            * billedLiters
+        return priceSurcharge + includedVAT
     }
 }
