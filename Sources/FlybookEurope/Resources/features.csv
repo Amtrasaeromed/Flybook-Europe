@@ -353,16 +353,16 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGHN:breakfast,EGHN,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EGHN:city,EGHN,city,Nein,,,,,,,,,,,,,,2026-08-04
 1.2,EGHN:beach,EGHN,beach,Ja,Sandown Beach,Fahrrad,10,50.652348,-1.155115,1.88,29,10,3,Fahrrad,10,Sandown Beach,https://www.visitisleofwight.co.uk/,2026-08-02
-1.2,EGHN:lake,EGHN,lake,Nein,,,,,,,,,,,,,https://www.visitisleofwight.co.uk/,2026-08-02
+1.2,EGHN:lake,EGHN,lake,Ja,Brading Marshes und Eastern Yar,Taxi/Fahrrad,10,,,,,,,Taxi/Fahrrad,10,Brading Marshes und Eastern Yar,https://www.visitisleofwight.co.uk/explore/towns/brading,2026-08-13
 1.2,EGHN:mountain,EGHN,mountain,Nein,,,,,,,,,,,,,https://www.visitisleofwight.co.uk/,2026-08-02
-1.2,EGHN:wellness,EGHN,wellness,Nein,,,,,,,,,,,,,https://www.visitisleofwight.co.uk/,2026-08-02
+1.2,EGHN:wellness,EGHN,wellness,Ja,Lakeside Park Hotel & Spa,Taxi/Auto,25,,,,,,,Taxi/Auto,25,Lakeside Park Hotel & Spa,https://www.lakesideparkhotel.com/spa/,2026-08-13
 1.2,EGHR:techstop,EGHR,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EGHR:breakfast,EGHR,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EGHR:city,EGHR,city,Nein,,,,,,,,,,,,,,2026-08-04
-1.2,EGHR:beach,EGHR,beach,Nein,,,,,,,,,,,,,https://www.goodwood.com/,2026-08-02
-1.2,EGHR:lake,EGHR,lake,Nein,,,,,,,,,,,,,https://www.goodwood.com/,2026-08-02
+1.2,EGHR:beach,EGHR,beach,Ja,West Wittering Beach,Taxi/Auto,30,,,,,,,Taxi/Auto,30,West Wittering Beach,https://www.westwitteringestate.co.uk/,2026-08-13
+1.2,EGHR:lake,EGHR,lake,Ja,Chichester Harbour National Landscape,Taxi/Auto,20,,,,,,,Taxi/Auto,20,Chichester Harbour National Landscape,https://www.conservancy.co.uk/,2026-08-13
 1.2,EGHR:mountain,EGHR,mountain,Nein,,,,,,,,,,,,,https://www.goodwood.com/,2026-08-02
-1.2,EGHR:wellness,EGHR,wellness,Grenzfall,Goodwood Health Club,Fahrrad,10,50.867408,-0.733678,2.01,31,10,3,Fahrrad,10,Goodwood Health Club,https://www.goodwood.com/,2026-08-02
+1.2,EGHR:wellness,EGHR,wellness,Ja,Goodwood Hotel Health Club & Spa,Fahrrad/Taxi,10,50.867408,-0.733678,2.01,31,10,3,Fahrrad/Taxi,10,Goodwood Hotel Health Club & Spa,https://www.goodwood.com/visit-eat-stay/health-wellbeing/health-club/spa-treatments/,2026-08-13
 1.2,EGJA:techstop,EGJA,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EGJA:breakfast,EGJA,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EGJA:city,EGJA,city,Nein,,,,,,,,,,,,,,2026-08-04
@@ -388,9 +388,9 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGKA:breakfast,EGKA,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EGKA:city,EGKA,city,Ja,Brighton,Zug/Bus/Taxi,20,,,,,,,Zug/Bus/Taxi,20,Brighton,https://flybrighton.com/pilot-info/airfield-data/,2026-08-13
 1.2,EGKA:beach,EGKA,beach,Ja,Lancing Beach,Fahrrad,14,50.819416,-0.3254,2.68,42,14,4,Fahrrad,14,Lancing Beach,https://www.visitbrighton.com/,2026-08-02
-1.2,EGKA:lake,EGKA,lake,Nein,,,,,,,,,,,,,https://www.visitbrighton.com/,2026-08-02
+1.2,EGKA:lake,EGKA,lake,Ja,Adur Valley und South Downs,Taxi/Fahrrad,10,,,,,,,Taxi/Fahrrad,10,Adur Valley und South Downs,https://www.southdowns.gov.uk/walks/a-walk-from-shoreham-by-sea/,2026-08-13
 1.2,EGKA:mountain,EGKA,mountain,Nein,,,,,,,,,,,,,https://www.visitbrighton.com/,2026-08-02
-1.2,EGKA:wellness,EGKA,wellness,Nein,,,,,,,,,,,,,https://www.visitbrighton.com/,2026-08-02
+1.2,EGKA:wellness,EGKA,wellness,Ja,The Spa at South Lodge,Taxi/Auto,35,,,,,,,Taxi/Auto,35,The Spa at South Lodge,https://www.exclusive.co.uk/south-lodge/spa/,2026-08-13
 1.2,EHAL:techstop,EHAL,techstop,Nein,,,,,,,,,,,,,,2026-08-02
 1.2,EHAL:breakfast,EHAL,breakfast,Nein,,,,,,,,,,,,,,2026-08-03
 1.2,EHAL:city,EHAL,city,Nein,,,,,,,,,,,,,,2026-08-04
@@ -892,41 +892,41 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EGHJ:breakfast,EGHJ,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHJ:city,EGHJ,city,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHJ:beach,EGHJ,beach,Ja,Bembridge Beach,Zu Fuß,10,,,,,,,Zu Fuß,10,Bembridge Beach,https://eghj.extremelynice.net/eghj/airfield-details/,2026-08-13
-1.2,EGHJ:lake,EGHJ,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:lake,EGHJ,lake,Ja,Bembridge Harbour und Brading Marshes,Taxi/Fahrrad,10,,,,,,,Taxi/Fahrrad,10,Bembridge Harbour und Brading Marshes,https://www.visitisleofwight.co.uk/things-to-do/activities/wildlife,2026-08-13
 1.2,EGHJ:mountain,EGHJ,mountain,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGHJ:wellness,EGHJ,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHJ:wellness,EGHJ,wellness,Ja,Lakeside Park Hotel & Spa,Taxi/Auto,20,,,,,,,Taxi/Auto,20,Lakeside Park Hotel & Spa,https://www.lakesideparkhotel.com/spa/,2026-08-13
 1.2,EGHF:techstop,EGHF,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHF:breakfast,EGHF,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHF:city,EGHF,city,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHF:beach,EGHF,beach,Ja,Lee-on-Solent Beach,Zu Fuß,5,,,,,,,Zu Fuß,5,Lee-on-Solent Beach,https://solentairport.com/pilot-briefing/,2026-08-13
-1.2,EGHF:lake,EGHF,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:lake,EGHF,lake,Ja,Titchfield Haven und River Meon,Taxi/Fahrrad,15,,,,,,,Taxi/Fahrrad,15,Titchfield Haven National Nature Reserve,https://www.hants.gov.uk/thingstodo/titchfield/things-to-do/habitats,2026-08-13
 1.2,EGHF:mountain,EGHF,mountain,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGHF:wellness,EGHF,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHF:wellness,EGHF,wellness,Ja,Solent Hotel & Spa,Taxi/Auto,20,,,,,,,Taxi/Auto,20,Solent Hotel & Spa,https://www.solenthotel.co.uk/,2026-08-13
 1.2,EGMD:techstop,EGMD,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGMD:breakfast,EGMD,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGMD:city,EGMD,city,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGMD:beach,EGMD,beach,Ja,Dungeness Coast,Taxi/Auto,15,,,,,,,Taxi/Auto,15,Dungeness Coast,https://lyddairport.co.uk/pilot-information/,2026-08-13
 1.2,EGMD:lake,EGMD,lake,Ja,Romney Marsh und Dungeness,Taxi/Auto,15,,,,,,,Taxi/Auto,15,Romney Marsh und Dungeness,https://lyddairport.co.uk/pilot-information/,2026-08-13
 1.2,EGMD:mountain,EGMD,mountain,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGMD:wellness,EGMD,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGMD:wellness,EGMD,wellness,Ja,Hythe Imperial Health Club & Spa,Taxi/Auto,35,,,,,,,Taxi/Auto,35,Hythe Imperial Health Club & Spa,https://www.hytheimperial.co.uk/health-wellbeing/,2026-08-13
 1.2,EGHQ:techstop,EGHQ,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHQ:breakfast,EGHQ,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHQ:city,EGHQ,city,Ja,Newquay,Mietwagen/Taxi/Bus,15,,,,,,,Mietwagen/Taxi/Bus,15,Newquay,https://www.flynqy.co.uk/general-aviation/,2026-08-13
 1.2,EGHQ:beach,EGHQ,beach,Ja,Watergate Bay und Fistral Beach,Mietwagen/Taxi/Bus,15,,,,,,,Mietwagen/Taxi/Bus,15,Watergate Bay und Fistral Beach,https://www.flynqy.co.uk/general-aviation/,2026-08-13
-1.2,EGHQ:lake,EGHQ,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:lake,EGHQ,lake,Ja,Gannel Estuary und River Gannel,Mietwagen/Taxi,20,,,,,,,Mietwagen/Taxi,20,Gannel Estuary und River Gannel,https://www.visitnewquay.org/explore/the-gannel,2026-08-13
 1.2,EGHQ:mountain,EGHQ,mountain,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGHQ:wellness,EGHQ,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHQ:wellness,EGHQ,wellness,Ja,Scarlet Hotel Eco Spa,Mietwagen/Taxi,10,,,,,,,Mietwagen/Taxi,10,Scarlet Hotel Eco Spa,https://www.scarlethotel.co.uk/spa,2026-08-13
 1.2,EGKH:techstop,EGKH,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGKH:breakfast,EGKH,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGKH:city,EGKH,city,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGKH:beach,EGKH,beach,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGKH:lake,EGKH,lake,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:beach,EGKH,beach,Ja,Camber Sands,Taxi/Auto,40,,,,,,,Taxi/Auto,40,Camber Sands,https://www.rother.gov.uk/leisure-and-events/beaches-and-coastline/camber-sands/,2026-08-13
+1.2,EGKH:lake,EGKH,lake,Ja,Bewl Water Reservoir,Taxi/Auto,35,,,,,,,Taxi/Auto,35,Bewl Water Reservoir,https://www.bewlwater.co.uk/,2026-08-13
 1.2,EGKH:mountain,EGKH,mountain,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGKH:wellness,EGKH,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGKH:wellness,EGKH,wellness,Ja,Champneys Eastwell Manor,Taxi/Auto,35,,,,,,,Taxi/Auto,35,Champneys Eastwell Manor,https://www.champneys.com/hotels/eastwell-manor.html,2026-08-13
 1.2,EGHA:techstop,EGHA,techstop,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHA:breakfast,EGHA,breakfast,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHA:city,EGHA,city,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,EGHA:beach,EGHA,beach,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGHA:lake,EGHA,lake,Nein,,,,,,,,,,,,,,2026-08-13
-1.2,EGHA:mountain,EGHA,mountain,Ja,Cranborne Chase,Taxi,15,,,,,,,Taxi,15,Cranborne Chase,https://www.comptonairfield.com/visiting-us-by-air/,2026-08-13
-1.2,EGHA:wellness,EGHA,wellness,Nein,,,,,,,,,,,,,,2026-08-13
+1.2,EGHA:lake,EGHA,lake,Ja,Stourhead Landschaftsgarten und See,Taxi/Auto,30,,,,,,,Taxi/Auto,30,Stourhead Landschaftsgarten und See,https://www.nationaltrust.org.uk/visit/wiltshire/stourhead,2026-08-13
+1.2,EGHA:mountain,EGHA,mountain,Nein,,,,,,,,,,,,,https://cranbornechase.org.uk/,2026-08-13
+1.2,EGHA:wellness,EGHA,wellness,Ja,The Newt in Somerset Hotel Spa,Taxi/Auto,45,,,,,,,Taxi/Auto,45,The Newt in Somerset Hotel Spa,https://thenewtinsomerset.com/hotel/spa/,2026-08-13

@@ -88,6 +88,44 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(headcorn.jetA1, "?")
     }
 
+    func testUKMergePackTourismFeaturesMatchTravelTimeRules() throws {
+        let store = DestinationStore()
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: store.destinations.map { ($0.icao, $0) }
+        )
+        let ukICAOs = [
+            "EGHN", "EGHJ", "EGHF", "EGKA", "EGMD",
+            "EGHQ", "EGHR", "EGKH", "EGHA"
+        ]
+
+        for icao in ukICAOs {
+            let destination = try XCTUnwrap(byICAO[icao])
+            XCTAssertTrue(
+                destination.features.contains(.lakeNature),
+                "See / Natur fehlt für \(icao)"
+            )
+            XCTAssertTrue(
+                destination.features.contains(.wellness),
+                "Wellness fehlt für \(icao)"
+            )
+            XCTAssertFalse(
+                destination.features.contains(.mountainHiking),
+                "Hügellandschaft darf nicht als Berge gelten: \(icao)"
+            )
+        }
+
+        for icao in ukICAOs where icao != "EGHA" {
+            XCTAssertTrue(
+                try XCTUnwrap(byICAO[icao]).features.contains(.beachSea),
+                "Strand / Meer fehlt für \(icao)"
+            )
+        }
+        XCTAssertFalse(
+            try XCTUnwrap(byICAO["EGHA"]).features.contains(.beachSea),
+            "Compton Abbas überschreitet die 45-Minuten-Regel zur Küste"
+        )
+    }
+
     func testPreferredAlternatesAreStandardTechStopDestinations() throws {
         let store = DestinationStore()
         let byICAO = Dictionary(
