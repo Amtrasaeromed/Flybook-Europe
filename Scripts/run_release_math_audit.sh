@@ -9,6 +9,7 @@ cp "$project_dir/Scripts/release_math_audit.swift" "$audit_temp_dir/main.swift"
 swiftc \
   -suppress-warnings \
   "$project_dir/Sources/FlybookEurope/FlightNetwork.swift" \
+  "$project_dir/Scripts/release_math_support.swift" \
   "$project_dir/Sources/FlybookEurope/Components.swift" \
   "$project_dir/Sources/FlybookEurope/ETOPSSettings.swift" \
   "$project_dir/Sources/FlybookEurope/Models.swift" \

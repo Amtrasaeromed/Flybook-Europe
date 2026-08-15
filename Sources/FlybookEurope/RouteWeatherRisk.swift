@@ -227,6 +227,46 @@ actor RouteWeatherRiskService {
         ).map(\.risk)
     }
 
+    /// Low-cost route screening for the Destination Finder. It deliberately
+    /// performs no network request and represents each route sixth by the
+    /// nearest fresh airport forecast from the shared ICON mesh.
+    func cachedRisks(
+        waypoints: [AirportReference],
+        start: Date,
+        end: Date,
+        cruiseAltitudeFeet: Int
+    ) async -> [RouteWeatherRisk] {
+        let samples = corridorSamples(
+            waypoints: waypoints,
+            start: start,
+            end: end
+        )
+        var result = Array(
+            repeating: RouteWeatherRisk.unavailable,
+            count: 6
+        )
+        for segment in result.indices {
+            guard let center = samples.first(where: {
+                $0.segment == segment
+            }),
+                  let cached = await DestinationFinderWeatherCache.shared
+                    .cachedHour(
+                        nearestToLatitude: center.latitude,
+                        longitude: center.longitude,
+                        instant: center.instant
+                    )
+            else { continue }
+            result[segment] = assessment(
+                RiskHour(cached: cached),
+                sample: center,
+                sampleTerrainFeetMSL: nil,
+                controllingTerrainFeetMSL: nil,
+                cruiseAltitudeFeet: cruiseAltitudeFeet
+            ).risk
+        }
+        return result
+    }
+
     func assessments(
         waypoints: [AirportReference],
         start: Date,
@@ -338,6 +378,59 @@ actor RouteWeatherRiskService {
                         : risk.title
                 )
                 hasData[segment] = true
+            }
+        }
+        if AlpineRegion.routeCrosses(waypoints),
+           let foehnSamples = try? await AlpineFoehnForecastService.shared
+            .samples(from: start, until: end, forceRefresh: forceRefresh)
+        {
+            for index in result.indices {
+                let axes = Set<AlpineFoehnAxis>(samples.compactMap { sample in
+                    guard sample.segment == index,
+                          AlpineRegion.contains(
+                            latitude: sample.latitude,
+                            longitude: sample.longitude
+                          ) else { return nil }
+                    return AlpineFoehnAxis.nearest(
+                        toLatitude: sample.latitude,
+                        longitude: sample.longitude
+                    )
+                })
+                guard !axes.isEmpty,
+                      let controlling = foehnSamples
+                        .filter({
+                            axes.contains($0.axis)
+                                && $0.instant >= start
+                                && $0.instant <= end
+                        })
+                        .max(by: {
+                            abs($0.pressureDifferenceHPA)
+                                < abs($1.pressureDifferenceHPA)
+                        }),
+                      let foehnRisk = AlpineFoehnEvaluator.routeRisk(
+                        forMagnitude: abs(controlling.pressureDifferenceHPA)
+                      )
+                else { continue }
+                let difference = controlling.pressureDifferenceHPA
+                let flowName = difference >= 0 ? "Südföhn" : "Nordföhn"
+                let current = result[index]
+                result[index] = RouteWeatherSegmentAssessment(
+                    risk: max(current.risk, foehnRisk),
+                    isAlpine: true,
+                    controllingTerrainFeetMSL:
+                        current.controllingTerrainFeetMSL,
+                    ceilingClearanceFeet: current.ceilingClearanceFeet,
+                    visibilityMeters: current.visibilityMeters,
+                    precipitationMillimeters:
+                        current.precipitationMillimeters,
+                    explanation: String(
+                        format: "%@ im Alpenkorridor, Achse %@: Süd−Nord %+.1f hPa. %@",
+                        flowName,
+                        controlling.axis.title,
+                        difference,
+                        current.explanation
+                    )
+                )
             }
         }
         cache[key] = (Date(), result)

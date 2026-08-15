@@ -7,10 +7,10 @@ final class RunwayDataTests: XCTestCase {
         let store = DestinationStore()
 
         XCTAssertNil(store.loadError)
-        XCTAssertEqual(store.destinations.count, 135)
+        XCTAssertEqual(store.destinations.count, 141)
         XCTAssertEqual(
             store.destinations.filter { $0.icao != "EDFZ" }.count,
-            134
+            140
         )
 
         for destination in store.destinations {
@@ -57,14 +57,73 @@ final class RunwayDataTests: XCTestCase {
         }
     }
 
+    func testSelectedSwissNatureAirportsAreLoaded() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
+        )
+
+        let neuchatel = try XCTUnwrap(byICAO["LSGN"])
+        XCTAssertEqual(neuchatel.referenceRunway, "05/23")
+        XCTAssertEqual(neuchatel.runwayM, 700)
+        XCTAssertEqual(neuchatel.avgas, "Ja")
+        XCTAssertTrue(neuchatel.features.contains(.lakeNature))
+        XCTAssertTrue(neuchatel.bikeDirect.hasPrefix("Ja"))
+
+        let buochs = try XCTUnwrap(byICAO["LSZC"])
+        XCTAssertEqual(buochs.runwayM, 2_000)
+        XCTAssertEqual(buochs.runwayLDAM, 1_940)
+        XCTAssertEqual(buochs.avgas, "Nein")
+        XCTAssertTrue(buochs.features.isSuperset(of: [.lakeNature, .mountainHiking]))
+
+        let mollis = try XCTUnwrap(byICAO["LSZM"])
+        XCTAssertEqual(mollis.referenceRunway, "01/19")
+        XCTAssertTrue(mollis.features.isSuperset(of: [.lakeNature, .mountainHiking]))
+
+        let lugano = try XCTUnwrap(byICAO["LSZA"])
+        XCTAssertEqual(lugano.runwayLDAM, 1_135)
+        XCTAssertEqual(lugano.avgas, "Ja")
+        XCTAssertTrue(lugano.features.isSuperset(of: [.lakeNature, .mountainHiking]))
+
+        let yverdon = try XCTUnwrap(byICAO["LSGY"])
+        XCTAssertEqual(yverdon.referenceRunway, "04/22")
+        XCTAssertEqual(yverdon.runwayM, 872)
+        XCTAssertEqual(yverdon.avgas, "Ja")
+        XCTAssertEqual(yverdon.ul91, "Ja")
+        XCTAssertTrue(yverdon.features.isSuperset(of: [.lakeNature, .wellness]))
+
+        let reichenbach = try XCTUnwrap(byICAO["LSGR"])
+        XCTAssertEqual(reichenbach.referenceRunway, "03/21")
+        XCTAssertEqual(reichenbach.runwayM, 805)
+        XCTAssertEqual(reichenbach.runwayLDAM, 650)
+        XCTAssertTrue(reichenbach.features.isSuperset(of: [.lakeNature, .mountainHiking]))
+    }
+
+    func testAllSwissFinderDestinationsExposeAuditedPOEStatus() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
+        )
+        let swissICAOs = [
+            "LSGL", "LSGS", "LSGT", "LSZL", "LSZR", "LSGN",
+            "LSZC", "LSZM", "LSZA", "LSGY", "LSGR"
+        ]
+
+        for icao in swissICAOs {
+            XCTAssertEqual(
+                try XCTUnwrap(byICAO[icao]).portOfEntry,
+                "Ja",
+                "POE fehlt für \(icao)"
+            )
+        }
+    }
+
     func testUKMergePackAirportsExposePOEAndConservativeFuelStatus() throws {
         let store = DestinationStore()
         let byICAO = Dictionary(
             uniqueKeysWithValues: store.destinations.map { ($0.icao, $0) }
         )
         let ukICAOs = [
-            "EGHN", "EGHJ", "EGHF", "EGKA", "EGMD",
-            "EGHQ", "EGHR", "EGKH", "EGHA"
+            "EGHC", "EGHE", "EGHN", "EGHJ", "EGHF", "EGKA",
+            "EGMD", "EGHQ", "EGHR", "EGKH", "EGHA"
         ]
 
         for icao in ukICAOs {
@@ -270,6 +329,65 @@ final class RunwayDataTests: XCTestCase {
             XCTAssertTrue(destination.features.contains(.mountainHiking))
             XCTAssertTrue(destination.features.contains(.lakeNature))
         }
+    }
+
+    func testAuditedDestinationMarkersAreLoadedWithoutBorderlineState() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
+        )
+        let mountainICAOs = [
+            "EDTF", "ESMH", "LFGA", "LFKB", "LFKJ", "LFLP", "LIEO"
+        ]
+        let wellnessICAOs = [
+            "EDWG", "EGJJ", "EHAL", "EKSB", "LFGA", "LFKJ", "LFLP",
+            "LIDT", "LIEA", "LIEO", "LIPB", "LIRJ", "LOWI", "LSGS"
+        ]
+
+        for icao in mountainICAOs {
+            XCTAssertTrue(
+                try XCTUnwrap(byICAO[icao]).features.contains(.mountainHiking),
+                "Berge/Wandern fehlt für \(icao)"
+            )
+        }
+        for icao in wellnessICAOs {
+            XCTAssertTrue(
+                try XCTUnwrap(byICAO[icao]).features.contains(.wellness),
+                "Auszeit/Wellness fehlt für \(icao)"
+            )
+        }
+    }
+
+    func testMobilityUsesOnlyYesUnknownOrNo() throws {
+        for destination in DestinationStore().destinations {
+            for (label, value) in [
+                ("Fahrrad", destination.bikeDirect),
+                ("Mietwagen", destination.rentalCarDirect),
+                ("Bahn", destination.railDirect),
+                ("Bus", destination.busDirect)
+            ] {
+                XCTAssertTrue(
+                    value.hasPrefix("Ja")
+                        || value.hasPrefix("?")
+                        || value.hasPrefix("Nein"),
+                    "\(label) hat für \(destination.icao) einen ungültigen Status: \(value)"
+                )
+            }
+        }
+
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
+        )
+        XCTAssertTrue(try XCTUnwrap(byICAO["EDMB"]).bikeDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EDVE"]).rentalCarDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EDXB"]).rentalCarDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["LOAN"]).rentalCarDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EDLA"]).bikeDirect.hasPrefix("Nein"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EGHJ"]).bikeDirect.hasPrefix("?"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EGHJ"]).rentalCarDirect.hasPrefix("?"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EDKA"]).railDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["LSGN"]).railDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EGHC"]).busDirect.hasPrefix("Ja"))
+        XCTAssertTrue(try XCTUnwrap(byICAO["EDVE"]).busDirect.hasPrefix("?"))
     }
 
     func testBreakfastAndCityAreFinderFilters() {

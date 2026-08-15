@@ -46,7 +46,12 @@ def main() -> int:
         "Finder ohne pauschale 16-Tage-Abfrage": 'forecast_days", value: "16"' not in finder,
         "Finder nutzt Zeitfenster": 'name: "start_date"' in finder and 'name: "end_date"' in finder,
         "Finder nutzt kleine Batches": "by: 10" in finder,
-        "Finder zeigt Treffer bei fehlendem Wetter weiter": "weatherWasChecked: false" in finder,
+        "Finder zeigt Treffer bei fehlendem Wetter weiter": (
+            "incompleteRouteWeatherICAOs.insert(destination.icao)" in finder
+            and "routeMatches.append(candidate)" in finder
+            and "weatherWasChecked:" in finder
+            and "!incompleteRouteWeatherICAOs.contains(destination.icao)" in finder
+        ),
         "Best-Level im geforderten 500-ft-Raster": (
             "stride(from: 2_000, through: 10_000, by: 500)" in wind
             and "by: 250" not in wind

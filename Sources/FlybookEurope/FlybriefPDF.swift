@@ -1,4 +1,5 @@
 import AppKit
+import PDFKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -20,6 +21,12 @@ struct FlybriefSnapshot {
         formatter.dateFormat = "ddMMMyy"
         return "Flybrief \(formatter.string(from: flightDate).uppercased()) \(route).pdf"
     }
+}
+
+struct FlybriefPreviewDocument: Identifiable {
+    let id = UUID()
+    let snapshot: FlybriefSnapshot
+    let data: Data
 }
 
 struct FlybriefLegSnapshot: Identifiable {
@@ -137,16 +144,25 @@ enum FlybriefPDFExporter {
     static let pageSize = CGSize(width: 595.28, height: 841.89)
 
     static func export(_ snapshot: FlybriefSnapshot) throws -> URL? {
+        try save(
+            pdfData(for: snapshot),
+            suggestedFilename: snapshot.suggestedFilename
+        )
+    }
+
+    static func save(
+        _ data: Data,
+        suggestedFilename: String
+    ) throws -> URL? {
         let panel = NSSavePanel()
         panel.title = "Flybrief als PDF sichern"
         panel.prompt = "Flybrief sichern"
-        panel.nameFieldStringValue = snapshot.suggestedFilename
+        panel.nameFieldStringValue = suggestedFilename
         panel.allowedContentTypes = [.pdf]
         panel.allowsOtherFileTypes = false
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return nil }
 
-        let data = pdfData(for: snapshot)
         try data.write(to: url, options: .atomic)
         NSWorkspace.shared.activateFileViewerSelecting([url])
         return url
@@ -186,6 +202,86 @@ enum FlybriefPDFExporter {
         }
         context.closePDF()
         return data as Data
+    }
+}
+
+struct FlybriefPDFPreview: View {
+    let document: FlybriefPreviewDocument
+    let onSaveError: (Error) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("FLYBRIEF-VORSCHAU")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(FlybookColor.navy)
+                    Text(document.snapshot.route)
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(FlybookColor.muted)
+                }
+
+                Spacer()
+
+                Button("Zurück") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button {
+                    savePDF()
+                } label: {
+                    Label("Als PDF speichern", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(FlybookColor.navy)
+                .keyboardShortcut("s", modifiers: .command)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+
+            Divider()
+
+            FlybriefPDFKitView(data: document.data)
+                .background(Color(nsColor: .windowBackgroundColor))
+        }
+        .frame(minWidth: 760, idealWidth: 900, minHeight: 650, idealHeight: 900)
+    }
+
+    private func savePDF() {
+        do {
+            if try FlybriefPDFExporter.save(
+                document.data,
+                suggestedFilename: document.snapshot.suggestedFilename
+            ) != nil {
+                dismiss()
+            }
+        } catch {
+            onSaveError(error)
+        }
+    }
+}
+
+private struct FlybriefPDFKitView: NSViewRepresentable {
+    let data: Data
+
+    func makeNSView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.autoScales = true
+        view.displayMode = .singlePageContinuous
+        view.displayDirection = .vertical
+        view.displaysPageBreaks = true
+        view.pageShadowsEnabled = true
+        view.document = PDFDocument(data: data)
+        return view
+    }
+
+    func updateNSView(_ view: PDFView, context: Context) {
+        guard view.document?.dataRepresentation() != data else { return }
+        view.document = PDFDocument(data: data)
+        view.autoScales = true
     }
 }
 

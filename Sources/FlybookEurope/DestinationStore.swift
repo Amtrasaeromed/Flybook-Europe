@@ -24,7 +24,7 @@ private struct CSVTable {
 @MainActor
 final class DestinationStore: ObservableObject {
     private static let schemaVersion = "1.2"
-    private static let expectedDestinationCount = 134
+    private static let expectedDestinationCount = 140
     private static let bundledSeedPrices: [String: FuelPriceRecord] = [
         "EDFZ": FuelPriceRecord(
             avgas: 3.03,
@@ -217,6 +217,8 @@ final class DestinationStore: ObservableObject {
                     )) ?? 0,
                     bikeDirect: serviceAvailability("bicycle", rows: airportServices),
                     rentalCarDirect: serviceAvailability("rental_car", rows: airportServices),
+                    railDirect: serviceAvailability("rail_transit", rows: airportServices),
+                    busDirect: serviceAvailability("bus_transit", rows: airportServices),
                     app2DriveDirect: serviceAvailability("app2drive", rows: airportServices),
                     restaurantDirect: serviceAvailability("restaurant", rows: airportServices),
                     restaurantName: serviceValue(
@@ -468,7 +470,31 @@ final class DestinationStore: ObservableObject {
     }
 
     private func serviceAvailability(_ type: String, rows: [[String: String]]) -> String {
-        rows.first(where: { $0["service_type"] == type })?["availability_raw"] ?? ""
+        guard let rawValue = rows.first(where: { $0["service_type"] == type })?["availability_raw"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              !rawValue.isEmpty
+        else { return "?" }
+
+        let normalized = rawValue.folding(
+            options: [.diacriticInsensitive, .caseInsensitive],
+            locale: .current
+        )
+        if isAffirmative(rawValue)
+            || normalized == "nein"
+            || normalized.hasPrefix("nein ")
+            || normalized.hasPrefix("nein–")
+            || normalized.hasPrefix("nein-")
+            || normalized == "?"
+            || normalized.hasPrefix("? ")
+            || normalized.hasPrefix("?–")
+            || normalized.hasPrefix("?-")
+        {
+            return rawValue
+        }
+
+        // Unbestätigte Freitexte sind keine vierte Verfügbarkeitsstufe.
+        // Sie werden im UI explizit als unbekannt gekennzeichnet.
+        return "? – \(rawValue)"
     }
 
     private func portOfEntryStatus(airport: [String: String]) -> String {
@@ -699,6 +725,8 @@ final class DestinationStore: ObservableObject {
             transferMinutes: 20,
             bikeDirect: "Nein",
             rentalCarDirect: "Nein",
+            railDirect: "?",
+            busDirect: "?",
             app2DriveDirect: "Nein",
             restaurantDirect: "",
             restaurantName: "",

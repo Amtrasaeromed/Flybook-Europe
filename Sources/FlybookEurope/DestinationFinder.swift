@@ -42,10 +42,13 @@ struct DestinationFinderCriteria {
     let ignoresWind: Bool
     let maximumGustKnots: Double
     let ignoresGusts: Bool
+    var maximumFoehnPressureDifferenceHPA = 2.0
+    var ignoresFoehn = true
     let minimumWeather: DestinationFinderMinimumWeather
     var ignoresMinimumWeather = false
     var usesMinimumWeatherCoverageRule = true
     let requiresCloudless: Bool
+    var requiresScatteredCloudCoverage = false
     let requiresRainFree: Bool
     var requiresRainFreeCoverage = false
     let daylightOnly: Bool
@@ -61,6 +64,7 @@ struct DestinationFinderCriteria {
             || !ignoresGusts
             || !ignoresMinimumWeather
             || requiresCloudless
+            || requiresScatteredCloudCoverage
             || requiresRainFree
             || requiresRainFreeCoverage
     }
@@ -99,10 +103,13 @@ private final class DestinationFinderSession {
     var ignoresWind = false
     var maximumGust = 25.0
     var ignoresGusts = true
+    var maximumFoehnPressureDifference = 2.0
+    var ignoresFoehn = true
     var minimumWeather = DestinationFinderMinimumWeather.vfr
     var ignoresMinimumWeather = false
     var usesMinimumWeatherCoverageRule = true
     var requiresCloudless = false
+    var requiresScatteredCloudCoverage = false
     var requiresRainFree = false
     var requiresRainFreeCoverage = false
     var daylightOnly = true
@@ -161,10 +168,13 @@ private final class DestinationFinderSession {
         ignoresWind = false
         maximumGust = 25
         ignoresGusts = true
+        maximumFoehnPressureDifference = 2
+        ignoresFoehn = true
         minimumWeather = .vfr
         ignoresMinimumWeather = false
         usesMinimumWeatherCoverageRule = true
         requiresCloudless = false
+        requiresScatteredCloudCoverage = false
         requiresRainFree = false
         requiresRainFreeCoverage = false
         daylightOnly = true
@@ -197,14 +207,32 @@ struct DestinationFinderWeatherHour: Codable, Equatable {
     let dewPointCelsius: Double?
 }
 
+enum DestinationFinderRouteWeatherEvaluation: Equatable {
+    case matches
+    case rejects
+    case incomplete
+}
+
 enum DestinationFinderEvaluator {
+    static func evaluateRouteWeather(
+        _ risks: [RouteWeatherRisk],
+        maximum: RouteWeatherRisk
+    ) -> DestinationFinderRouteWeatherEvaluation {
+        let availableRisks = risks.filter { $0 != .unavailable }
+        if availableRisks.contains(where: { $0 > maximum }) {
+            return .rejects
+        }
+        if risks.isEmpty || availableRisks.count != risks.count {
+            return .incomplete
+        }
+        return .matches
+    }
+
     static func routeWeatherMatches(
         _ risks: [RouteWeatherRisk],
         maximum: RouteWeatherRisk
     ) -> Bool {
-        !risks.isEmpty
-            && !risks.contains(.unavailable)
-            && risks.allSatisfy { $0 <= maximum }
+        evaluateRouteWeather(risks, maximum: maximum) == .matches
     }
 
     static func serviceIsAvailable(_ value: String) -> Bool {
@@ -293,6 +321,7 @@ enum DestinationFinderEvaluator {
             || !criteria.ignoresWind
             || !criteria.ignoresGusts
             || criteria.requiresCloudless
+            || criteria.requiresScatteredCloudCoverage
             || criteria.requiresRainFree
         guard !requiresSelectedHours || !selected.isEmpty else { return false }
 
@@ -340,6 +369,16 @@ enum DestinationFinderEvaluator {
             let fewHours = cloudValues.filter { $0 > 0 }.count
             guard Double(fewHours) / Double(cloudValues.count) < 0.5
             else { return false }
+        }
+
+        if criteria.requiresScatteredCloudCoverage {
+            guard scatteredCloudCoverageMatches(
+                hours,
+                from: criteria.from,
+                until: criteria.until,
+                destination: destination,
+                daylightOnly: criteria.daylightOnly
+            ) else { return false }
         }
 
         if criteria.requiresRainFree {
@@ -435,6 +474,70 @@ enum DestinationFinderEvaluator {
                     return precipitation < 0.1
                 }.count
                 guard Double(rainFreeSamples) / Double(samples.count) >= 0.66
+                else { return false }
+            }
+
+            day = nextDay
+        }
+
+        return evaluatedDay
+    }
+
+    static func scatteredCloudCoverageMatches(
+        _ hours: [DestinationFinderWeatherHour],
+        from: Date,
+        until: Date,
+        destination: AirportReference,
+        daylightOnly: Bool = true
+    ) -> Bool {
+        guard until >= from else { return false }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = destination.timeZone
+        var day = calendar.startOfDay(for: from)
+        let lastDay = calendar.startOfDay(for: until)
+        var evaluatedDay = false
+
+        while day <= lastDay {
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: day)
+            else { return false }
+            let localNoon = calendar.date(
+                bySettingHour: 12,
+                minute: 0,
+                second: 0,
+                of: day
+            ) ?? day
+            let evaluationBounds: (start: Date, end: Date)?
+            if daylightOnly {
+                evaluationBounds = SolarCalculator.events(
+                    forLocalDayContaining: localNoon,
+                    latitude: destination.latitude,
+                    longitude: destination.longitude,
+                    timeZone: destination.timeZone
+                ).map { events in
+                    (max(from, events.sunrise), min(until, events.sunset))
+                }
+            } else {
+                let endOfDay = nextDay.addingTimeInterval(-1)
+                evaluationBounds = (max(from, day), min(until, endOfDay))
+            }
+
+            if let bounds = evaluationBounds,
+               bounds.start <= bounds.end
+            {
+                evaluatedDay = true
+                let samples = hours.filter {
+                    $0.instant >= bounds.start
+                        && $0.instant <= bounds.end
+                }
+                guard !samples.isEmpty else { return false }
+                let scatteredOrBetterSamples = samples.filter {
+                    guard let cloudCover = $0.totalCloudCoverPercent else {
+                        return false
+                    }
+                    return cloudCover <= 50
+                }.count
+                guard scatteredOrBetterSamples * 3 >= samples.count * 2
                 else { return false }
             }
 
@@ -552,6 +655,7 @@ enum DestinationFinderService {
     struct Result {
         let matches: [DestinationFinderMatch]
         let unavailableWeatherCount: Int
+        let incompleteRouteWeatherCount: Int
     }
 
     static func find(
@@ -572,7 +676,11 @@ enum DestinationFinderService {
         guard let origin = origins.first(where: {
             $0.icao == criteria.originICAO
         }) else {
-            return Result(matches: [], unavailableWeatherCount: 0)
+            return Result(
+                matches: [],
+                unavailableWeatherCount: 0,
+                incompleteRouteWeatherCount: 0
+            )
         }
 
         let climb = AircraftProfileStore.climbPerformance(for: aircraft)
@@ -793,14 +901,77 @@ enum DestinationFinderService {
                 )
             }
 
-        // Load the compact airport batches before the much more expensive
-        // corridor requests. Apart from making the destination filters
-        // available immediately, this gives RouteWeatherRiskService a cached
-        // fallback if the forecast provider throttles a corridor batch.
+        var unavailableFoehnCount = 0
+        let foehnSamples: [AlpineFoehnPressureSample]?
+        if !criteria.ignoresFoehn,
+           travelCandidates.contains(where: {
+               guard let latitude = $0.0.latitude,
+                     let longitude = $0.0.longitude else { return false }
+               return AlpineRegion.contains(
+                   latitude: latitude,
+                   longitude: longitude
+               )
+           }) {
+            foehnSamples = try? await AlpineFoehnForecastService.shared.samples(
+                from: criteria.from,
+                until: criteria.until
+            )
+        } else {
+            foehnSamples = nil
+        }
+        let airportFoehnCandidates = travelCandidates.filter {
+            destination, _, _, _, _ in
+            guard !criteria.ignoresFoehn,
+                  let latitude = destination.latitude,
+                  let longitude = destination.longitude,
+                  AlpineRegion.contains(
+                    latitude: latitude,
+                    longitude: longitude
+                  )
+            else { return true }
+            guard let foehnSamples else {
+                unavailableFoehnCount += 1
+                return false
+            }
+            let airport = AirportReference(
+                icao: destination.icao,
+                name: destination.name,
+                latitude: latitude,
+                longitude: longitude,
+                elevationFeet: destination.elevationFeet,
+                timeZone: DestinationTimeZone.value(
+                    for: destination,
+                    weatherTimeZone: nil
+                )
+            )
+            guard let matches = AlpineFoehnEvaluator.airportMatches(
+                samples: foehnSamples,
+                airport: airport,
+                from: criteria.from,
+                until: criteria.until,
+                maximumExclusive: criteria.maximumFoehnPressureDifferenceHPA
+            ) else {
+                unavailableFoehnCount += 1
+                return false
+            }
+            return matches
+        }
+
+        // A shared ICON airport mesh serves both destination filters and the
+        // route-weather pre-screening. Even with 133 destinations this stays
+        // at a small number of serial batches instead of one heavy 18-point
+        // corridor request per candidate.
         let weatherByICAO: [String: [DestinationFinderWeatherHour]]
-        if criteria.requiresWeatherData {
+        if criteria.requiresWeatherData || !criteria.ignoresRouteWeather {
+            let candidateDestinations = airportFoehnCandidates.map { $0.0 }
+            let candidateICAOs = Set(candidateDestinations.map(\.icao))
+            let weatherDestinations = criteria.ignoresRouteWeather
+                ? candidateDestinations
+                : candidateDestinations + destinations.filter {
+                    !candidateICAOs.contains($0.icao)
+                }
             weatherByICAO = await DestinationFinderWeatherCache.shared.hours(
-                for: travelCandidates.map { $0.0 },
+                for: weatherDestinations,
                 from: criteria.from,
                 until: criteria.until
             )
@@ -808,16 +979,45 @@ enum DestinationFinderService {
             weatherByICAO = [:]
         }
 
-        var filteredTravelCandidates = travelCandidates
+        // Apply target weather before route weather. A destination that fails
+        // the cheaper batch-based rules must never trigger route work.
+        var unavailableTargetWeatherCount = 0
+        let targetWeatherCandidates = airportFoehnCandidates.filter {
+            destination, _, _, _, _ in
+            guard criteria.requiresWeatherData else { return true }
+            let hours = weatherByICAO[destination.icao]
+            if hours == nil { unavailableTargetWeatherCount += 1 }
+            let reference = AirportReference(
+                icao: destination.icao,
+                name: destination.name,
+                latitude: destination.latitude ?? 0,
+                longitude: destination.longitude ?? 0,
+                elevationFeet: destination.elevationFeet,
+                timeZone: DestinationTimeZone.value(
+                    for: destination,
+                    weatherTimeZone: nil
+                )
+            )
+            return DestinationFinderEvaluator.weatherMatches(
+                hours,
+                criteria: criteria,
+                destination: reference
+            )
+        }
+
+        var filteredTravelCandidates = targetWeatherCandidates
         var unavailableRouteWeatherCount = 0
+        var incompleteRouteWeatherICAOs: Set<String> = []
         if !criteria.ignoresRouteWeather {
             var routeMatches: [(Destination, Int, Int, Double, Int)] = []
-            for candidate in travelCandidates {
+            for candidate in targetWeatherCandidates {
                 let destination = candidate.0
                 guard let latitude = destination.latitude,
                       let longitude = destination.longitude
                 else {
                     unavailableRouteWeatherCount += 1
+                    incompleteRouteWeatherICAOs.insert(destination.icao)
+                    routeMatches.append(candidate)
                     continue
                 }
                 let destinationReference = AirportReference(
@@ -832,92 +1032,42 @@ enum DestinationFinderService {
                     ),
                     referenceRunway: destination.referenceRunway
                 )
-                do {
-                    let risks = try await RouteWeatherRiskService.shared.risks(
-                        waypoints: [origin, destinationReference],
-                        start: criteria.from,
-                        end: criteria.from.addingTimeInterval(
-                            Double(candidate.1) * 60
-                        ),
-                        cruiseAltitudeFeet: 5_000,
-                        forceRefresh: false
-                    )
-                    if risks.contains(.unavailable) {
-                        unavailableRouteWeatherCount += 1
-                    } else if DestinationFinderEvaluator.routeWeatherMatches(
-                        risks,
-                        maximum: criteria.maximumRouteWeatherRisk
-                    ) {
-                        routeMatches.append(candidate)
-                    }
-                } catch {
+                let risks = await RouteWeatherRiskService.shared.cachedRisks(
+                    waypoints: [origin, destinationReference],
+                    start: criteria.from,
+                    end: criteria.from.addingTimeInterval(
+                        Double(candidate.1) * 60
+                    ),
+                    cruiseAltitudeFeet: 5_000
+                )
+                switch DestinationFinderEvaluator.evaluateRouteWeather(
+                    risks,
+                    maximum: criteria.maximumRouteWeatherRisk
+                ) {
+                case .matches:
+                    routeMatches.append(candidate)
+                case .rejects:
+                    break
+                case .incomplete:
                     unavailableRouteWeatherCount += 1
+                    incompleteRouteWeatherICAOs.insert(destination.icao)
+                    routeMatches.append(candidate)
                 }
             }
             filteredTravelCandidates = routeMatches
         }
 
-        if !criteria.requiresWeatherData {
-            let matches = filteredTravelCandidates.map {
-                destination, travelMinutes, stopCount, price, priceStops in
-                DestinationFinderMatch(
-                    destinationICAO: destination.icao,
-                    destinationName: destination.name,
-                    travelMinutes: travelMinutes,
-                    stopCount: stopCount,
-                    roundTripPriceEUR: price,
-                    priceStopCount: priceStops,
-                    weatherWasChecked: true
-                )
-            }.sorted {
-                if $0.travelMinutes == $1.travelMinutes {
-                    return $0.destinationName < $1.destinationName
-                }
-                return $0.travelMinutes < $1.travelMinutes
-            }
-            return Result(
-                matches: matches,
-                unavailableWeatherCount: unavailableRouteWeatherCount
-            )
-        }
-
-        // Nach allen statischen Filtern werden nur die verbleibenden Ziele
-        // abgefragt. Sie laufen in kleinen Sammelrequests und nur fuer das
-        // gewaehlte Zeitfenster. Zuvor startete jedes Ziel gleichzeitig einen
-        // kompletten 16-Tage-Abruf und konnte den Anbieter ueberlasten.
-        var matches: [DestinationFinderMatch] = []
-        var unavailable = 0
-        for (destination, travelMinutes, stopCount, price, priceStops)
-            in filteredTravelCandidates
-        {
-            let hours = weatherByICAO[destination.icao]
-            if hours == nil { unavailable += 1 }
-            let reference = AirportReference(
-                icao: destination.icao,
-                name: destination.name,
-                latitude: destination.latitude ?? 0,
-                longitude: destination.longitude ?? 0,
-                elevationFeet: destination.elevationFeet,
-                timeZone: DestinationTimeZone.value(
-                    for: destination,
-                    weatherTimeZone: nil
-                )
-            )
-            guard DestinationFinderEvaluator.weatherMatches(
-                hours,
-                criteria: criteria,
-                destination: reference
-            ) else { continue }
-            matches.append(
-                DestinationFinderMatch(
-                    destinationICAO: destination.icao,
-                    destinationName: destination.name,
-                    travelMinutes: travelMinutes,
-                    stopCount: stopCount,
-                    roundTripPriceEUR: price,
-                    priceStopCount: priceStops,
-                    weatherWasChecked: true
-                )
+        var matches = filteredTravelCandidates.map {
+            destination, travelMinutes, stopCount, price, priceStops in
+            DestinationFinderMatch(
+                destinationICAO: destination.icao,
+                destinationName: destination.name,
+                travelMinutes: travelMinutes,
+                stopCount: stopCount,
+                roundTripPriceEUR: price,
+                priceStopCount: priceStops,
+                weatherWasChecked:
+                    !incompleteRouteWeatherICAOs.contains(destination.icao)
             )
         }
         matches.sort {
@@ -928,7 +1078,10 @@ enum DestinationFinderService {
         }
         return Result(
             matches: matches,
-            unavailableWeatherCount: unavailable + unavailableRouteWeatherCount
+            unavailableWeatherCount:
+                unavailableFoehnCount
+                    + unavailableTargetWeatherCount,
+            incompleteRouteWeatherCount: unavailableRouteWeatherCount
         )
     }
 }
@@ -976,6 +1129,7 @@ actor DestinationFinderWeatherCache {
 
     private let nearTermLifetime: TimeInterval = 30 * 60
     private let futureLifetime: TimeInterval = 3 * 60 * 60
+    private let maximumIndividualFallbacksPerRun = 12
     private var cache: [String: CacheEntry] = [:]
     private var knownDestinations: [Destination] = []
     private var didLoadPersistentCache = false
@@ -1075,10 +1229,16 @@ actor DestinationFinderWeatherCache {
             else { return true }
             return !Self.covers(cached.hours, from: from, until: until)
         }
-        for start in stride(from: 0, to: unresolved.count, by: 4) {
+        // Never replace a failed shared batch with an unbounded request fanout
+        // to another provider. Candidates arrive first, so the small fallback
+        // budget helps the most relevant destinations before the route mesh.
+        let fallbackCandidates = Array(
+            unresolved.prefix(maximumIndividualFallbacksPerRun)
+        )
+        for start in stride(from: 0, to: fallbackCandidates.count, by: 4) {
             guard !Task.isCancelled else { break }
-            let end = min(start + 4, unresolved.count)
-            let batch = Array(unresolved[start..<end])
+            let end = min(start + 4, fallbackCandidates.count)
+            let batch = Array(fallbackCandidates[start..<end])
             let fallbacks = await withTaskGroup(
                 of: (String, [DestinationFinderWeatherHour])?.self,
                 returning: [(String, [DestinationFinderWeatherHour])].self
@@ -1273,21 +1433,43 @@ actor DestinationFinderWeatherCache {
     ) async throws
         -> [DestinationFinderAPIResponse]
     {
+        for route in ICONSeamlessAccessRoute.allCases {
+            do {
+                return try await fetch(
+                    destinations,
+                    from: from,
+                    until: until,
+                    route: route
+                )
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch is OpenMeteoAccessError {
+                throw OpenMeteoAccessError.rateLimited
+            } catch {
+                continue
+            }
+        }
+        throw DestinationFinderError.serverError
+    }
+
+    private func fetch(
+        _ destinations: [Destination],
+        from: Date,
+        until: Date,
+        route: ICONSeamlessAccessRoute
+    ) async throws -> [DestinationFinderAPIResponse] {
         let latitudes = destinations.compactMap(\.latitude)
             .map { String($0) }.joined(separator: ",")
         let longitudes = destinations.compactMap(\.longitude)
             .map { String($0) }.joined(separator: ",")
-        guard !latitudes.isEmpty, !longitudes.isEmpty,
-              var components = URLComponents(
-                  string: "https://api.open-meteo.com/v1/forecast"
-              )
+        guard !latitudes.isEmpty, !longitudes.isEmpty
         else { throw DestinationFinderError.invalidRequest }
         let dateFormatter = DateFormatter()
         dateFormatter.calendar = Calendar(identifier: .gregorian)
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         dateFormatter.timeZone = .current
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        components.queryItems = [
+        let queryItems = [
             URLQueryItem(name: "latitude", value: latitudes),
             URLQueryItem(name: "longitude", value: longitudes),
             URLQueryItem(name: "timezone", value: "auto"),
@@ -1306,7 +1488,7 @@ actor DestinationFinderWeatherCache {
                 "wind_speed_10m", "wind_gusts_10m"
             ].joined(separator: ","))
         ]
-        guard let url = components.url else {
+        guard let url = route.url(queryItems: queryItems) else {
             throw DestinationFinderError.invalidRequest
         }
         let (data, response) = try await FlightNetwork.openMeteoData(
@@ -1421,18 +1603,23 @@ struct DestinationFinderView: View {
     @State private var ignoresWind = false
     @State private var maximumGust = 25.0
     @State private var ignoresGusts = true
+    @State private var maximumFoehnPressureDifference = 2.0
+    @State private var ignoresFoehn = true
     @State private var minimumWeather = DestinationFinderMinimumWeather.vfr
     @State private var ignoresMinimumWeather = false
     @State private var usesMinimumWeatherCoverageRule = true
     @State private var requiresCloudless = false
+    @State private var requiresScatteredCloudCoverage = false
     @State private var requiresRainFree = false
     @State private var requiresRainFreeCoverage = false
     @State private var daylightOnly = true
     @State private var maximumRouteWeatherRisk = RouteWeatherRisk.green
     @State private var ignoresRouteWeather = true
     @State private var isFiltering = false
+    @State private var hasAppliedFilter = false
     @State private var matches: [DestinationFinderMatch] = []
     @State private var unavailableWeatherCount = 0
+    @State private var incompleteRouteWeatherCount = 0
     @State private var filterUserRaw = ""
     @State private var originSearchText = ""
     @FocusState private var originSearchIsFocused: Bool
@@ -1480,12 +1667,19 @@ struct DestinationFinderView: View {
         _ignoresWind = State(initialValue: session.ignoresWind)
         _maximumGust = State(initialValue: session.maximumGust)
         _ignoresGusts = State(initialValue: session.ignoresGusts)
+        _maximumFoehnPressureDifference = State(
+            initialValue: session.maximumFoehnPressureDifference
+        )
+        _ignoresFoehn = State(initialValue: session.ignoresFoehn)
         _minimumWeather = State(initialValue: session.minimumWeather)
         _ignoresMinimumWeather = State(initialValue: session.ignoresMinimumWeather)
         _usesMinimumWeatherCoverageRule = State(
             initialValue: session.usesMinimumWeatherCoverageRule
         )
         _requiresCloudless = State(initialValue: session.requiresCloudless)
+        _requiresScatteredCloudCoverage = State(
+            initialValue: session.requiresScatteredCloudCoverage
+        )
         _requiresRainFree = State(initialValue: session.requiresRainFree)
         _requiresRainFreeCoverage = State(
             initialValue: session.requiresRainFreeCoverage
@@ -1996,9 +2190,6 @@ struct DestinationFinderView: View {
                 GridRow {
                     Color.clear.frame(width: 135, height: 1)
                     HStack(spacing: 20) {
-                        Toggle("Wolkenlos", isOn: $requiresCloudless)
-                            .toggleStyle(.checkbox)
-                            .help("Akzeptiert höchstens FEW und dies in weniger als 50 % des geprüften Zeitraums.")
                         Toggle("Regenfrei", isOn: Binding(
                             get: { requiresRainFree },
                             set: { enabled in
@@ -2007,6 +2198,7 @@ struct DestinationFinderView: View {
                             }
                         ))
                             .toggleStyle(.checkbox)
+                            .frame(width: 110, alignment: .leading)
                             .help("Schließt Ziele aus, sobald in einer geprüften Stunde mindestens 0,1 mm Niederschlag vorhergesagt ist.")
                         Toggle("66 % regenfrei", isOn: Binding(
                             get: { requiresRainFreeCoverage },
@@ -2020,6 +2212,37 @@ struct DestinationFinderView: View {
                                 daylightOnly
                                     ? "Pro Kalendertag am Ziel müssen mindestens 66 % der Tageslichtstunden weniger als 0,1 mm Niederschlag haben."
                                     : "Pro Kalendertag am Ziel müssen mindestens 66 % der Stunden im gewählten Zeitraum weniger als 0,1 mm Niederschlag haben."
+                            )
+                    }
+                    Color.clear.frame(width: 210, height: 1)
+                }
+                GridRow {
+                    Color.clear.frame(width: 135, height: 1)
+                    HStack(spacing: 20) {
+                        Toggle("Wolkenlos", isOn: Binding(
+                            get: { requiresCloudless },
+                            set: { enabled in
+                                requiresCloudless = enabled
+                                if enabled {
+                                    requiresScatteredCloudCoverage = false
+                                }
+                            }
+                        ))
+                            .toggleStyle(.checkbox)
+                            .frame(width: 110, alignment: .leading)
+                            .help("Akzeptiert höchstens FEW und dies in weniger als 50 % des geprüften Zeitraums.")
+                        Toggle("66 % max. SCT", isOn: Binding(
+                            get: { requiresScatteredCloudCoverage },
+                            set: { enabled in
+                                requiresScatteredCloudCoverage = enabled
+                                if enabled { requiresCloudless = false }
+                            }
+                        ))
+                            .toggleStyle(.checkbox)
+                            .help(
+                                daylightOnly
+                                    ? "Pro Kalendertag am Ziel muss in mindestens zwei Dritteln der Tageslichtstunden höchstens SCT (50 % Gesamtbewölkung) vorhergesagt sein."
+                                    : "Pro Kalendertag am Ziel muss in mindestens zwei Dritteln der Stunden im gewählten Zeitraum höchstens SCT (50 % Gesamtbewölkung) vorhergesagt sein."
                             )
                     }
                     Color.clear.frame(width: 210, height: 1)
@@ -2048,6 +2271,21 @@ struct DestinationFinderView: View {
                     ),
                     colors: windScaleColors
                 )
+                sliderRow(
+                    title: "Maximaler Föhn",
+                    value: $maximumFoehnPressureDifference,
+                    range: 2...12,
+                    step: 2,
+                    valueText: ignoresFoehn
+                        ? "Unbegrenzt"
+                        : "< \(Int(maximumFoehnPressureDifference)) hPa",
+                    trailing: AnyView(
+                        Toggle("Ignorieren", isOn: $ignoresFoehn)
+                            .toggleStyle(.checkbox)
+                    ),
+                    colors: [.green, .yellow, .orange, .red]
+                )
+                .help("Gilt nur für Flugplätze in der Alpenregion. Je nach Lage wird die Achse Annecy–Aosta, Zürich–Lugano oder Innsbruck–Bozen geprüft. Maßgeblich ist die stärkste für die jeweilige Alpenseite relevante Druckdifferenz im gewählten Zeitraum.")
             }
         }
     }
@@ -2115,6 +2353,19 @@ struct DestinationFinderView: View {
                     : "pro Tag mind. 66 % des gewählten Zeitraums regenfrei"
             )
         }
+        if requiresCloudless {
+            conditions.append(
+                daylightOnly
+                    ? "tagsüber wolkenlos"
+                    : "im gesamten Zeitraum wolkenlos"
+            )
+        } else if requiresScatteredCloudCoverage {
+            conditions.append(
+                daylightOnly
+                    ? "pro Tag mind. 66 % der Tageslichtstunden max. SCT"
+                    : "pro Tag mind. 66 % des gewählten Zeitraums max. SCT"
+            )
+        }
         return conditions.isEmpty
             ? "Zielwetter: Flugwetterkategorie und Regen ignoriert"
             : "Zielwetter: " + conditions.joined(separator: " · ")
@@ -2143,7 +2394,7 @@ struct DestinationFinderView: View {
                     colors: [.green, FlybookColor.blue, .red, .purple]
                 )
             }
-            Text("Bewertet die sechs Wetterpunkte zwischen Abflugort und Ziel zur gewählten Startzeit. Zulässig sind die gewählte Farbe und alle besseren Stufen.")
+            Text("Schnelles Vorscreening aus dem gemeinsam geladenen ICON-D2-/ICON-EU-Flugplatznetz. Die detaillierte 18-Punkte-Korridorprüfung erfolgt anschließend in der konkreten Flugplanung.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -2178,7 +2429,9 @@ struct DestinationFinderView: View {
                 Text(
                     isFiltering
                         ? "Ziele und Wetterdaten werden geprüft …"
-                        : "Noch kein Filter angewendet."
+                        : hasAppliedFilter
+                            ? "Keine Ziele erfüllen die gewählten Filterbedingungen."
+                            : "Noch kein Filter angewendet."
                 )
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, minHeight: 100)
@@ -2197,10 +2450,10 @@ struct DestinationFinderView: View {
                                         .foregroundStyle(FlybookColor.blue)
                                 }
                                 if !match.weatherWasChecked {
-                                    Label("Wetter offen", systemImage: "questionmark.circle.fill")
+                                    Label("Streckenwetter offen", systemImage: "questionmark.circle.fill")
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(.orange)
-                                        .help("Statische Kriterien erfüllt; Wetterdaten waren nicht verfügbar.")
+                                        .help("Das Ziel bleibt sichtbar. Mindestens ein Streckenabschnitt konnte noch nicht bewertet werden.")
                                 }
                                 Text(FlightMath.duration(match.travelMinutes))
                                     .font(.system(size: 14, weight: .bold, design: .monospaced))
@@ -2230,9 +2483,14 @@ struct DestinationFinderView: View {
             }
             if unavailableWeatherCount > 0 {
                 Text(
-                    ignoresRouteWeather
-                        ? "\(unavailableWeatherCount) Ziele wurden ausgeschlossen, weil Zielwetterdaten nicht verfügbar waren."
-                        : "\(unavailableWeatherCount) Ziele wurden wegen unvollständiger Wetterdaten ausgeschlossen."
+                    "\(unavailableWeatherCount) Ziele wurden ausgeschlossen, weil Ziel- oder Föhnwetterdaten nicht verfügbar waren."
+                )
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            if incompleteRouteWeatherCount > 0 {
+                Text(
+                    "\(incompleteRouteWeatherCount) Ziele bleiben trotz unvollständiger Streckenwetterdaten sichtbar."
                 )
                     .font(.caption)
                     .foregroundStyle(.orange)
@@ -2457,10 +2715,13 @@ struct DestinationFinderView: View {
         session.ignoresWind = ignoresWind
         session.maximumGust = maximumGust
         session.ignoresGusts = ignoresGusts
+        session.maximumFoehnPressureDifference = maximumFoehnPressureDifference
+        session.ignoresFoehn = ignoresFoehn
         session.minimumWeather = minimumWeather
         session.ignoresMinimumWeather = ignoresMinimumWeather
         session.usesMinimumWeatherCoverageRule = usesMinimumWeatherCoverageRule
         session.requiresCloudless = requiresCloudless
+        session.requiresScatteredCloudCoverage = requiresScatteredCloudCoverage
         session.requiresRainFree = requiresRainFree
         session.requiresRainFreeCoverage = requiresRainFreeCoverage
         session.daylightOnly = daylightOnly
@@ -2503,10 +2764,13 @@ struct DestinationFinderView: View {
         ignoresWind = session.ignoresWind
         maximumGust = session.maximumGust
         ignoresGusts = session.ignoresGusts
+        maximumFoehnPressureDifference = session.maximumFoehnPressureDifference
+        ignoresFoehn = session.ignoresFoehn
         minimumWeather = session.minimumWeather
         ignoresMinimumWeather = session.ignoresMinimumWeather
         usesMinimumWeatherCoverageRule = session.usesMinimumWeatherCoverageRule
         requiresCloudless = session.requiresCloudless
+        requiresScatteredCloudCoverage = session.requiresScatteredCloudCoverage
         requiresRainFree = session.requiresRainFree
         requiresRainFreeCoverage = session.requiresRainFreeCoverage
         daylightOnly = session.daylightOnly
@@ -2515,6 +2779,8 @@ struct DestinationFinderView: View {
         ignoresRouteWeather = session.ignoresRouteWeather
         matches = []
         unavailableWeatherCount = 0
+        incompleteRouteWeatherCount = 0
+        hasAppliedFilter = false
         synchronizeOriginSearchText()
     }
 
@@ -2523,6 +2789,7 @@ struct DestinationFinderView: View {
         isFiltering = true
         matches = []
         unavailableWeatherCount = 0
+        incompleteRouteWeatherCount = 0
         let criteria = DestinationFinderCriteria(
             originICAO: originICAO,
             from: from,
@@ -2551,10 +2818,14 @@ struct DestinationFinderView: View {
             ignoresWind: ignoresWind,
             maximumGustKnots: maximumGust,
             ignoresGusts: ignoresGusts,
+            maximumFoehnPressureDifferenceHPA:
+                maximumFoehnPressureDifference,
+            ignoresFoehn: ignoresFoehn,
             minimumWeather: minimumWeather,
             ignoresMinimumWeather: ignoresMinimumWeather,
             usesMinimumWeatherCoverageRule: usesMinimumWeatherCoverageRule,
             requiresCloudless: requiresCloudless,
+            requiresScatteredCloudCoverage: requiresScatteredCloudCoverage,
             requiresRainFree: requiresRainFree,
             requiresRainFreeCoverage: requiresRainFreeCoverage,
             daylightOnly: daylightOnly,
@@ -2590,7 +2861,10 @@ struct DestinationFinderView: View {
             await MainActor.run {
                 matches = result.matches
                 unavailableWeatherCount = result.unavailableWeatherCount
+                incompleteRouteWeatherCount =
+                    result.incompleteRouteWeatherCount
                 onApply(result.matches)
+                hasAppliedFilter = true
                 isFiltering = false
             }
         }

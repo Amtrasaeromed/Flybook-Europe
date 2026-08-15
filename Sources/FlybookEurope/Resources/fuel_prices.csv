@@ -26,3 +26,4 @@ schema_version,price_id,airport_id,fuel_type,fuel_label_raw,price_eur_per_litre,
 1.2,EHLE:AVGAS_UL94:20260803,EHLE,AVGAS_UL94,AVGAS UL94,3.093,"AVGAS UL94 3,093 €/l inkl. Steuern und MwSt.; Preisänderungen vorbehalten",2026-08-03,https://www.lelystadairport.nl/en/for-pilots/fuel/
 1.2,EDLM:AVGAS:20260813,EDLM,AVGAS,AVGAS 100LL,3.14,"AVGAS 100LL 3,14 €/l brutto und 2,64 €/l netto; aktueller Nutzerabgleich mit Betreiberseite am 13.08.2026; unverbindliche Preisempfehlung",2026-08-13,https://xn--flugplatz-loemhle-g3b.de/tanken/
 1.2,EDLM:MOGAS_SUPER:20260813,EDLM,MOGAS_SUPER,Super Plus,2.61,"Super Plus 2,61 €/l brutto und 2,19 €/l netto; aktueller Nutzerabgleich mit Betreiberseite am 13.08.2026; unverbindliche Preisempfehlung",2026-08-13,https://xn--flugplatz-loemhle-g3b.de/tanken/
+1.2,LSGN:AVGAS:20260815,LSGN,AVGAS,AVGAS 100LL,3.20,"AVGAS 100LL 3,20 EUR/l laut Betreiber, Stand Juli 2026",2026-08-15,https://www.neuchatel-airport.ch/airport-fees/?lang=de

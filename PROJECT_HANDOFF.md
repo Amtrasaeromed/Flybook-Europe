@@ -1,10 +1,41 @@
-# Flybook Europe – Übergabe v1.46.0
+# Flybook Europe – Übergabe v1.47.0
+
+## Sofortübergabe (15. August 2026)
+
+- Arbeitsverzeichnis: `/Users/stephan/Documents/ChatGPT/Flybook`
+- Branch: `codex/ipad-migration`
+- Git-Stand: alle Änderungen auf `codex/ipad-migration` versioniert und für
+  die Übergabe an einen weiteren Account vorbereitet
+- Version: `1.47.0`
+- Die macOS-App wurde erfolgreich mit
+  `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
+  `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
+- Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich.
+- Der Destination Finder behält Ziele bei unvollständigem Streckenwetter als
+  Treffer und kennzeichnet sie als nicht vollständig geprüft. Alpenföhn wird
+  entlang der relevanten West-, Zentral- und Ostachsen bewertet.
+- Mobilitätsdaten unterscheiden Fahrrad, Mietwagen, app2drive, Bahn und Bus.
+  Bahn-/Busnähe bedeutet höchstens 500 m und mehrfach täglichen Verkehr; nicht
+  eindeutig belegte Angebote bleiben als `?` gekennzeichnet.
+- Tourismusmerkmale sowie die POE-/Zolltauglichkeit der Schweizer und
+  britischen Ziele wurden redaktionell nachgeschärft.
+
+## Einstieg für den nächsten Account
+
+Diesen Text als erste Aufgabe verwenden:
+
+> Arbeite im bestehenden Projekt `/Users/stephan/Documents/ChatGPT/Flybook`
+> weiter. Lies zuerst `PROJECT_HANDOFF.md` und `README.md`, prüfe danach
+> `git status` und den aktuellen Branch. Bewahre alle vorhandenen Änderungen.
+> Flybook v1.47.0 wurde zuletzt erfolgreich gebaut und gestartet. Setze meine
+> nächste konkrete Anforderung direkt um und verifiziere sie mit den passenden
+> Swift-Tests beziehungsweise den Release-Audits aus dem README.
 
 ## Produktstand
 
 - Native SwiftUI-/SwiftPM-App für macOS 13 oder neuer
 - Bundle-ID `de.flybook.europe`
-- 125 Flugplätze, 94 Ziele, 31 TechStops
+- 140 Flugplätze, 106 Ziele, 33 TechStops
 - Flugzeugprofile DEUKS, DETIK und benutzerdefinierte Flugzeuge
 - dauerhafte Profile für Stephan und Maria
 

@@ -23,6 +23,33 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testIncompleteRouteWeatherRemainsDistinguishableFromRejection() {
+        XCTAssertEqual(
+            DestinationFinderEvaluator.evaluateRouteWeather(
+                [.green, .unavailable, .blue],
+                maximum: .blue
+            ),
+            .incomplete
+        )
+        XCTAssertEqual(
+            DestinationFinderEvaluator.evaluateRouteWeather(
+                [.green, .unavailable, .red],
+                maximum: .blue
+            ),
+            .rejects
+        )
+    }
+
+    func testPurpleRouteWeatherDoesNotRejectIncompleteRoute() {
+        XCTAssertEqual(
+            DestinationFinderEvaluator.evaluateRouteWeather(
+                [.purple, .unavailable],
+                maximum: .purple
+            ),
+            .incomplete
+        )
+    }
+
     func testMinimumWeatherCoverageAllowsThreeBadOfTwelveDaylightHours() {
         let categories = Array(repeating: FlightCategory.vfr, count: 9)
             + Array(repeating: FlightCategory.ifr, count: 3)
@@ -122,6 +149,63 @@ final class DestinationFinderTests: XCTestCase {
                 firstDayHours + secondDayHours,
                 from: firstDay,
                 until: secondDay.addingTimeInterval(23 * 3600),
+                destination: destination
+            )
+        )
+    }
+
+    func testScatteredCloudCoverageRequiresTwoThirdsOnEveryDay() {
+        let firstDay = utcDate(year: 2026, month: 8, day: 17)
+        let secondDay = utcDate(year: 2026, month: 8, day: 18)
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.scatteredCloudCoverageMatches(
+                cloudHours(on: firstDay, acceptableHours: 8, overcastHours: 4)
+                    + cloudHours(on: secondDay, acceptableHours: 8, overcastHours: 4),
+                from: firstDay,
+                until: secondDay.addingTimeInterval(23 * 3600),
+                destination: destination
+            )
+        )
+    }
+
+    func testClearDayCannotCompensateForDayBelowScatteredCloudCoverage() {
+        let firstDay = utcDate(year: 2026, month: 8, day: 17)
+        let secondDay = utcDate(year: 2026, month: 8, day: 18)
+
+        XCTAssertFalse(
+            DestinationFinderEvaluator.scatteredCloudCoverageMatches(
+                cloudHours(on: firstDay, acceptableHours: 7, overcastHours: 5)
+                    + cloudHours(on: secondDay, acceptableHours: 12, overcastHours: 0),
+                from: firstDay,
+                until: secondDay.addingTimeInterval(23 * 3600),
+                destination: destination
+            )
+        )
+    }
+
+    func testMissingCloudValuesCountAgainstScatteredCloudCoverage() {
+        let day = utcDate(year: 2026, month: 8, day: 17)
+        var samples = cloudHours(on: day, acceptableHours: 8, overcastHours: 3)
+        for hour in [17, 18] {
+            samples.append(DestinationFinderWeatherHour(
+                instant: day.addingTimeInterval(Double(hour) * 3600),
+                temperatureCelsius: 20,
+                steadyWindKnots: 5,
+                gustKnots: 8,
+                precipitationMillimeters: 0,
+                totalCloudCoverPercent: nil,
+                visibilityMeters: 10_000,
+                lowCloudCoverPercent: nil,
+                dewPointCelsius: 10
+            ))
+        }
+
+        XCTAssertFalse(
+            DestinationFinderEvaluator.scatteredCloudCoverageMatches(
+                samples,
+                from: day,
+                until: day.addingTimeInterval(23 * 3600),
                 destination: destination
             )
         )
@@ -552,6 +636,26 @@ final class DestinationFinderTests: XCTestCase {
                 totalCloudCoverPercent: 0,
                 visibilityMeters: 10_000,
                 lowCloudCoverPercent: 0,
+                dewPointCelsius: 10
+            )
+        }
+    }
+
+    private func cloudHours(
+        on day: Date,
+        acceptableHours: Int,
+        overcastHours: Int
+    ) -> [DestinationFinderWeatherHour] {
+        (0..<(acceptableHours + overcastHours)).map { index in
+            DestinationFinderWeatherHour(
+                instant: day.addingTimeInterval(Double(index + 6) * 3600),
+                temperatureCelsius: 20,
+                steadyWindKnots: 5,
+                gustKnots: 8,
+                precipitationMillimeters: 0,
+                totalCloudCoverPercent: index < acceptableHours ? 50 : 51,
+                visibilityMeters: 10_000,
+                lowCloudCoverPercent: index < acceptableHours ? 50 : 51,
                 dewPointCelsius: 10
             )
         }

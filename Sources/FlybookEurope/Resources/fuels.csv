@@ -374,3 +374,21 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDLM:AVGAS,EDLM,AVGAS,Ja,AVGAS 100LL,,,https://xn--flugplatz-loemhle-g3b.de/tanken/,2026-08-13,2026-08-13
 1.2,EDLM:MOGAS_SUPER,EDLM,MOGAS_SUPER,Ja,Super Plus,,,https://xn--flugplatz-loemhle-g3b.de/tanken/,2026-08-13,2026-08-13
 1.2,EDLM:UL91,EDLM,UL91,Nein,Nicht veröffentlicht,,,https://xn--flugplatz-loemhle-g3b.de/wp-content/uploads/2024/12/Flugplatzdaten.pdf,2026-08-13,2026-08-13
+1.2,LSGN:AVGAS,LSGN,AVGAS,Ja,AVGAS 100LL,,,https://www.neuchatel-airport.ch/airport-fees/?lang=de,2026-08-15,2026-08-15
+1.2,LSGN:MOGAS_SUPER,LSGN,MOGAS_SUPER,Nein,Nicht veröffentlicht,,,https://www.neuchatel-airport.ch/airport-fees/?lang=de,2026-08-15,2026-08-15
+1.2,LSGN:UL91,LSGN,UL91,Nein,Nicht veröffentlicht,,,https://www.neuchatel-airport.ch/airport-fees/?lang=de,2026-08-15,2026-08-15
+1.2,LSZC:AVGAS,LSZC,AVGAS,Nein,Nur Jet A-1,,,https://airportbuochs.ch/en/registration-lszc/,2026-08-15,2026-08-15
+1.2,LSZC:MOGAS_SUPER,LSZC,MOGAS_SUPER,Nein,Nur Jet A-1,,,https://airportbuochs.ch/en/registration-lszc/,2026-08-15,2026-08-15
+1.2,LSZC:UL91,LSZC,UL91,Nein,Nur Jet A-1,,,https://airportbuochs.ch/en/registration-lszc/,2026-08-15,2026-08-15
+1.2,LSZM:AVGAS,LSZM,AVGAS,Prüfen,AVGAS nur nach frühzeitiger Anfrage bei der Fluggruppe Mollis,,,https://www.mollisairport.ch/ppr-request-less-2250-kg,2026-08-15,2026-08-15
+1.2,LSZM:MOGAS_SUPER,LSZM,MOGAS_SUPER,Nein,Nicht veröffentlicht,,,https://www.mollisairport.ch/pilots,2026-08-15,2026-08-15
+1.2,LSZM:UL91,LSZM,UL91,Nein,Nicht veröffentlicht,,,https://www.mollisairport.ch/pilots,2026-08-15,2026-08-15
+1.2,LSZA:AVGAS,LSZA,AVGAS,Ja,AVGAS 100LL,,,https://luganoairport.ch/wp-content/uploads/2025/10/LS_ADINFO_0000_LSZA-last-update.pdf,2026-08-15,2026-08-15
+1.2,LSZA:MOGAS_SUPER,LSZA,MOGAS_SUPER,Nein,Nicht veröffentlicht,,,https://luganoairport.ch/wp-content/uploads/2025/10/LS_ADINFO_0000_LSZA-last-update.pdf,2026-08-15,2026-08-15
+1.2,LSZA:UL91,LSZA,UL91,Nein,Nicht veröffentlicht,,,https://luganoairport.ch/wp-content/uploads/2025/10/LS_ADINFO_0000_LSZA-last-update.pdf,2026-08-15,2026-08-15
+1.2,LSGY:AVGAS,LSGY,AVGAS,Ja,AVGAS 100LL,,,https://airport.lsgy.ch/,2026-08-15,2026-08-15
+1.2,LSGY:MOGAS_SUPER,LSGY,MOGAS_SUPER,Nein,Nicht veröffentlicht,,,https://airport.lsgy.ch/,2026-08-15,2026-08-15
+1.2,LSGY:UL91,LSGY,UL91,Ja,AVGAS UL91,,,https://airport.lsgy.ch/,2026-08-15,2026-08-15
+1.2,LSGR:AVGAS,LSGR,AVGAS,Nein,Nicht verlässlich bestätigt,,,https://www.aerodromes.ch/fileadmin/user_upload/documents/Swiss_Aerodrome_Guide/Swiss_Aerodrome_Guide_2022.pdf,2026-08-15,2026-08-15
+1.2,LSGR:MOGAS_SUPER,LSGR,MOGAS_SUPER,Nein,Nicht veröffentlicht,,,https://www.aerodromes.ch/fileadmin/user_upload/documents/Swiss_Aerodrome_Guide/Swiss_Aerodrome_Guide_2022.pdf,2026-08-15,2026-08-15
+1.2,LSGR:UL91,LSGR,UL91,Nein,Nicht veröffentlicht,,,https://www.aerodromes.ch/fileadmin/user_upload/documents/Swiss_Aerodrome_Guide/Swiss_Aerodrome_Guide_2022.pdf,2026-08-15,2026-08-15

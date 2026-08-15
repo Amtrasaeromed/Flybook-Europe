@@ -190,8 +190,18 @@ check(TimeInput.minutes(from: "0905") == 545, "compact time input")
 check(TimeInput.minutes(from: "24:00") == nil, "invalid time input")
 check(TimeInput.clock(-1) == "23:59", "clock wrap")
 check(TimeInput.displayClock("13:05", usesTwelveHourFormat: true) == "1:05 PM", "12-hour display")
-check(FlightAltitudeRules.options(forCourseDegrees: 90) == [2_500, 3_500, 5_500, 7_500, 9_500], "eastbound levels")
-check(FlightAltitudeRules.options(forCourseDegrees: 270) == [2_500, 4_500, 6_500, 8_500], "westbound levels")
+check(
+    FlightAltitudeRules.options(forCourseDegrees: 90) == FlightAltitudeRules.allOptions
+        && FlightAltitudeRules.recommendedOptions(forCourseDegrees: 90)
+            == [2_500, 3_500, 5_500, 7_500, 9_500, 11_500],
+    "eastbound selectable and recommended levels"
+)
+check(
+    FlightAltitudeRules.options(forCourseDegrees: 270) == FlightAltitudeRules.allOptions
+        && FlightAltitudeRules.recommendedOptions(forCourseDegrees: 270)
+            == [2_500, 4_500, 6_500, 8_500, 10_500],
+    "westbound selectable and recommended levels"
+)
 
 var utc = Calendar(identifier: .gregorian)
 utc.timeZone = TimeZone(secondsFromGMT: 0)!

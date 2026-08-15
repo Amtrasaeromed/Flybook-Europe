@@ -253,6 +253,8 @@ struct Destination: Identifiable, Hashable {
     let transferMinutes: Int
     let bikeDirect: String
     var rentalCarDirect: String = ""
+    var railDirect: String = ""
+    var busDirect: String = ""
     var app2DriveDirect: String = ""
     var restaurantDirect: String = ""
     var restaurantName: String = ""

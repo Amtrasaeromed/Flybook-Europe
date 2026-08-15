@@ -102,6 +102,8 @@ struct DestinationPage: View {
     @State private var includeLandingFeesInTotal = false
     @State private var isLiveWeatherLoading = false
     @State private var flybriefExportError: String?
+    @State private var flybriefPreview: FlybriefPreviewDocument?
+    @State private var isFlybriefPreviewLoading = false
     @State private var refuelLiters = 70.0
     @State private var manualRefuelPrice: Double?
     @State private var selectedRefuelFuelRaw = AircraftFuelType.mogas.rawValue
@@ -823,7 +825,15 @@ struct DestinationPage: View {
             guard await weatherLoadMayProceed(afterMilliseconds: 1_200) else {
                 return
             }
-            await alpineFoehnModel.load(ifRelevant: alpineRelevantAirports)
+            await alpineFoehnModel.load(
+                ifRelevant: alpineRelevantAirports,
+                instants: [
+                    outboundStartInstant,
+                    outboundArrivalInstantForWeather,
+                    returnDepartureInstantForWeather,
+                    returnArrivalInstant
+                ]
+            )
         }
         .onChange(of: outboundRouteWindModel.wind) { wind in
             guard let wind else { return }
@@ -1266,6 +1276,8 @@ struct DestinationPage: View {
 
     private var alpineFoehnTaskID: String {
         "foehn-" + alpineRelevantAirports.map(\.icao).joined(separator: "-")
+            + "-\(Int(outboundStartInstant.timeIntervalSince1970 / 1800))"
+            + "-\(Int(returnDepartureInstantForWeather.timeIntervalSince1970 / 1800))"
     }
 
     /// Kurze Aenderungen an Datum, Uhrzeit oder Route werden gebuendelt. So
@@ -1661,16 +1673,17 @@ struct DestinationPage: View {
         )
     }
 
-    private func exportFlybrief() {
+    private func showFlybriefPreview() {
+        guard !isFlybriefPreviewLoading else { return }
+        isFlybriefPreviewLoading = true
         Task { @MainActor in
             let stopForecasts = await flybriefStopForecasts()
-            do {
-                _ = try FlybriefPDFExporter.export(
-                    flybriefSnapshot(stopForecasts: stopForecasts)
-                )
-            } catch {
-                flybriefExportError = error.localizedDescription
-            }
+            let snapshot = flybriefSnapshot(stopForecasts: stopForecasts)
+            flybriefPreview = FlybriefPreviewDocument(
+                snapshot: snapshot,
+                data: FlybriefPDFExporter.pdfData(for: snapshot)
+            )
+            isFlybriefPreviewLoading = false
         }
     }
 
@@ -3019,6 +3032,12 @@ struct DestinationPage: View {
                 )
             async let foehn: Void = alpineFoehnModel.load(
                 ifRelevant: alpineRelevantAirports,
+                instants: [
+                    outboundStartInstant,
+                    outboundArrivalInstantForWeather,
+                    returnDepartureInstantForWeather,
+                    returnArrivalInstant
+                ],
                 forceRefresh: true
             )
             _ = await (
@@ -3203,16 +3222,24 @@ struct DestinationPage: View {
                     .frame(width: 112)
 
                     Button {
-                        exportFlybrief()
+                        showFlybriefPreview()
                     } label: {
-                        Image(systemName: "printer.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .frame(width: 26, height: 20)
+                        Group {
+                            if isFlybriefPreviewLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "printer.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                        }
+                        .frame(width: 26, height: 20)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Aktuelle Flugplanung als seitenweises Flybrief-PDF sichern")
-                    .accessibilityLabel("Flybrief als PDF erstellen")
+                    .disabled(isFlybriefPreviewLoading)
+                    .help("Vorschau der aktuellen Flugplanung öffnen")
+                    .accessibilityLabel("Flybrief-Vorschau öffnen")
                 }
                 .font(.system(size: 13, weight: .semibold))
 
@@ -3311,6 +3338,11 @@ struct DestinationPage: View {
         }
         .frame(height: 870, alignment: .top)
         .clipped()
+        .sheet(item: $flybriefPreview) { document in
+            FlybriefPDFPreview(document: document) { error in
+                flybriefExportError = error.localizedDescription
+            }
+        }
         .alert(
             "Flybrief konnte nicht erstellt werden",
             isPresented: Binding(
@@ -3619,17 +3651,27 @@ struct DestinationPage: View {
                     availabilityBadge(
                         "Fahrrad",
                         systemImage: "bicycle",
-                        isAvailable: hasBicycleAtAirport
+                        availability: destination.bikeDirect
                     )
                     availabilityBadge(
                         "Mietwagen",
                         systemImage: "car.fill",
-                        isAvailable: hasRentalCarAtAirport
+                        availability: destination.rentalCarDirect
                     )
                     availabilityBadge(
                         "app2drive",
                         systemImage: "car.side.fill",
-                        isAvailable: hasApp2DriveAtAirport
+                        availability: destination.app2DriveDirect
+                    )
+                    availabilityBadge(
+                        "Bahn",
+                        systemImage: "tram.fill",
+                        availability: destination.railDirect
+                    )
+                    availabilityBadge(
+                        "Bus",
+                        systemImage: "bus.fill",
+                        availability: destination.busDirect
                     )
                     Spacer()
                 }
@@ -3669,18 +3711,6 @@ struct DestinationPage: View {
         }
         .frame(width: 501, height: 490, alignment: .topLeading)
         .clipped()
-    }
-
-    private var hasBicycleAtAirport: Bool {
-        positiveService(destination.bikeDirect)
-    }
-
-    private var hasRentalCarAtAirport: Bool {
-        positiveService(destination.rentalCarDirect)
-    }
-
-    private var hasApp2DriveAtAirport: Bool {
-        positiveService(destination.app2DriveDirect)
     }
 
     private var hasRestaurantAtAirport: Bool {
@@ -3793,24 +3823,31 @@ struct DestinationPage: View {
     private func availabilityBadge(
         _ title: String,
         systemImage: String,
-        isAvailable: Bool
+        availability: String
     ) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(isAvailable ? Color.green : Color.red)
-            .padding(.horizontal, 10)
+        let color = serviceAvailabilityColor(availability)
+        return Label(title, systemImage: systemImage)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 7)
             .frame(height: 28)
             .background(
-                Capsule().fill(
-                    (isAvailable ? Color.green : Color.red).opacity(0.11)
-                )
+                Capsule().fill(color.opacity(0.11))
             )
             .overlay(
                 Capsule().stroke(
-                    (isAvailable ? Color.green : Color.red).opacity(0.35),
+                    color.opacity(0.35),
                     lineWidth: 1
                 )
             )
+    }
+
+    private func serviceAvailabilityColor(_ value: String) -> Color {
+        if positiveService(value) { return .green }
+        if value.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("?") {
+            return .orange
+        }
+        return .red
     }
 
     private func destinationAccessRow(
@@ -4942,6 +4979,8 @@ private struct AirportInformationPopover: View {
                     }
                     detailRow("Fahrrad", destination.bikeDirect)
                     detailRow("Mietwagen", destination.rentalCarDirect)
+                    detailRow("Bahn ≤ 500 m", destination.railDirect)
+                    detailRow("Bus ≤ 500 m", destination.busDirect)
                     detailRow("app2drive", destination.app2DriveDirect)
                     if !destination.restaurantDirect.isEmpty {
                         detailRow("Restaurant", destination.restaurantDirect)
