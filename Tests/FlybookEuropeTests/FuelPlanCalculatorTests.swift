@@ -17,6 +17,13 @@ final class FuelPlanCalculatorTests: XCTestCase {
         )
     ]
 
+    func testCalculatedLitersAreAlwaysRoundedUpToWholeLiters() {
+        XCTAssertEqual(FuelPlanCalculator.roundedLitersForDisplay(39.2), 40)
+        XCTAssertEqual(FuelPlanCalculator.roundedLitersForDisplay(39), 39)
+        XCTAssertEqual(FuelPlanCalculator.roundedLitersForDisplay(0.2), 1)
+        XCTAssertEqual(FuelPlanCalculator.roundedLitersForDisplay(-0.2), -1)
+    }
+
     func testRefuelAtCReusesArrivalReserveForTheReturnTrip() {
         let result = FuelPlanCalculator.calculate(
             legs: legs,

@@ -89,7 +89,10 @@ Verbrauch, Mindest- und Planbestand und erlaubt einen frei wählbaren Tankpunkt.
 Am Tankpunkt wird vorhandener Restkraftstoff auf die Mindest-Auffüllmenge
 angerechnet. Zu kleiner Startbestand, zu geringe Auffüllmenge, negative
 Bestände sowie Überschreitungen der nutzbaren Tankkapazität werden rot
-gekennzeichnet.
+gekennzeichnet. Die Tabelle trennt Zeit/Verbrauch, Mindestwerte und den blau
+hervorgehobenen tatsächlichen Plan. Der gewählte Tankstopp erscheint als
+eigene Zeile zwischen den Legs; alle berechneten Literwerte werden auf den
+nächsten vollen Liter aufgerundet.
 
 ## Start und Prüfung
 

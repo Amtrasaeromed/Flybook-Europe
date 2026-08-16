@@ -48,6 +48,13 @@ struct FuelPlanResult: Equatable {
 }
 
 enum FuelPlanCalculator {
+    static func roundedLitersForDisplay(_ value: Double) -> Int {
+        if value >= 0 {
+            return Int(ceil(value - 0.000_001))
+        }
+        return Int(floor(value + 0.000_001))
+    }
+
     static func calculate(
         legs: [FuelPlanLeg],
         reserveMinutes: Int,
@@ -209,6 +216,18 @@ struct FuelPlanCalculatorView: View {
         )
     }
 
+    private var tableEntryCount: Int {
+        result.rows.count + (refuelAfterLegIndex == nil ? 0 : 1)
+    }
+
+    private var tableLegRowHeight: CGFloat {
+        tableEntryCount >= 6 ? 30 : 40
+    }
+
+    private var tableTankStopRowHeight: CGFloat {
+        tableEntryCount >= 6 ? 38 : 44
+    }
+
     private var startFuelBinding: Binding<Double> {
         Binding(
             get: { startingFuelLiters },
@@ -253,14 +272,17 @@ struct FuelPlanCalculatorView: View {
         reserveMinutes: Int,
         usableFuelLiters: Double,
         aircraftName: String,
-        startingFuelLiters: Binding<Double>
+        startingFuelLiters: Binding<Double>,
+        initialRefuelAfterLegIndex: Int? = nil,
+        initialRefuelLiters: Double = 0
     ) {
         self.legs = legs
         self.reserveMinutes = reserveMinutes
         self.usableFuelLiters = usableFuelLiters
         self.aircraftName = aircraftName
         _startingFuelLiters = startingFuelLiters
-        _refuelAfterLegIndex = State(initialValue: nil)
+        _refuelAfterLegIndex = State(initialValue: initialRefuelAfterLegIndex)
+        _refuelLiters = State(initialValue: max(0, initialRefuelLiters))
     }
 
     var body: some View {
@@ -385,13 +407,22 @@ struct FuelPlanCalculatorView: View {
 
     private var table: some View {
         VStack(spacing: 0) {
+            tableGroupHeader
             tableHeader
             Divider()
             VStack(spacing: 0) {
                 ForEach(Array(result.rows.enumerated()), id: \.element.id) {
                     index, row in
                     tableRow(index: index, row: row)
-                    if index < result.rows.count - 1 { Divider() }
+                    if refuelAfterLegIndex == index {
+                        Divider().overlay(FlybookColor.blue.opacity(0.55))
+                        tankStopRow(after: index, row: row)
+                        if index < result.rows.count - 1 {
+                            Divider().overlay(FlybookColor.blue.opacity(0.55))
+                        }
+                    } else if index < result.rows.count - 1 {
+                        Divider()
+                    }
                 }
             }
             Spacer(minLength: 0)
@@ -401,7 +432,25 @@ struct FuelPlanCalculatorView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(FlybookColor.line, lineWidth: 1)
         )
-        .frame(height: 285, alignment: .top)
+        .frame(height: 310, alignment: .top)
+    }
+
+    private var tableGroupHeader: some View {
+        HStack(spacing: 8) {
+            Color.clear.frame(width: 160, height: 20)
+            tableGroupTitle("ZEIT UND VERBRAUCH", width: 162)
+            tableSeparator(height: 20)
+            tableGroupTitle("MINIMUM", width: 240)
+            tableSeparator(height: 20)
+            tableGroupTitle(
+                "TATSÄCHLICHER PLAN",
+                width: 242,
+                emphasized: true
+            )
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 25)
+        .background(Color.black.opacity(0.025))
     }
 
     private var tableHeader: some View {
@@ -409,13 +458,15 @@ struct FuelPlanCalculatorView: View {
             tableHeading("ABSCHNITT", width: 160, alignment: .leading)
             tableHeading("ZEIT", width: 62)
             tableHeading("VERBRAUCH", width: 92)
-            tableHeading("MIN. START", width: 112)
-            tableHeading("MIN. ANKUNFT", width: 120)
-            tableHeading("PLAN START", width: 112)
-            tableHeading("PLAN ANKUNFT", width: 122)
+            tableSeparator(height: 26)
+            tableHeading("MINIMUM T/O", width: 112)
+            tableHeading("MINIMUM LDG", width: 120)
+            tableSeparator(height: 26)
+            tableHeading("GEPLANT T/O", width: 112, emphasized: true)
+            tableHeading("GEPLANT LDG", width: 122, emphasized: true)
         }
         .padding(.horizontal, 12)
-        .frame(height: 34)
+        .frame(height: 32)
     }
 
     private func tableRow(index: Int, row: FuelPlanRow) -> some View {
@@ -425,27 +476,20 @@ struct FuelPlanCalculatorView: View {
                 < row.minimumArrivalLiters
             || row.plannedDepartureLiters > usableFuelLiters + 0.000_1
         return HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
-                    .font(.system(size: 14, weight: .bold))
-                if row.refuelAfterArrivalLiters > 0 {
-                    Text(
-                        "Tanken in \(row.leg.destinationICAO): +"
-                        + liters(row.refuelAfterArrivalLiters)
-                    )
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(FlybookColor.blue)
-                }
-            }
+            Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
+                .font(.system(size: 14, weight: .bold))
             .frame(width: 160, alignment: .leading)
 
             tableValue(FlightMath.duration(row.leg.flightMinutes), width: 62)
             tableValue(liters(row.leg.burnLiters), width: 92)
+            tableSeparator(height: 32)
             tableValue(liters(row.minimumDepartureLiters), width: 112)
             tableValue(liters(row.minimumArrivalLiters), width: 120)
+            tableSeparator(height: 32)
             tableValue(
                 liters(row.plannedDepartureLiters),
                 width: 112,
+                emphasized: true,
                 warning: row.plannedDepartureLiters + 0.000_1
                     < row.minimumDepartureLiters
                     || row.plannedDepartureLiters > usableFuelLiters + 0.000_1
@@ -453,14 +497,58 @@ struct FuelPlanCalculatorView: View {
             tableValue(
                 liters(row.plannedArrivalLiters),
                 width: 122,
+                emphasized: true,
                 warning: row.plannedArrivalLiters + 0.000_1
                     < row.minimumArrivalLiters
             )
         }
         .foregroundStyle(FlybookColor.navy)
         .padding(.horizontal, 12)
-        .frame(height: 40)
+        .frame(height: tableLegRowHeight)
         .background(isWarning ? Color.red.opacity(0.07) : Color.clear)
+    }
+
+    private func tankStopRow(after index: Int, row: FuelPlanRow) -> some View {
+        let before = row.plannedArrivalLiters
+        let addition = row.refuelAfterArrivalLiters
+        let after = before + addition
+        let nextMinimum = result.rows.indices.contains(index + 1)
+            ? result.rows[index + 1].minimumDepartureLiters
+            : 0
+        return HStack(spacing: 12) {
+            Label(
+                "TANKSTOPP \(row.leg.destinationICAO)",
+                systemImage: "fuelpump.fill"
+            )
+            .font(.system(size: 13, weight: .heavy))
+            .frame(width: 160, alignment: .leading)
+
+            tankStopValue("VORHER", value: liters(before))
+            Image(systemName: "plus")
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundStyle(FlybookColor.blue)
+            tankStopValue("AUFFÜLLEN", value: liters(addition))
+            Image(systemName: "arrow.right")
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundStyle(FlybookColor.blue)
+            tankStopValue("GEPLANT T/O", value: liters(after))
+            Spacer(minLength: 4)
+            tankStopValue("MINIMUM T/O", value: liters(nextMinimum))
+        }
+        .padding(.horizontal, 12)
+        .frame(height: tableTankStopRowHeight)
+        .foregroundStyle(FlybookColor.navy)
+        .background(FlybookColor.blue.opacity(0.12))
+    }
+
+    private func tankStopValue(_ title: String, value: String) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(title)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+            Text(value)
+                .font(.system(size: 13, weight: .heavy, design: .monospaced))
+        }
     }
 
     @ViewBuilder
@@ -566,25 +654,64 @@ struct FuelPlanCalculatorView: View {
     private func tableHeading(
         _ text: String,
         width: CGFloat,
-        alignment: Alignment = .trailing
+        alignment: Alignment = .trailing,
+        emphasized: Bool = false
     ) -> some View {
         Text(text)
             .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(FlybookColor.muted)
+            .foregroundStyle(emphasized ? FlybookColor.blue : FlybookColor.muted)
             .lineLimit(1)
             .frame(width: width, alignment: alignment)
+    }
+
+    private func tableGroupTitle(
+        _ text: String,
+        width: CGFloat,
+        emphasized: Bool = false
+    ) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .heavy))
+            .foregroundStyle(emphasized ? FlybookColor.blue : FlybookColor.muted)
+            .frame(width: width)
+            .frame(height: 20)
+            .background(
+                emphasized ? FlybookColor.blue.opacity(0.10) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 5)
+            )
+    }
+
+    private func tableSeparator(height: CGFloat) -> some View {
+        Rectangle()
+            .fill(FlybookColor.line.opacity(0.9))
+            .frame(width: 1, height: height)
     }
 
     private func tableValue(
         _ text: String,
         width: CGFloat,
+        emphasized: Bool = false,
         warning: Bool = false
     ) -> some View {
         Text(text)
-            .font(.system(size: 13, weight: .bold, design: .monospaced))
-            .foregroundStyle(warning ? Color.red : FlybookColor.navy)
+            .font(
+                .system(
+                    size: emphasized ? 14 : 13,
+                    weight: emphasized ? .heavy : .semibold,
+                    design: .monospaced
+                )
+            )
+            .foregroundStyle(
+                warning ? Color.red : (emphasized ? FlybookColor.blue : FlybookColor.navy)
+            )
             .lineLimit(1)
             .frame(width: width, alignment: .trailing)
+            .frame(height: 30)
+            .background(
+                emphasized
+                    ? (warning ? Color.red.opacity(0.10) : FlybookColor.blue.opacity(0.08))
+                    : Color.clear,
+                in: RoundedRectangle(cornerRadius: 5)
+            )
     }
 
     private func roundedUpMinimumRefuel(
@@ -607,9 +734,6 @@ struct FuelPlanCalculatorView: View {
     }
 
     private func liters(_ value: Double) -> String {
-        value.formatted(
-            .number.locale(Locale(identifier: "de_DE"))
-                .precision(.fractionLength(1))
-        ) + " L"
+        "\(FuelPlanCalculator.roundedLitersForDisplay(value)) L"
     }
 }

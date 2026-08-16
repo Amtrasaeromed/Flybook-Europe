@@ -11,7 +11,7 @@
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
 - Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich:
-  186 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
+  187 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
 - Daten-, Quellen-, Datenfluss-, Persistenz- und Rechenaudit sind grün.
 - Der Destination Finder behält Ziele bei unvollständigem Streckenwetter als
   Treffer und kennzeichnet sie als nicht vollständig geprüft. Alpenföhn wird
@@ -60,8 +60,11 @@
   rechnet die Mindestbestände von der Reserve am Endziel rückwärts und erlaubt
   einen frei wählbaren Tankpunkt. Vorhandener Restkraftstoff wird beim
   Auffüllen angerechnet; Unterdeckung, negative Bestände und unzureichende
-  Tankkapazität erscheinen als rote Warnung. Vier deterministische Tests
+  Tankkapazität erscheinen als rote Warnung. Fünf deterministische Tests
   decken die Beispiele A–C–B–A mit Tankpunkt C beziehungsweise B ab.
+  Minimum und tatsächlicher Plan sind tabellarisch getrennt; der Plan ist blau
+  hervorgehoben und der Tankstopp steht als eigene Zwischenzeile. Berechnete
+  Literwerte werden stets auf den nächsten vollen Liter aufgerundet.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.
