@@ -212,6 +212,7 @@ struct FuelPlanCalculatorView: View {
     let reserveMinutes: Int
     let usableFuelLiters: Double
     let aircraftName: String
+    let airportNames: [String: String]
     @Binding var startingFuelLiters: Double
     @Binding var charterRefuelLiters: Double
     @Binding var charterRefuelAirportICAO: String
@@ -298,6 +299,7 @@ struct FuelPlanCalculatorView: View {
         reserveMinutes: Int,
         usableFuelLiters: Double,
         aircraftName: String,
+        airportNames: [String: String] = [:],
         startingFuelLiters: Binding<Double>,
         charterRefuelLiters: Binding<Double> = .constant(0),
         charterRefuelAirportICAO: Binding<String> = .constant(""),
@@ -308,6 +310,7 @@ struct FuelPlanCalculatorView: View {
         self.reserveMinutes = reserveMinutes
         self.usableFuelLiters = usableFuelLiters
         self.aircraftName = aircraftName
+        self.airportNames = airportNames
         _startingFuelLiters = startingFuelLiters
         _charterRefuelLiters = charterRefuelLiters
         _charterRefuelAirportICAO = charterRefuelAirportICAO
@@ -427,7 +430,7 @@ struct FuelPlanCalculatorView: View {
                     tableRow(index: index, row: row)
                     if refuelAfterLegIndex == index {
                         Divider().overlay(FlybookColor.blue.opacity(0.55))
-                        tankStopRow(after: index, row: row)
+                        tankStopRow(row: row)
                         if index < result.rows.count - 1 {
                             Divider().overlay(FlybookColor.blue.opacity(0.55))
                         }
@@ -448,16 +451,17 @@ struct FuelPlanCalculatorView: View {
 
     private var tableGroupHeader: some View {
         HStack(spacing: 8) {
-            Color.clear.frame(width: 160, height: 20)
+            Color.clear.frame(width: 200, height: 20)
             tableGroupTitle("MINIMUM", width: 240)
-            tableSeparator(height: 20)
-            tableGroupTitle("ZEIT UND VERBRAUCH", width: 162)
             tableSeparator(height: 20)
             tableGroupTitle(
                 "PLAN",
                 width: 270,
                 emphasized: true
             )
+            tableSeparator(height: 20)
+            tableGroupTitle("VERBRAUCH", width: 92)
+            tableGroupTitle("ZEIT", width: 62)
         }
         .padding(.horizontal, 12)
         .frame(height: 25)
@@ -466,16 +470,16 @@ struct FuelPlanCalculatorView: View {
 
     private var tableHeader: some View {
         HStack(spacing: 8) {
-            tableHeading("ABSCHNITT", width: 160, alignment: .leading)
+            tableHeading("ABSCHNITT", width: 200, alignment: .leading)
             tableHeading("MINIMUM T/O", width: 112)
             tableHeading("MINIMUM LDG", width: 120)
-            tableSeparator(height: 26)
-            tableHeading("ZEIT", width: 62)
-            tableHeading("VERBRAUCH", width: 92)
             tableSeparator(height: 26)
             tableHeading("GEPLANT T/O", width: 112, emphasized: true)
             Color.clear.frame(width: 20, height: 1)
             tableHeading("GEPLANT LDG", width: 122, emphasized: true)
+            tableSeparator(height: 26)
+            tableHeading("VERBRAUCH", width: 92)
+            tableHeading("ZEIT", width: 62)
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
@@ -490,7 +494,7 @@ struct FuelPlanCalculatorView: View {
         return HStack(spacing: 8) {
             Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
                 .font(.system(size: 14, weight: .bold))
-            .frame(width: 160, alignment: .leading)
+            .frame(width: 200, alignment: .leading)
 
             tableValue(
                 liters(row.minimumDepartureLiters),
@@ -498,9 +502,6 @@ struct FuelPlanCalculatorView: View {
                 minimumTakeoff: true
             )
             tableValue(liters(row.minimumArrivalLiters), width: 120)
-            tableSeparator(height: 32)
-            tableValue(FlightMath.duration(row.leg.flightMinutes), width: 62)
-            tableValue(liters(row.leg.burnLiters), width: 92)
             tableSeparator(height: 32)
             tableValue(
                 liters(row.plannedDepartureLiters),
@@ -521,6 +522,9 @@ struct FuelPlanCalculatorView: View {
                 warning: row.plannedArrivalLiters + 0.000_1
                     < row.minimumArrivalLiters
             )
+            tableSeparator(height: 32)
+            tableValue(liters(row.leg.burnLiters), width: 92)
+            tableValue(FlightMath.duration(row.leg.flightMinutes), width: 62)
         }
         .foregroundStyle(FlybookColor.navy)
         .padding(.horizontal, 12)
@@ -528,30 +532,25 @@ struct FuelPlanCalculatorView: View {
         .background(isWarning ? Color.red.opacity(0.07) : Color.clear)
     }
 
-    private func tankStopRow(after index: Int, row: FuelPlanRow) -> some View {
-        let nextMinimum = result.rows.indices.contains(index + 1)
-            ? result.rows[index + 1].minimumDepartureLiters
-            : 0
-        return HStack(spacing: 8) {
+    private func tankStopRow(row: FuelPlanRow) -> some View {
+        HStack(spacing: 8) {
             Label(
-                "REFUELING-STOP \(row.leg.destinationICAO)",
+                refuelingStopName(for: row.leg.destinationICAO),
                 systemImage: "fuelpump.fill"
             )
             .font(.system(size: 13, weight: .heavy))
-            .frame(width: 160, alignment: .leading)
+            .lineLimit(1)
+            .minimumScaleFactor(0.65)
+            .frame(width: 200, alignment: .leading)
 
-            tableValue(
-                liters(nextMinimum),
-                width: 112,
-                minimumTakeoff: true
-            )
+            Color.clear.frame(width: 112, height: 1)
             Color.clear.frame(width: 120, height: 1)
-            tableSeparator(height: 32)
-            Color.clear.frame(width: 62, height: 1)
-            Color.clear.frame(width: 92, height: 1)
             tableSeparator(height: 32)
             refuelPlanControl(row: row)
                 .frame(width: 270)
+            tableSeparator(height: 32)
+            Color.clear.frame(width: 92, height: 1)
+            Color.clear.frame(width: 62, height: 1)
         }
         .padding(.horizontal, 12)
         .frame(height: tableTankStopRowHeight)
@@ -561,9 +560,6 @@ struct FuelPlanCalculatorView: View {
 
     private func refuelPlanControl(row: FuelPlanRow) -> some View {
         HStack(spacing: 5) {
-            Text("+")
-                .font(.system(size: 15, weight: .heavy))
-                .foregroundStyle(FlybookColor.blue)
             TextField(
                 "",
                 value: refuelBinding,
@@ -590,6 +586,15 @@ struct FuelPlanCalculatorView: View {
             }
             .controlSize(.mini)
         }
+    }
+
+    private func refuelingStopName(for icao: String) -> String {
+        guard let name = airportNames[icao], !name.isEmpty else { return icao }
+        let conciseName = name
+            .split(separator: "/", maxSplits: 1)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? name
+        return "\(icao) - \(conciseName)"
     }
 
     @ViewBuilder

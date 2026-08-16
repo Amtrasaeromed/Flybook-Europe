@@ -440,6 +440,12 @@ struct DestinationPage: View {
         return makeRouteAirportOptions()
     }
 
+    private var fuelPlanAirportNames: [String: String] {
+        allRouteAirportOptions.reduce(into: [:]) { names, airport in
+            names[airport.icao] = airport.name
+        }
+    }
+
     private func makeRouteAirportOptions() -> [AirportReference] {
         var result: [AirportReference] = []
         for destination in availableDestinations {
@@ -3591,6 +3597,7 @@ struct DestinationPage: View {
                 reserveMinutes: reserveMinutes,
                 usableFuelLiters: usableFuel,
                 aircraftName: selectedAircraft.displayName,
+                airportNames: fuelPlanAirportNames,
                 startingFuelLiters: $startingFuelLiters,
                 charterRefuelLiters: $refuelLiters,
                 charterRefuelAirportICAO: $refuelAirportICAO

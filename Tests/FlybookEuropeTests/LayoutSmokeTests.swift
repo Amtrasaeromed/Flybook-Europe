@@ -33,6 +33,11 @@ final class LayoutSmokeTests: XCTestCase {
             reserveMinutes: 45,
             usableFuelLiters: 98,
             aircraftName: "D-EZHS · Aquila A211",
+            airportNames: [
+                "EDFZ": "Mainz-Finthen",
+                "EDTG": "Bremgarten / Gewerbepark Breisgau",
+                "EDFM": "Mannheim"
+            ],
             startingFuelLiters: .constant(70),
             initialRefuelAfterLegIndex: 0,
             initialRefuelLiters: 25
