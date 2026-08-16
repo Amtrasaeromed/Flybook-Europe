@@ -245,6 +245,7 @@ final class FlybriefPDFTests: XCTestCase {
             operatingLevel: .good,
             referenceRunway: runway == "07" ? "07/25" : "06/24",
             activeRunway: runway,
+            runwayPerformanceText: "Takeoff Roll 250 m · über 50 ft 430 m · 750 kg",
             weather: FlybriefWeatherSnapshot(
                 category: "VFR",
                 categoryLevel: .good,

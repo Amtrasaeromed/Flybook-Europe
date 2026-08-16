@@ -77,6 +77,7 @@ struct FlybriefEndpointSnapshot {
     let operatingLevel: FlybriefAlertLevel
     let referenceRunway: String
     let activeRunway: String
+    let runwayPerformanceText: String?
     let weather: FlybriefWeatherSnapshot
     let runwayWind: FlybriefRunwayWindSnapshot?
     let sunText: String
@@ -1112,6 +1113,14 @@ private struct FlybriefEndpointCard: View {
                 if !endpoint.activeRunway.isEmpty {
                     statusPill("RWY " + endpoint.activeRunway, level: endpoint.runwayWind?.warningLevel ?? .neutral)
                 }
+            }
+
+            if let runwayPerformanceText = endpoint.runwayPerformanceText {
+                Text(runwayPerformanceText)
+                    .font(.system(size: dense ? 6.2 : 7.4, weight: .bold, design: .monospaced))
+                    .foregroundStyle(FlybookColor.navy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
 
             HStack(alignment: .center, spacing: 6) {

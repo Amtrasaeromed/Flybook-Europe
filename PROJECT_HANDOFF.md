@@ -11,7 +11,11 @@
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
 - Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich:
-  188 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
+  197 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
+- Hin- und Rückflug besitzen ein editierbares TOW-Feld mit MTOW als
+  Ausgangswert. Für A211/DEUKS/DEZHS werden Start- und Landestrecken aus den
+  offiziellen POH-Ausgangswerten mit Dichtehöhe, Gewicht und Pistenwind
+  berechnet; der Flybrief enthält Roll- und 50-ft-Strecke.
 - Daten-, Quellen-, Datenfluss-, Persistenz- und Rechenaudit sind grün.
 - Der Destination Finder behält Ziele bei unvollständigem Streckenwetter als
   Treffer und kennzeichnet sie als nicht vollständig geprüft. Alpenföhn wird
