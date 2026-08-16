@@ -1176,17 +1176,31 @@ private struct FlybriefEndpointCard: View {
 
             if let performance = endpoint.runwayPerformance {
                 HStack(spacing: 2) {
-                    Text(performance.label + " Roll")
-                    performanceValue(
-                        meters: performance.rollMeters,
-                        percentage: performance.rollPercentage
-                    )
-                    Text("/ 50ft:")
-                    performanceValue(
-                        meters: performance.over50FeetMeters,
-                        percentage: performance.over50FeetPercentage,
-                        isFiftyFeet: true
-                    )
+                    if performance.label == "LDG" {
+                        Text("50ft:")
+                        performanceValue(
+                            meters: performance.over50FeetMeters,
+                            percentage: performance.over50FeetPercentage,
+                            isFiftyFeet: true
+                        )
+                        Text("/ LDG Roll")
+                        performanceValue(
+                            meters: performance.rollMeters,
+                            percentage: performance.rollPercentage
+                        )
+                    } else {
+                        Text(performance.label + " Roll")
+                        performanceValue(
+                            meters: performance.rollMeters,
+                            percentage: performance.rollPercentage
+                        )
+                        Text("/ 50ft:")
+                        performanceValue(
+                            meters: performance.over50FeetMeters,
+                            percentage: performance.over50FeetPercentage,
+                            isFiftyFeet: true
+                        )
+                    }
                     Text("/ \(performance.weightKilograms)kg")
                 }
                     .font(.system(size: dense ? 6.2 : 7.4, weight: .bold, design: .monospaced))

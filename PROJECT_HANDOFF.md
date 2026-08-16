@@ -23,7 +23,8 @@
   50-ft-Strecke wird ausschließlich ab 100 Prozent rot. Beim Start gilt die
   physische Pistenlänge, bei der Landung die LDA.
 - Der Flybrief schreibt die Performance kompakt als `T/O Roll`, `50ft` und
-  Gewicht beziehungsweise analog als `LDG Roll`. Das Landing Weight zieht den
+  Gewicht; bei Landungen steht die `50ft`-Strecke vor dem `LDG Roll`. Das
+  Landing Weight zieht den
   tatsächlich
   verflogenen Blockkraftstoff ohne Reserve mit der Dichte der im Flugzeugprofil
   bevorzugten Sorte vom TOW ab. Auch dort stehen die getrennten Roll-/50-ft-

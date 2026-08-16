@@ -8162,17 +8162,31 @@ private struct FlightPlanningLine<
                 ))
             }
             HStack(spacing: 2) {
-                Text(isDeparture ? "T/O Roll" : "LDG Roll")
-                performanceValue(
-                    meters: result.rollMeters,
-                    percentage: rollPercentage
-                )
-                Text("· 50ft")
-                performanceValue(
-                    meters: result.over50FeetMeters,
-                    percentage: fiftyFeetPercentage,
-                    isFiftyFeet: true
-                )
+                if isDeparture {
+                    Text("T/O Roll")
+                    performanceValue(
+                        meters: result.rollMeters,
+                        percentage: rollPercentage
+                    )
+                    Text("· 50ft")
+                    performanceValue(
+                        meters: result.over50FeetMeters,
+                        percentage: fiftyFeetPercentage,
+                        isFiftyFeet: true
+                    )
+                } else {
+                    Text("50ft")
+                    performanceValue(
+                        meters: result.over50FeetMeters,
+                        percentage: fiftyFeetPercentage,
+                        isFiftyFeet: true
+                    )
+                    Text("· LDG Roll")
+                    performanceValue(
+                        meters: result.rollMeters,
+                        percentage: rollPercentage
+                    )
+                }
             }
             .font(.system(size: 8.2, weight: .bold, design: .rounded))
             .lineLimit(1)
