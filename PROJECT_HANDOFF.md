@@ -19,7 +19,9 @@
 - Flughafenwahl, Runwayempfehlung, Rollstrecke, Uhrzeit und Wind stehen im
   Planungsfeld für Abflug und Ankunft auf exakt denselben vertikalen
   Mittelachsen. Roll- und 50-ft-Strecke zeigen jeweils ihre Auslastung. Die
-  Rollstrecke ist von 50 bis 74 Prozent orange und ab 75 Prozent rot; die
+  Performancezeile verwendet eine gut lesbare größere Schrift und schreibt
+  die Hindernishöhe als `50 ft`. Die Rollstrecke ist von 50 bis 74 Prozent
+  orange und ab 75 Prozent rot; die
   50-ft-Strecke wird ausschließlich ab 100 Prozent rot. Beim Start gilt die
   physische Pistenlänge, bei der Landung die LDA.
 - Der Flybrief schreibt die Performance kompakt als `T/O Roll`, `50ft` und

@@ -8168,14 +8168,14 @@ private struct FlightPlanningLine<
                         meters: result.rollMeters,
                         percentage: rollPercentage
                     )
-                    Text("· 50ft")
+                    Text("· 50 ft")
                     performanceValue(
                         meters: result.over50FeetMeters,
                         percentage: fiftyFeetPercentage,
                         isFiftyFeet: true
                     )
                 } else {
-                    Text("50ft")
+                    Text("50 ft")
                     performanceValue(
                         meters: result.over50FeetMeters,
                         percentage: fiftyFeetPercentage,
@@ -8188,7 +8188,7 @@ private struct FlightPlanningLine<
                     )
                 }
             }
-            .font(.system(size: 8.2, weight: .bold, design: .rounded))
+            .font(.system(size: 9.6, weight: .bold, design: .rounded))
             .lineLimit(1)
             .minimumScaleFactor(0.62)
         } else {
