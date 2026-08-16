@@ -7656,7 +7656,7 @@ private struct FlightPlanningLine<
             Text(directionTitle)
                 .font(.system(size: 17, weight: .bold, design: .monospaced))
                 .foregroundStyle(FlybookColor.navy)
-                .frame(width: 128, alignment: .leading)
+                .frame(width: 96, alignment: .leading)
 
             Group {
                 if let leadingAirportSelection {
@@ -7668,7 +7668,8 @@ private struct FlightPlanningLine<
                         operatingStatus: leadingOperatingStatus,
                         airportInformation: leadingAirportInformation,
                         informationInstant: leadingInformationInstant,
-                        showsInformation: $showsLeadingAirportInformation
+                        showsInformation: $showsLeadingAirportInformation,
+                        placesOperatingStatusOnLeadingEdge: true
                     )
                 } else {
                     FlightLocationHeader(
@@ -7680,9 +7681,9 @@ private struct FlightPlanningLine<
                     )
                 }
             }
-            .frame(width: 174)
+            .frame(width: 218)
 
-            Color.clear.frame(width: 18, height: 1)
+            Color.clear.frame(width: 10, height: 1)
 
             Group {
                 if let trailingAirportSelection {
@@ -7694,7 +7695,8 @@ private struct FlightPlanningLine<
                         operatingStatus: trailingOperatingStatus,
                         airportInformation: trailingAirportInformation,
                         informationInstant: trailingInformationInstant,
-                        showsInformation: $showsTrailingAirportInformation
+                        showsInformation: $showsTrailingAirportInformation,
+                        placesOperatingStatusOnLeadingEdge: false
                     )
                 } else {
                     FlightLocationHeader(
@@ -7706,7 +7708,7 @@ private struct FlightPlanningLine<
                     )
                 }
             }
-            .frame(width: 174)
+            .frame(width: 218)
 
             VStack(spacing: 2) {
                 Text("ETOPS-PIPI")
@@ -7718,7 +7720,7 @@ private struct FlightPlanningLine<
                     .overlay(Circle().stroke(FlybookColor.navy.opacity(0.35), lineWidth: 1))
                     .frame(width: 16, height: 16)
             }
-            .frame(width: 128, height: 42)
+            .frame(width: 80, height: 42)
         }
         .overlay(alignment: .topLeading) {
             RouteRiskDots(assessments: routeAssessments)
@@ -7734,47 +7736,61 @@ private struct FlightPlanningLine<
         operatingStatus: AirportOperatingStatus?,
         airportInformation: Destination?,
         informationInstant: Date?,
-        showsInformation: Binding<Bool>
+        showsInformation: Binding<Bool>,
+        placesOperatingStatusOnLeadingEdge: Bool
     ) -> some View {
         VStack(spacing: 0) {
             Text(title)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
 
-            SearchableAirportPicker(
-                selection: selection,
-                airports: airportOptions,
-                markersByICAO: [:],
-                includesVirtualOption: false,
-                width: 174,
-                height: 28,
-                fontSize: 14
-            )
-                .id("\(title)-\(selection.wrappedValue)")
-                .padding(.top, 4)
+            HStack(spacing: 4) {
+                if placesOperatingStatusOnLeadingEdge {
+                    airportOperatingStatusView(
+                        selection: selection,
+                        status: operatingStatus,
+                        information: airportInformation,
+                        instant: informationInstant,
+                        isPresented: showsInformation
+                    )
+                    .frame(width: 22, height: 28, alignment: .center)
+                }
 
-            HStack(spacing: 6) {
-                airportOperatingStatusView(
+                SearchableAirportPicker(
                     selection: selection,
-                    status: operatingStatus,
-                    information: airportInformation,
-                    instant: informationInstant,
-                    isPresented: showsInformation
+                    airports: airportOptions,
+                    markersByICAO: [:],
+                    includesVirtualOption: false,
+                    width: 190,
+                    height: 28,
+                    fontSize: 14
                 )
-                .frame(width: 22, height: 22, alignment: .center)
+                .id("\(title)-\(selection.wrappedValue)")
 
-                RunwayRecommendationButton(
-                    runway: runway,
-                    warning: warning,
-                    windComponents: title == "ABFLUG"
-                        ? leadingWeather.runwayWindComponents
-                        : trailingWeather.runwayWindComponents,
-                    windDirection: title == "ABFLUG"
-                        ? leadingWeather.direction
-                        : trailingWeather.direction
-                )
+                if !placesOperatingStatusOnLeadingEdge {
+                    airportOperatingStatusView(
+                        selection: selection,
+                        status: operatingStatus,
+                        information: airportInformation,
+                        instant: informationInstant,
+                        isPresented: showsInformation
+                    )
+                    .frame(width: 22, height: 28, alignment: .center)
+                }
             }
-            .frame(height: 28)
+            .frame(width: 216, height: 28)
+            .padding(.top, 4)
+
+            RunwayRecommendationButton(
+                runway: runway,
+                warning: warning,
+                windComponents: title == "ABFLUG"
+                    ? leadingWeather.runwayWindComponents
+                    : trailingWeather.runwayWindComponents,
+                windDirection: title == "ABFLUG"
+                    ? leadingWeather.direction
+                    : trailingWeather.direction
+            )
             .padding(.top, 8)
         }
     }
@@ -7916,36 +7932,36 @@ private struct FlightPlanningLine<
     }
 
     private var planningWeatherRow: some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(spacing: 7) {
-                Button("Jetzt", action: setNow)
-                HStack(spacing: 6) {
-                    Button("Heute", action: setToday)
-                    Button("Morgen", action: setTomorrow)
-                }
-                .font(.system(size: 11, weight: .bold))
-                .controlSize(.small)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 0) {
+                VStack(spacing: 7) {
+                    Button("Jetzt", action: setNow)
+                    HStack(spacing: 6) {
+                        Button("Heute", action: setToday)
+                        Button("Morgen", action: setTomorrow)
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .controlSize(.small)
 
-                if showsRefreshButton {
-                    planningActionButton(
-                        "Update",
-                        systemImage: "arrow.clockwise",
-                        prominent: true,
-                        action: refreshWeather
-                    )
-                    .help(
-                        "Datensparender Flug-Refresh: nur die bis zu vier "
-                        + "Flugplanungsplätze und Alternates; ohne "
-                        + "Langfristprognose, Streckenwind und Korridorwetter"
-                    )
-                    planningActionButton("Reset", systemImage: "arrow.counterclockwise", action: resetSchedule)
-                    planningActionButton("Zielumkehr", systemImage: "arrow.left.arrow.right", action: reverseRoute)
+                    if showsRefreshButton {
+                        planningActionButton(
+                            "Update",
+                            systemImage: "arrow.clockwise",
+                            prominent: true,
+                            action: refreshWeather
+                        )
+                        .help(
+                            "Datensparender Flug-Refresh: nur die bis zu vier "
+                            + "Flugplanungsplätze und Alternates; ohne "
+                            + "Langfristprognose, Streckenwind und Korridorwetter"
+                        )
+                        planningActionButton("Reset", systemImage: "arrow.counterclockwise", action: resetSchedule)
+                        planningActionButton("Zielumkehr", systemImage: "arrow.left.arrow.right", action: reverseRoute)
+                    }
                 }
-            }
-            .buttonStyle(.bordered)
-            .frame(width: 128, alignment: .top)
+                .buttonStyle(.bordered)
+                .frame(width: 128, alignment: .top)
 
-            VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 0) {
                     HStack(spacing: 0) {
                         PlanningWeatherCard(weather: leadingWeather, civilDawnText: leadingCivilDawnText, sunriseText: leadingSunriseText, sunsetText: leadingSunsetText, civilDuskText: leadingCivilDuskText)
@@ -7964,13 +7980,14 @@ private struct FlightPlanningLine<
                     }
                     .frame(width: 128, height: 184, alignment: .top)
                 }
-
-                Spacer(minLength: 0)
-                planningFooterContent
-                    .frame(width: 494, height: 24, alignment: .center)
+                .frame(width: 494, height: 184, alignment: .top)
             }
-            .frame(width: 494, height: 224, alignment: .top)
+            .frame(width: 622, height: 184, alignment: .topLeading)
+
+            planningFooterContent
+                .frame(width: 622, height: 24, alignment: .leading)
         }
+        .frame(width: 622, height: 216, alignment: .topLeading)
     }
 
     private var stopAirportFilterBar: some View {
@@ -8198,13 +8215,13 @@ private struct FlightPlanningLine<
     }
 
     private var planningFooterContent: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             Text(bestLevelFeet.map { String(format: "Best Level: FL%03d", Int(round(Double($0) / 100.0))) } ?? "Best Level: —")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
-                .frame(width: 110, alignment: .trailing)
+                .frame(width: 125, alignment: .leading)
 
             Menu {
                 ForEach(altitudeOptions, id: \.self) { altitude in
@@ -8226,6 +8243,9 @@ private struct FlightPlanningLine<
                 }
             } label: {
                 HStack(spacing: 4) {
+                    Text("Gewählte Höhe:")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(FlybookColor.muted)
                     Text(altitudeLabel(flightAltitudeFeet))
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(
@@ -8239,7 +8259,7 @@ private struct FlightPlanningLine<
                         .foregroundStyle(FlybookColor.muted)
                 }
                 .padding(.horizontal, 6)
-                .frame(width: 92, height: 23)
+                .frame(width: 160, height: 23)
             }
             .menuStyle(.borderlessButton)
             .background(
@@ -8260,12 +8280,12 @@ private struct FlightPlanningLine<
                         .foregroundStyle(FlybookColor.muted)
                 }
             }
-            .frame(width: 110, alignment: .center)
+            .frame(width: 112, alignment: .leading)
 
             footerStopPickers
                 .frame(width: 182, height: 23, alignment: .center)
         }
-        .frame(width: 494, height: 24, alignment: .center)
+        .frame(width: 622, height: 24, alignment: .leading)
     }
 
     @ViewBuilder

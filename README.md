@@ -9,7 +9,7 @@ NOTAM, PPR, Flugwetterbriefing noch die operative Flugleistungsrechnung.
 - 144 Flugplätze in `airports.csv`
 - 106 touristische Zielprofile und 37 TechStop-Profile
 - 1.008 Merkmalszeilen: exakt sieben je Flugplatz
-- 794 Service-, 446 Kraftstoff- und 54 Preisdatensätze
+- 794 Service-, 475 Kraftstoff- und 102 Preisdatensätze
 - Flugzeug-, Vereins-, Benutzer- und Airportprofile dauerhaft in `UserDefaults`
 - Benutzerprofile Stephan und Maria in der stabilen Suite
   `de.flybook.europe.user-profiles`
@@ -49,6 +49,10 @@ NOTAM, PPR, Flugwetterbriefing noch die operative Flugleistungsrechnung.
   ICON-D2/ICON-EU-Wind wird auf allen gelieferten Druckflächen verwendet;
   fehlende Zwischenhöhen werden vektoriell zwischen benachbarten
   Modellflächen interpoliert.
+- Die Flugwetter-Ceiling wird aus dem vertikalen ICON-Wolkenprofil auf den
+  Druckflächen abgeleitet. Der Temperatur-Taupunkt-Abstand bleibt ein
+  Feuchtehinweis, wird aber nicht als modellierte Ceiling oder IFR-Auslöser
+  ausgegeben.
 - Langfristprognose, Streckenrisiko und Föhnprüfung sind nachrangig und zeitlich
   gestaffelt, damit schwache Mobilverbindungen nicht mit Anfragepaketen
   überlastet werden.
@@ -75,6 +79,15 @@ python3 Scripts/release_source_audit.py
 python3 Scripts/release_transfer_audit.py
 python3 Scripts/release_persistence_audit.py
 Scripts/run_release_math_audit.sh
+```
+
+Der vollständige AeroPS-Abgleich verwendet konkrete Rechner-URLs ohne
+abschließenden Slash. Ein erneuter Nur-Lese-Audit und die kontrollierte
+Übernahme erfolgen mit:
+
+```sh
+python3 Scripts/aerops_fuel_sync.py
+python3 Scripts/aerops_fuel_sync.py --apply
 ```
 
 Der geprüfte Stand ist in `INTEGRITAET_v1.47.0.md` dokumentiert.

@@ -450,7 +450,8 @@ final class DestinationStore: ObservableObject {
         let normalized = raw
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        if isAffirmative(raw) && normalized.contains("ppr") {
+            .lowercased()
+        if normalized.hasPrefix("ja") && normalized.contains("ppr") {
             return "Ja – nur PPR"
         }
         if price(type, rows: priceRows) != nil { return "Ja" }
@@ -798,13 +799,16 @@ final class DestinationStore: ObservableObject {
                 ?? updated[index].ul91PricePerLiterEUR
             updated[index].mogasPricePerLiterEUR = imported.mogas
                 ?? updated[index].mogasPricePerLiterEUR
-            if updated[index].avgasPricePerLiterEUR != nil {
+            if updated[index].avgasPricePerLiterEUR != nil,
+               !updated[index].avgas.localizedCaseInsensitiveContains("PPR") {
                 updated[index].avgas = "Ja"
             }
-            if updated[index].ul91PricePerLiterEUR != nil {
+            if updated[index].ul91PricePerLiterEUR != nil,
+               !updated[index].ul91.localizedCaseInsensitiveContains("PPR") {
                 updated[index].ul91 = "Ja"
             }
-            if updated[index].mogasPricePerLiterEUR != nil {
+            if updated[index].mogasPricePerLiterEUR != nil,
+               !updated[index].mogas.localizedCaseInsensitiveContains("PPR") {
                 updated[index].mogas = "Ja"
             }
             updated[index].fuelPriceReportedAt = imported.reportedAt

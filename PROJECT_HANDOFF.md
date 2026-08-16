@@ -34,18 +34,29 @@
 - Die konkreten AeroPS-Platzrechner funktionieren ohne Login. Für EDTG sind
   AVGAS 100LL 2,99 EUR/l, SuperPlus 2,36 EUR/l und Jet A-1 2,49 EUR/l mit
   Stand 16.08.2026 hinterlegt.
+- Der AeroPS-Abgleich ist für alle 144 Airports abgeschlossen und in
+  `AEROPS_AUDIT_2026-08-16.csv` protokolliert. 40 Rechner zeigen Preise,
+  95 Kraftstoffarten sind damit bestätigt und 72 eindeutige positive
+  EUR-Preise übernommen. Mehrdeutige Doppelpreise und 0-EUR-Platzhalter
+  bleiben ausschließlich im Audit. Das reproduzierbare Werkzeug liegt unter
+  `Scripts/aerops_fuel_sync.py`.
+- Die vier gemeinsam geführten Airport-/Feature-/Fuel-Ressourcen sind zwischen
+  macOS und iPad bytegenau synchronisiert.
+- Die Flugplanfelder sind verbreitert; der Betriebszeitstatus sitzt außen links
+  am Abflug- und außen rechts am Ankunftsfeld. Best Level, gewählte Höhe und
+  Streckenwind beginnen als entzerrte Fußzeile am linken Rand.
+- ICON-Ceilings werden aus dem vertikalen Druckflächen-Wolkenprofil ermittelt.
+  Die frühere Temperatur-Taupunkt-Faustformel wird nicht mehr als Ceiling und
+  damit nicht mehr als IFR-Auslöser verwendet.
 
 ## Noch offen / nächste Aufgabe
 
-- Den AeroPS-Abgleich für **alle 144 Airports** fortführen. Die URL ist jeweils
-  `https://gat.aerops.com/prices/calculator/ICAO` (ohne abschließenden Slash),
-  zum Beispiel `.../EDTG` oder `.../EDTF`.
-- AeroPS als zusätzliche Quelle verwenden: bestätigte Kraftstoffarten und
-  sichtbare Preise übernehmen; ein fehlender AeroPS-Datensatz ist niemals
-  allein ein Beleg für `Nein`. Betreiber-/AIP-Quellen bleiben führend.
-- AVGAS, UL91 und MOGAS/Super98 platzweise verifizieren. Nur eindeutig
-  bestätigte Werte werden `Ja`, unklare bleiben `?`, eindeutig ausgeschlossene
-  werden `Nein`. Mac- und iPad-Ressourcen synchron halten.
+- AeroPS-Preise vor Releases erneut mit `python3 Scripts/aerops_fuel_sync.py`
+  prüfen und nach Sichtkontrolle mit `--apply` übernehmen. Betreiber-/AIP-
+  Quellen bleiben führend; fehlende AeroPS-Datensätze bleiben ohne negative
+  Aussage.
+- Die 33 URLs ohne passenden Rechner und 71 Rechner ohne sichtbare Preise nur
+  bei neuen Betreiberhinweisen erneut redaktionell prüfen.
 
 ## Einstieg für den nächsten Account
 
@@ -55,11 +66,10 @@ Diesen Text als erste Aufgabe verwenden:
 > weiter. Lies zuerst `PROJECT_HANDOFF.md` und `README.md`, prüfe danach
 > `git status` und den aktuellen Branch. Bewahre alle vorhandenen Änderungen.
 > Flybook v1.47.0 wurde zuletzt erfolgreich gebaut und gestartet. Setze meine
-> nächste konkrete Anforderung direkt um. Als erste Aufgabe führe den in
-> `PROJECT_HANDOFF.md` beschriebenen AeroPS-Abgleich für alle Airports fort.
-> Verwende die konkreten URLs ohne abschließenden Slash, halte Mac- und
-> iPad-Ressourcen synchron und verifiziere anschließend Swift-Tests und
-> Release-Audits aus dem README.
+> nächste konkrete Anforderung direkt um. Der AeroPS-Abgleich für alle Airports
+> ist abgeschlossen; verwende für Wiederholungen das dokumentierte Skript und
+> halte Mac- und iPad-Ressourcen synchron. Verifiziere anschließend Swift-Tests
+> und Release-Audits aus dem README.
 
 ## Produktstand
 

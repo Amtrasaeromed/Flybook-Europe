@@ -63,6 +63,14 @@ def runtime_checks() -> list[str]:
         "wind_speed_10m",
         "wind_direction_10m",
         "wind_gusts_10m",
+        *[
+            variable
+            for level in (1000, 975, 950, 925, 900, 850, 800, 700)
+            for variable in (
+                f"cloud_cover_{level}hPa",
+                f"geopotential_height_{level}hPa",
+            )
+        ],
     ]
 
     def validates_route_wind_profile(content_type: str, body: bytes) -> bool:

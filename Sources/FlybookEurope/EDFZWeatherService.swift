@@ -46,6 +46,52 @@ struct EDFZWeatherSample: Codable, Hashable {
     let pressureMSLHPA: Double?
 }
 
+struct ICONPressureCloudLevel: Equatable {
+    let cloudCoverPercent: Double?
+    let geopotentialHeightMetersMSL: Double?
+}
+
+enum ICONCloudProfile {
+    static let ceilingCoverThreshold = 62.5
+
+    static func ceilingFeetAGL(
+        airportElevationFeet: Double,
+        levels: [ICONPressureCloudLevel]
+    ) -> Double? {
+        let airportElevationMeters = airportElevationFeet / 3.280_84
+        let validLevels = levels.compactMap { level -> (Double, Double)? in
+            guard let cover = level.cloudCoverPercent,
+                  let height = level.geopotentialHeightMetersMSL,
+                  cover.isFinite,
+                  height.isFinite
+            else { return nil }
+            return (cover, height)
+        }
+        .sorted { $0.1 < $1.1 }
+
+        var previous: (cover: Double, height: Double)?
+        for (cover, height) in validLevels {
+            defer { previous = (cover, height) }
+            guard height >= airportElevationMeters,
+                  cover >= ceilingCoverThreshold
+            else { continue }
+
+            var baseHeight = height
+            if let previous,
+               previous.cover < ceilingCoverThreshold,
+               height > previous.height,
+               cover > previous.cover {
+                let fraction = (ceilingCoverThreshold - previous.cover)
+                    / (cover - previous.cover)
+                baseHeight = previous.height
+                    + fraction * (height - previous.height)
+            }
+            return max(0, baseHeight - airportElevationMeters) * 3.280_84
+        }
+        return nil
+    }
+}
+
 struct EDFZForecast: Codable, Hashable {
     let retrievedAt: Date
     let samples: [EDFZWeatherSample]
@@ -505,7 +551,7 @@ actor EDFZWeatherService {
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
-                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,dew_point_2m,weather_code,visibility,cloud_cover,cloud_cover_low,pressure_msl"
+                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,dew_point_2m,weather_code,visibility,cloud_cover,cloud_cover_low,pressure_msl,cloud_cover_1000hPa,cloud_cover_975hPa,cloud_cover_950hPa,cloud_cover_925hPa,cloud_cover_900hPa,cloud_cover_850hPa,cloud_cover_800hPa,cloud_cover_700hPa,geopotential_height_1000hPa,geopotential_height_975hPa,geopotential_height_950hPa,geopotential_height_925hPa,geopotential_height_900hPa,geopotential_height_850hPa,geopotential_height_800hPa,geopotential_height_700hPa"
             )
         ]
 
@@ -608,17 +654,9 @@ actor EDFZWeatherService {
             let lowCloudCover = value(
                 decoded.hourly.cloudCoverLow, index
             )
-            let cloudBase = estimatedCloudBaseFeet(
-                temperature: value(
-                    decoded.hourly.temperature2m, index
-                ),
-                dewPoint: value(
-                    decoded.hourly.dewPoint2m, index
-                )
-            )
-            let ceiling = estimateCeiling(
-                lowCloudPercent: lowCloudCover,
-                cloudBaseFeet: cloudBase
+            let ceiling = ICONCloudProfile.ceilingFeetAGL(
+                airportElevationFeet: airport.elevationFeet,
+                levels: decoded.hourly.cloudProfile(at: index)
             )
             return EDFZWeatherSample(
                 validTime: time,
@@ -639,7 +677,7 @@ actor EDFZWeatherService {
                 totalCloudCoverPercent: value(
                     decoded.hourly.cloudCover, index
                 ),
-                lowestCloudBaseFeetAGL: cloudBase,
+                lowestCloudBaseFeetAGL: ceiling,
                 ceilingFeetAGL: ceiling,
                 category: flightCategory(
                     visibilityMeters: visibility,
@@ -770,14 +808,6 @@ actor EDFZWeatherService {
                     temperature - max(0, 100 - $0) / 5
                 }
             }
-            let cloudBase = estimatedCloudBaseFeet(
-                temperature: details.airTemperature,
-                dewPoint: dewPoint
-            )
-            let ceiling = estimateCeiling(
-                lowCloudPercent: lowCloud,
-                cloudBaseFeet: cloudBase
-            )
             let visibility = estimatedVisibilityMeters(symbol: symbol)
             return EDFZWeatherSample(
                 validTime: time,
@@ -790,11 +820,11 @@ actor EDFZWeatherService {
                 visibilityMeters: visibility,
                 lowCloudCoverPercent: lowCloud,
                 totalCloudCoverPercent: details.cloudAreaFraction,
-                lowestCloudBaseFeetAGL: cloudBase,
-                ceilingFeetAGL: ceiling,
+                lowestCloudBaseFeetAGL: nil,
+                ceilingFeetAGL: nil,
                 category: flightCategory(
                     visibilityMeters: visibility,
-                    ceilingFeet: ceiling
+                    ceilingFeet: nil
                 ),
                 pressureMSLHPA: details.airPressureAtSeaLevel
             )
@@ -856,25 +886,6 @@ actor EDFZWeatherService {
         if symbol.contains("fair") { return 1 }
         if symbol.contains("clearsky") { return 0 }
         return nil
-    }
-
-    private func estimateCeiling(
-        lowCloudPercent: Double?,
-        cloudBaseFeet: Double?
-    ) -> Double? {
-        guard let lowCloudPercent,
-              lowCloudPercent >= 62.5
-        else { return nil }
-        // Only BKN/OVC layers define a ceiling. SCT is not a ceiling.
-        return cloudBaseFeet
-    }
-
-    private func estimatedCloudBaseFeet(
-        temperature: Double?,
-        dewPoint: Double?
-    ) -> Double? {
-        guard let temperature, let dewPoint else { return nil }
-        return max(0, temperature - dewPoint) * 400
     }
 
     private func flightCategory(
@@ -979,6 +990,22 @@ private struct Hourly: Decodable {
     let cloudCover: [Double?]
     let cloudCoverLow: [Double?]
     let pressureMSL: [Double?]
+    let cloudCover1000: [Double?]
+    let cloudCover975: [Double?]
+    let cloudCover950: [Double?]
+    let cloudCover925: [Double?]
+    let cloudCover900: [Double?]
+    let cloudCover850: [Double?]
+    let cloudCover800: [Double?]
+    let cloudCover700: [Double?]
+    let geopotentialHeight1000: [Double?]
+    let geopotentialHeight975: [Double?]
+    let geopotentialHeight950: [Double?]
+    let geopotentialHeight925: [Double?]
+    let geopotentialHeight900: [Double?]
+    let geopotentialHeight850: [Double?]
+    let geopotentialHeight800: [Double?]
+    let geopotentialHeight700: [Double?]
 
     enum CodingKeys: String, CodingKey {
         case time
@@ -992,6 +1019,50 @@ private struct Hourly: Decodable {
         case cloudCover = "cloud_cover"
         case cloudCoverLow = "cloud_cover_low"
         case pressureMSL = "pressure_msl"
+        case cloudCover1000 = "cloud_cover_1000hPa"
+        case cloudCover975 = "cloud_cover_975hPa"
+        case cloudCover950 = "cloud_cover_950hPa"
+        case cloudCover925 = "cloud_cover_925hPa"
+        case cloudCover900 = "cloud_cover_900hPa"
+        case cloudCover850 = "cloud_cover_850hPa"
+        case cloudCover800 = "cloud_cover_800hPa"
+        case cloudCover700 = "cloud_cover_700hPa"
+        case geopotentialHeight1000 = "geopotential_height_1000hPa"
+        case geopotentialHeight975 = "geopotential_height_975hPa"
+        case geopotentialHeight950 = "geopotential_height_950hPa"
+        case geopotentialHeight925 = "geopotential_height_925hPa"
+        case geopotentialHeight900 = "geopotential_height_900hPa"
+        case geopotentialHeight850 = "geopotential_height_850hPa"
+        case geopotentialHeight800 = "geopotential_height_800hPa"
+        case geopotentialHeight700 = "geopotential_height_700hPa"
+    }
+
+    func cloudProfile(at index: Int) -> [ICONPressureCloudLevel] {
+        [
+            level(cloudCover1000, geopotentialHeight1000, index),
+            level(cloudCover975, geopotentialHeight975, index),
+            level(cloudCover950, geopotentialHeight950, index),
+            level(cloudCover925, geopotentialHeight925, index),
+            level(cloudCover900, geopotentialHeight900, index),
+            level(cloudCover850, geopotentialHeight850, index),
+            level(cloudCover800, geopotentialHeight800, index),
+            level(cloudCover700, geopotentialHeight700, index),
+        ]
+    }
+
+    private func level(
+        _ cover: [Double?],
+        _ height: [Double?],
+        _ index: Int
+    ) -> ICONPressureCloudLevel {
+        ICONPressureCloudLevel(
+            cloudCoverPercent: cover.indices.contains(index)
+                ? cover[index]
+                : nil,
+            geopotentialHeightMetersMSL: height.indices.contains(index)
+                ? height[index]
+                : nil
+        )
     }
 }
 

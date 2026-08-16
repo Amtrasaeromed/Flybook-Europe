@@ -198,8 +198,8 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(bembridge.mogas, "?")
 
         let headcorn = try XCTUnwrap(byICAO["EGKH"])
-        XCTAssertEqual(headcorn.avgas, "?")
-        XCTAssertEqual(headcorn.ul91, "?")
+        XCTAssertEqual(headcorn.avgas, "Ja")
+        XCTAssertEqual(headcorn.ul91, "Ja")
         XCTAssertEqual(headcorn.mogas, "?")
     }
 
