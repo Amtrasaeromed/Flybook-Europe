@@ -347,17 +347,13 @@ struct FuelPlanCalculatorView: View {
             Divider().frame(height: 38)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Tankpunkt")
+                Text("Refueling-Stop")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
-                Picker("Tankpunkt", selection: refuelSelectionBinding) {
-                    Text("Kein Tankstopp").tag(Int?.none)
+                Picker("Refueling-Stop", selection: refuelSelectionBinding) {
+                    Text("Kein Refueling-Stop").tag(Int?.none)
                     ForEach(refuelOptions, id: \.self) { index in
-                        Text(
-                            "\(legs[index].destinationICAO) nach "
-                            + "\(legs[index].originICAO)→\(legs[index].destinationICAO)"
-                        )
-                        .tag(Optional(index))
+                        Text(legs[index].destinationICAO).tag(Optional(index))
                     }
                 }
                 .labelsHidden()
@@ -365,7 +361,7 @@ struct FuelPlanCalculatorView: View {
             }
 
             fuelInput(
-                title: "Auffüllen am Tankpunkt",
+                title: "Auffüllen am Refueling-Stop",
                 value: refuelBinding,
                 disabled: refuelAfterLegIndex == nil
             )
