@@ -2336,6 +2336,13 @@ struct DestinationPage: View {
                 icao: candidate.reference.icao,
                 name: candidate.reference.name,
                 distanceNM: candidate.distanceNM,
+                flightTimeText: FlightMath.duration(
+                    Int(ceil(
+                        candidate.distanceNM
+                            / max(1, cruiseGroundSpeedKnots)
+                            * 60
+                    ))
+                ),
                 runwayLengthMeters: candidate.destination.runwayM,
                 surface: candidate.destination.surface.isEmpty
                     ? "–"
@@ -2347,6 +2354,10 @@ struct DestinationPage: View {
                     weather.cloudVisibilityText,
                     weather.windText
                 ].joined(separator: " · "),
+                weatherCategory: weather.category,
+                weatherCondition: weather.condition,
+                weatherCloudVisibility: weather.cloudVisibilityText,
+                weatherWind: weather.windText,
                 weatherLevel: weather.categoryLevel
             )
         }

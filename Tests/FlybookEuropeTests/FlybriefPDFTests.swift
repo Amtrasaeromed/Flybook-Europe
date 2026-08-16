@@ -40,7 +40,10 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("2.200 m"))
         XCTAssertTrue(text.contains("Asphalt"))
         XCTAssertTrue(text.contains("06/24"))
-        XCTAssertTrue(text.contains("VFR · Heiter"))
+        XCTAssertTrue(text.contains("VFR"))
+        XCTAssertTrue(text.contains("Heiter"))
+        XCTAssertTrue(text.contains("FLUGZEIT"))
+        XCTAssertTrue(text.contains("0:17"))
         XCTAssertTrue(text.contains("Erstellt:"))
         XCTAssertTrue(text.contains("TEILSTRECKE 1/3"))
         XCTAssertTrue(text.contains("EDXE"))
@@ -272,30 +275,45 @@ final class FlybriefPDFTests: XCTestCase {
                 icao: "EHRD",
                 name: "Rotterdam",
                 distanceNM: 31,
+                flightTimeText: "0:17",
                 runwayLengthMeters: 2200,
                 surface: "Asphalt",
                 runwayDirection: "06/24",
                 weatherText: "VFR · Heiter · SCT 3500 / 10km+ · 290°/14 kt",
+                weatherCategory: "VFR",
+                weatherCondition: "Heiter",
+                weatherCloudVisibility: "SCT 3500 / 10km+",
+                weatherWind: "290°/14 kt",
                 weatherLevel: .good
             ),
             FlybriefAlternateSnapshot(
                 icao: "EHLE",
                 name: "Lelystad",
                 distanceNM: 34,
+                flightTimeText: "0:19",
                 runwayLengthMeters: 1250,
                 surface: "Asphalt",
                 runwayDirection: "05/23",
                 weatherText: "MVFR · Regen · BKN 1800 / 8km · 280°/18 kt",
+                weatherCategory: "MVFR",
+                weatherCondition: "Regen",
+                weatherCloudVisibility: "BKN 1800 / 8km",
+                weatherWind: "280°/18 kt",
                 weatherLevel: .info
             ),
             FlybriefAlternateSnapshot(
                 icao: "EHHV",
                 name: "Hilversum",
                 distanceNM: 36,
+                flightTimeText: "0:20",
                 runwayLengthMeters: 700,
                 surface: "Gras",
                 runwayDirection: "07/25",
                 weatherText: "VFR · Bedeckt · SCT 3000 / 10km+ · 270°/12 kt",
+                weatherCategory: "VFR",
+                weatherCondition: "Bedeckt",
+                weatherCloudVisibility: "SCT 3000 / 10km+",
+                weatherWind: "270°/12 kt",
                 weatherLevel: .good
             )
         ]
