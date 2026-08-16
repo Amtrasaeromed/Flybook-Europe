@@ -16,6 +16,15 @@ struct RunwayPerformanceResult: Equatable {
         guard availableMeters > 0 else { return nil }
         return Int(ceil(Double(rollMeters) / Double(availableMeters) * 100))
     }
+
+    func addingSafetyMargin(percent: Int) -> RunwayPerformanceResult {
+        let clampedPercent = min(50, max(0, percent))
+        let factor = 1 + Double(clampedPercent) / 100
+        return RunwayPerformanceResult(
+            rollMeters: Int(ceil(Double(rollMeters) * factor)),
+            over50FeetMeters: Int(ceil(Double(over50FeetMeters) * factor))
+        )
+    }
 }
 
 enum RunwayPerformance {

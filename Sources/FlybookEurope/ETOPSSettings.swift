@@ -52,6 +52,8 @@ enum CalculationSettingsKey {
         "flybookPreTakeoffGroundMinutes"
     static let postLandingGroundMinutes =
         "flybookPostLandingGroundMinutes"
+    static let runwayPerformanceSafetyMarginPercent =
+        "flybookRunwayPerformanceSafetyMarginPercent"
     static let reservationFromTimestamp =
         "flybookReservationFromTimestamp"
     static let reservationUntilTimestamp =
@@ -71,6 +73,7 @@ enum CalculationSettings {
     static let defaultPrepaymentDiscount30PlusEnabled = false
     static let defaultPreTakeoffGroundMinutes = 5
     static let defaultPostLandingGroundMinutes = 3
+    static let defaultRunwayPerformanceSafetyMarginPercent = 0
 }
 
 enum FlybookBase: String, CaseIterable, Identifiable {
@@ -367,6 +370,16 @@ enum ETOPSProfileStore {
         integer("postLandingGroundMinutes", for: user, fallback: CalculationSettings.defaultPostLandingGroundMinutes)
     }
 
+    static func runwayPerformanceSafetyMarginPercent(
+        for user: FlybookUser
+    ) -> Int {
+        integer(
+            "runwayPerformanceSafetyMarginPercent",
+            for: user,
+            fallback: CalculationSettings.defaultRunwayPerformanceSafetyMarginPercent
+        )
+    }
+
     static func reserveMinutes(for user: FlybookUser) -> Int {
         integer("reserveMinutes", for: user, fallback: CalculationSettings.defaultReserveMinutes)
     }
@@ -382,6 +395,7 @@ enum ETOPSProfileStore {
         tankStopMinutes: Int,
         preTakeoffGroundMinutes: Int,
         postLandingGroundMinutes: Int,
+        runwayPerformanceSafetyMarginPercent: Int,
         reserveMinutes: Int,
         maximumDailyTravelMinutes: Int,
         activate: Bool
@@ -402,6 +416,10 @@ enum ETOPSProfileStore {
         defaults.set(tankStopMinutes, forKey: key(user, "tankStopMinutes"))
         defaults.set(preTakeoffGroundMinutes, forKey: key(user, "preTakeoffGroundMinutes"))
         defaults.set(postLandingGroundMinutes, forKey: key(user, "postLandingGroundMinutes"))
+        defaults.set(
+            min(50, max(0, runwayPerformanceSafetyMarginPercent / 5 * 5)),
+            forKey: key(user, "runwayPerformanceSafetyMarginPercent")
+        )
         defaults.set(reserveMinutes, forKey: key(user, "reserveMinutes"))
         defaults.set(maximumDailyTravelMinutes, forKey: key(user, "maximumDailyTravelMinutes"))
         defaults.synchronize()
@@ -429,6 +447,10 @@ enum ETOPSProfileStore {
         defaults.set(tankStopMinutes(for: user), forKey: CalculationSettingsKey.tankStopMinutes)
         defaults.set(preTakeoffGroundMinutes(for: user), forKey: CalculationSettingsKey.preTakeoffGroundMinutes)
         defaults.set(postLandingGroundMinutes(for: user), forKey: CalculationSettingsKey.postLandingGroundMinutes)
+        defaults.set(
+            runwayPerformanceSafetyMarginPercent(for: user),
+            forKey: CalculationSettingsKey.runwayPerformanceSafetyMarginPercent
+        )
         defaults.set(reserveMinutes(for: user), forKey: CalculationSettingsKey.reserveMinutes)
         defaults.set(maximumDailyTravelMinutes(for: user), forKey: CalculationSettingsKey.maxTravelMinutesUntilOvernight)
     }
@@ -438,6 +460,7 @@ enum ETOPSProfileStore {
             for value in [
                 "greenYellowMinutes", "orangeRedMinutes", "tankStopMinutes",
                 "preTakeoffGroundMinutes", "postLandingGroundMinutes",
+                "runwayPerformanceSafetyMarginPercent",
                 "reserveMinutes", "maximumDailyTravelMinutes"
             ] {
                 migrateLegacyValue(forKey: key(user, value))
@@ -553,6 +576,10 @@ struct ETOPSSetupView: View {
     @AppStorage(CalculationSettingsKey.postLandingGroundMinutes)
     private var postLandingGroundMinutes =
         CalculationSettings.defaultPostLandingGroundMinutes
+
+    @AppStorage(CalculationSettingsKey.runwayPerformanceSafetyMarginPercent)
+    private var runwayPerformanceSafetyMarginPercent =
+        CalculationSettings.defaultRunwayPerformanceSafetyMarginPercent
 
     @AppStorage(
         CalculationSettingsKey.prepaymentDiscount15To29Enabled
@@ -673,6 +700,8 @@ struct ETOPSSetupView: View {
                         minutes: $postLandingGroundMinutes
                     )
 
+                    runwaySafetyMarginRow
+
                     HStack {
                         Text("Reserve")
                             .font(.headline)
@@ -714,6 +743,9 @@ struct ETOPSSetupView: View {
                     reserveMinutes =
                         CalculationSettings
                             .defaultReserveMinutes
+                    runwayPerformanceSafetyMarginPercent =
+                        CalculationSettings
+                            .defaultRunwayPerformanceSafetyMarginPercent
                 }
                 Spacer()
             }
@@ -788,6 +820,31 @@ struct ETOPSSetupView: View {
         )
     }
 
+    private var runwaySafetyMarginRow: some View {
+        HStack(spacing: 18) {
+            Text("Sicherheitsmarge Start/Landung")
+                .font(.headline)
+                .frame(width: 250, alignment: .leading)
+
+            Slider(
+                value: Binding(
+                    get: { Double(runwayPerformanceSafetyMarginPercent) },
+                    set: { runwayPerformanceSafetyMarginPercent = Int($0.rounded()) }
+                ),
+                in: 0...50,
+                step: 5
+            )
+            .frame(width: 260)
+
+            Text("\(runwayPerformanceSafetyMarginPercent) %")
+                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                .frame(width: 48, alignment: .trailing)
+
+            Spacer()
+        }
+        .help("Wird auf Rollstrecke und 50-ft-Strecke für Start und Landung aufgeschlagen")
+    }
+
     private func calculationTimeRow(
         title: String,
         minutes: Binding<Int>,
@@ -828,6 +885,8 @@ struct ETOPSSetupView: View {
         tankStopMinutes = ETOPSProfileStore.tankStopMinutes(for: user)
         preTakeoffGroundMinutes = ETOPSProfileStore.preTakeoffGroundMinutes(for: user)
         postLandingGroundMinutes = ETOPSProfileStore.postLandingGroundMinutes(for: user)
+        runwayPerformanceSafetyMarginPercent =
+            ETOPSProfileStore.runwayPerformanceSafetyMarginPercent(for: user)
         reserveMinutes = ETOPSProfileStore.reserveMinutes(for: user)
     }
 
@@ -845,6 +904,8 @@ struct ETOPSSetupView: View {
             tankStopMinutes: tankStopMinutes,
             preTakeoffGroundMinutes: preTakeoffGroundMinutes,
             postLandingGroundMinutes: postLandingGroundMinutes,
+            runwayPerformanceSafetyMarginPercent:
+                runwayPerformanceSafetyMarginPercent,
             reserveMinutes: reserveMinutes,
             maximumDailyTravelMinutes:
                 ETOPSProfileStore.maximumDailyTravelMinutes(for: user),

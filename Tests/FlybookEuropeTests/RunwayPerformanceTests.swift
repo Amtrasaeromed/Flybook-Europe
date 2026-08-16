@@ -69,4 +69,14 @@ final class RunwayPerformanceTests: XCTestCase {
         )
         XCTAssertEqual(result.runwayPercentage(availableMeters: 1_000), 26)
     }
+
+    func testSafetyMarginAppliesToRollAndFiftyFootDistance() {
+        let result = RunwayPerformanceResult(
+            rollMeters: 251,
+            over50FeetMeters: 431
+        ).addingSafetyMargin(percent: 20)
+
+        XCTAssertEqual(result.rollMeters, 302)
+        XCTAssertEqual(result.over50FeetMeters, 518)
+    }
 }

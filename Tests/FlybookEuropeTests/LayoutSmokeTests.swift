@@ -5,6 +5,16 @@ import XCTest
 
 @MainActor
 final class LayoutSmokeTests: XCTestCase {
+    func testUserSetupRendersWithRunwaySafetyMarginSlider() throws {
+        let renderer = ImageRenderer(content: ETOPSSetupView())
+        renderer.scale = 1
+        guard let image = renderer.nsImage else {
+            return XCTFail("Nutzersetup konnte nicht gerendert werden")
+        }
+        XCTAssertEqual(Int(image.size.width), 840)
+        XCTAssertEqual(Int(image.size.height), 780)
+    }
+
     func testFuelPlanCalculatorRendersAtSheetSize() throws {
         let view = FuelPlanCalculatorView(
             legs: [

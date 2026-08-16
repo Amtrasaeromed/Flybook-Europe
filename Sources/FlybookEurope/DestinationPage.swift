@@ -195,6 +195,10 @@ struct DestinationPage: View {
     private var postLandingGroundMinutes =
         CalculationSettings.defaultPostLandingGroundMinutes
 
+    @AppStorage(CalculationSettingsKey.runwayPerformanceSafetyMarginPercent)
+    private var runwayPerformanceSafetyMarginPercent =
+        CalculationSettings.defaultRunwayPerformanceSafetyMarginPercent
+
     @AppStorage(CalculationSettingsKey.fuelDisplayUnit)
     private var fuelDisplayUnitRaw = FuelDisplayUnit.liters.rawValue
     @AppStorage(FuelPriceSettingsKey.mainzAvgas)
@@ -2713,11 +2717,14 @@ struct DestinationPage: View {
                 headwindKnots: headwind
             )
         }
+        let adjustedResult = result.addingSafetyMargin(
+            percent: runwayPerformanceSafetyMarginPercent
+        )
         return String(
             format: "%@ Roll %d m · über 50 ft %d m · %.0f kg",
             label,
-            result.rollMeters,
-            result.over50FeetMeters,
+            adjustedResult.rollMeters,
+            adjustedResult.over50FeetMeters,
             weightKilograms
         )
     }
@@ -3715,6 +3722,8 @@ struct DestinationPage: View {
                     returnTakeoffWeightKilograms:
                         $returnTakeoffWeightKilograms,
                     aircraft: selectedAircraft,
+                    runwayPerformanceSafetyMarginPercent:
+                        runwayPerformanceSafetyMarginPercent,
                     outboundAltitudeOptions:
                         outboundAltitudeOptions,
                     returnAltitudeOptions:
@@ -6096,6 +6105,7 @@ private struct FlightTimePlanningRows: View {
     @Binding var outboundTakeoffWeightKilograms: Double
     @Binding var returnTakeoffWeightKilograms: Double
     let aircraft: AircraftType
+    let runwayPerformanceSafetyMarginPercent: Int
 
     let outboundAltitudeOptions: [Int]
     let returnAltitudeOptions: [Int]
@@ -6780,6 +6790,8 @@ private struct FlightTimePlanningRows: View {
                     $outboundFlightAltitudeFeet,
                 takeoffWeightKilograms: $outboundTakeoffWeightKilograms,
                 aircraft: aircraft,
+                runwayPerformanceSafetyMarginPercent:
+                    runwayPerformanceSafetyMarginPercent,
                 altitudeOptions: outboundAltitudeOptions,
                 travelMinutes: outboundTravelMinutes,
                 directNM: outboundDirectNM,
@@ -6960,6 +6972,8 @@ private struct FlightTimePlanningRows: View {
                     $returnFlightAltitudeFeet,
                 takeoffWeightKilograms: $returnTakeoffWeightKilograms,
                 aircraft: aircraft,
+                runwayPerformanceSafetyMarginPercent:
+                    runwayPerformanceSafetyMarginPercent,
                 altitudeOptions: returnAltitudeOptions,
                 travelMinutes: returnTravelMinutes,
                 directNM: returnDirectNM,
@@ -7687,6 +7701,7 @@ private struct FlightPlanningLine<
     @Binding var flightAltitudeFeet: Int
     @Binding var takeoffWeightKilograms: Double
     let aircraft: AircraftType
+    let runwayPerformanceSafetyMarginPercent: Int
     let altitudeOptions: [Int]
     let travelMinutes: Int
     let directNM: Double
@@ -8077,7 +8092,7 @@ private struct FlightPlanningLine<
               )
         else { return nil }
         let headwind = weather.runwayWindComponents?.headwindKnots ?? 0
-        return isDeparture
+        let result = isDeparture
             ? RunwayPerformance.takeoff(
                 profile: profile,
                 weightKilograms: takeoffWeightKilograms,
@@ -8090,6 +8105,9 @@ private struct FlightPlanningLine<
                 densityAltitudeFeet: densityAltitude,
                 headwindKnots: headwind
             )
+        return result.addingSafetyMargin(
+            percent: runwayPerformanceSafetyMarginPercent
+        )
     }
 
     private func performanceColor(_ percentage: Int?) -> Color {
