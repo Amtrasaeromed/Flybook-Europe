@@ -3686,7 +3686,6 @@ struct DestinationPage: View {
                     headwindKnots:
                         outboundRouteWindModel.wind?
                             .outboundHeadwindKnots,
-                    tankStopMinutes: tankStopMinutes,
                     hourlyRateEUR: hourlyRateEUR,
                     vatPercent: vatPercent,
                     weekdayDiscountEnabled:
@@ -3700,8 +3699,6 @@ struct DestinationPage: View {
                     cruisePerformance: cruisePerformance,
                     fuelConsumptionPerHour:
                         outboundFuelConsumptionPerHour,
-                    reserveMinutes:
-                        reserveMinutes,
                     usableFuel:
                         usableFuel,
                     fuelUnit: fuelDisplayUnit,
@@ -3712,9 +3709,7 @@ struct DestinationPage: View {
                     prepaymentDiscount30PlusEnabled:
                         prepaymentDiscount30PlusEnabled,
                     landingFeeQuote: outboundLandingFeeQuote,
-                    showsLandingFee: includeLandingFeesInTotal,
-                    reserveNotConsumed:
-                        outboundReserveNotConsumed
+                    showsLandingFee: includeLandingFeesInTotal
                 )
 
                 if !isOneWay {
@@ -3730,7 +3725,6 @@ struct DestinationPage: View {
                         headwindKnots:
                             returnRouteWindModel.wind?
                                 .outboundHeadwindKnots,
-                        tankStopMinutes: tankStopMinutes,
                         hourlyRateEUR: hourlyRateEUR,
                         vatPercent: vatPercent,
                         weekdayDiscountEnabled:
@@ -3744,8 +3738,6 @@ struct DestinationPage: View {
                         cruisePerformance: cruisePerformance,
                         fuelConsumptionPerHour:
                             returnFuelConsumptionPerHour,
-                        reserveMinutes:
-                            reserveMinutes,
                         usableFuel:
                             usableFuel,
                         fuelUnit: fuelDisplayUnit,
@@ -9220,12 +9212,20 @@ private struct CalculationTotalRow: View {
             * (1.0 + max(0, vatPercent) / 100.0)
     }
 
-    private var totalRequiredFuel: Double {
-        let blockFuel = Double(outboundMinutes)
-            * outboundFuelConsumptionPerHour / 60
+    private var totalBurnFuel: Double {
+        CharterMath.actualFuelBurnLiters(
+            minutes: outboundMinutes,
+            consumptionLitersPerHour: outboundFuelConsumptionPerHour
+        )
             + (includesReturn
-                ? Double(returnMinutes) * returnFuelConsumptionPerHour / 60
+                ? CharterMath.actualFuelBurnLiters(
+                    minutes: returnMinutes,
+                    consumptionLitersPerHour: returnFuelConsumptionPerHour
+                )
                 : 0)
+    }
+
+    private var totalRequiredFuel: Double {
         let reserveFuel = CharterMath.requiredReserveLiters(
             outboundConsumptionPerHour: outboundFuelConsumptionPerHour,
             returnConsumptionPerHour:
@@ -9234,7 +9234,7 @@ private struct CalculationTotalRow: View {
             outboundReserveIsReused:
                 includesReturn && outboundReserveNotConsumed
         )
-        return blockFuel + reserveFuel
+        return totalBurnFuel + reserveFuel
     }
 
     private var estimatedFuelAtTripEndWithoutRefuel: Double {
@@ -9334,7 +9334,7 @@ private struct CalculationTotalRow: View {
 
             totalBox(
                 value:
-                    "\(Int(ceil(fuelUnit.fromLiters(totalRequiredFuel)))) "
+                    "\(Int(ceil(fuelUnit.fromLiters(totalBurnFuel)))) "
                     + fuelUnit.symbol,
                 valueColor: totalFuelColor
             )
@@ -9417,7 +9417,6 @@ private struct CalculationRow: View {
     let directNM: Double
     let trackMilesNM: Double
     let headwindKnots: Double?
-    let tankStopMinutes: Int
     let hourlyRateEUR: Double
     let vatPercent: Double
     let weekdayDiscountEnabled: Bool
@@ -9428,7 +9427,6 @@ private struct CalculationRow: View {
     let climbPerformance: ClimbPerformance
     let cruisePerformance: CruisePerformance
     let fuelConsumptionPerHour: Double
-    let reserveMinutes: Int
     let usableFuel: Double
     let fuelUnit: FuelDisplayUnit
     let preTakeoffGroundMinutes: Int
@@ -9437,7 +9435,6 @@ private struct CalculationRow: View {
     let prepaymentDiscount30PlusEnabled: Bool
     let landingFeeQuote: AirportLandingFeeQuote
     let showsLandingFee: Bool
-    var reserveNotConsumed = false
 
     private var blockMinutes: Int {
         FlightMath.adjustedBlockMinutes(
@@ -9521,35 +9518,27 @@ private struct CalculationRow: View {
         ) + " h"
     }
 
-    private var requiredFuel: Double {
-        let blockFuel =
-            Double(blockMinutes)
-            * fuelConsumptionPerHour
-            / 60.0
-
-        let reserveFuel =
-            fuelConsumptionPerHour
-            * Double(reserveMinutes)
-            / 60.0
-
-        return blockFuel
-            + (reserveNotConsumed ? 0 : reserveFuel)
+    private var actualFuelBurn: Double {
+        CharterMath.actualFuelBurnLiters(
+            minutes: blockMinutes,
+            consumptionLitersPerHour: fuelConsumptionPerHour
+        )
     }
 
-    private var requiredFuelText: String {
-        "\(Int(ceil(fuelUnit.fromLiters(requiredFuel)))) "
+    private var actualFuelBurnText: String {
+        "\(Int(ceil(fuelUnit.fromLiters(actualFuelBurn)))) "
             + fuelUnit.symbol
     }
 
     private var fuelResultColor: Color {
         guard usableFuel > 0 else {
-            return requiredFuel > 0
+            return actualFuelBurn > 0
                 ? .red
                 : .green
         }
 
         let percentage =
-            requiredFuel / usableFuel * 100.0
+            actualFuelBurn / usableFuel * 100.0
 
         if percentage < 90 {
             return .green
@@ -9601,7 +9590,7 @@ private struct CalculationRow: View {
                 valueBox(value: blockTimeText)
 
                 valueBox(
-                    value: requiredFuelText,
+                    value: actualFuelBurnText,
                     valueColor: fuelResultColor
                 )
 

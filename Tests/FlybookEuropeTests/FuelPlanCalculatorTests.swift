@@ -55,6 +55,7 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertEqual(result.finalReserveLiters, 15, accuracy: 0.001)
         XCTAssertEqual(result.minimumStartingFuelLiters, 25, accuracy: 0.001)
         XCTAssertEqual(result.minimumRefuelLiters, 20, accuracy: 0.001)
+        XCTAssertEqual(result.rows.map(\.stageBurnLiters), [10, 10, 20])
         XCTAssertEqual(result.rows[1].minimumDepartureLiters, 35, accuracy: 0.001)
         XCTAssertEqual(result.rows[2].minimumDepartureLiters, 25, accuracy: 0.001)
         XCTAssertEqual(result.rows[2].plannedArrivalLiters, 15, accuracy: 0.001)
@@ -73,6 +74,7 @@ final class FuelPlanCalculatorTests: XCTestCase {
 
         XCTAssertEqual(result.minimumStartingFuelLiters, 35, accuracy: 0.001)
         XCTAssertEqual(result.minimumRefuelLiters, 10, accuracy: 0.001)
+        XCTAssertEqual(result.rows.map(\.stageBurnLiters), [10, 20, 10])
         XCTAssertEqual(result.rows[1].minimumArrivalLiters, 15, accuracy: 0.001)
         XCTAssertEqual(result.rows[2].plannedArrivalLiters, 15, accuracy: 0.001)
         XCTAssertFalse(result.hasWarning)
@@ -108,6 +110,7 @@ final class FuelPlanCalculatorTests: XCTestCase {
         )
 
         XCTAssertEqual(result.minimumStartingFuelLiters, 45, accuracy: 0.001)
+        XCTAssertEqual(result.rows.map(\.stageBurnLiters), [10, 20, 30])
         XCTAssertEqual(result.rows.map(\.minimumDepartureLiters), [45, 35, 25])
         XCTAssertEqual(result.rows.map(\.minimumArrivalLiters), [35, 25, 15])
         XCTAssertFalse(result.hasWarning)

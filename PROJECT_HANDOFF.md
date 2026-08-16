@@ -54,17 +54,21 @@
   für Landung, Übernachtung, Zoll Einreise, Zoll Ausreise und Handling.
   Tanken, Parken, Zoll und Handling stehen als vier eigene Kostenzeilen; Zoll wird
   am tatsächlichen Grenzsegment dem Ausreise- beziehungsweise Einreiseplatz
-  zugeordnet. Die Außenmaße der Kalkulations- und Zielblöcke bleiben gleich.
+  zugeordnet. Angezeigter Kraftstoff je Flug und in der Gesamtzeile ist nur
+  der tatsächlich verflogene Blockkraftstoff ohne Reserve. Die Außenmaße der
+  Kalkulations- und Zielblöcke bleiben gleich.
 - Zwischen Lokal/UTC und Drucken öffnet ein Tanksäulen-Schalter den neuen
   Tankkalkulator. Er übernimmt alle aktiven Direkt- und Zwischenstopp-Legs,
   rechnet die Mindestbestände von der Reserve am Endziel rückwärts und erlaubt
   einen frei wählbaren Tankpunkt. Vorhandener Restkraftstoff wird beim
   Auffüllen angerechnet; Unterdeckung, negative Bestände und unzureichende
-  Tankkapazität erscheinen als rote Warnung. Fünf deterministische Tests
+  Tankkapazität erscheinen als rote Warnung. Sechs deterministische Tests
   decken die Beispiele A–C–B–A mit Tankpunkt C beziehungsweise B ab.
   Minimum und tatsächlicher Plan sind tabellarisch getrennt; der Plan ist blau
   hervorgehoben und der Tankstopp steht als eigene Zwischenzeile. Berechnete
-  Literwerte werden stets auf den nächsten vollen Liter aufgerundet.
+  Literwerte werden stets auf den nächsten vollen Liter aufgerundet. Die
+  Verbrauchsspalte zeigt Leg- und laufenden Gesamtverbrauch; nach dem
+  Refueling-Stop beginnt diese laufende Summe neu.
   Die Refuel-Menge wird in der Planzeile manuell, per Minimum oder per Voll
   gesetzt und mit „Tankberechnung übernehmen“ samt Refueling-Stop an die
   weiterhin editierbare Tanken-Zeile der Charterkalkulation übergeben. Die

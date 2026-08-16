@@ -78,7 +78,9 @@ Die Charterkalkulation führt Landegebühr, Übernachtungsgebühr, Zoll Einreise
 Zoll Ausreise und Handling als fünf unabhängige Schalter. Landegebühren sind
 standardmäßig aktiv; Übernachtung und Zoll werden aus dem Flugplan vorbelegt.
 Tanken, Parken, Zoll und Handling erscheinen als vier einheitliche eigene
-Tabellenzeilen.
+Tabellenzeilen. Die Kraftstoffwerte der einzelnen Flüge und der Gesamtzeile
+zeigen ausschließlich den tatsächlich verflogenen Blockkraftstoff; Reserven
+werden dort nicht als Verbrauch mitgerechnet.
 Zollkosten werden dem tatsächlichen Ausreise- und Einreiseflugplatz am
 Grenzsegment zugeordnet; unbekannte Tarife bleiben sichtbar als `?` und werden
 nicht in die Gesamtsumme erfunden.
@@ -86,12 +88,14 @@ nicht in die Gesamtsumme erfunden.
 Der Tanksäulen-Schalter zwischen Lokal/UTC und Drucken öffnet den
 Tankkalkulator für alle aktuell geplanten Legs. Er berechnet die erforderlichen
 Bestände vom Reservekraftstoff am letzten Ziel rückwärts, zeigt je Abschnitt
-Verbrauch, Mindest- und Planbestand und erlaubt einen frei wählbaren Tankpunkt.
+Leg-Verbrauch, die seit dem letzten Tankstopp laufende Verbrauchssumme,
+Mindest- und Planbestand und erlaubt einen frei wählbaren Tankpunkt. Am
+Tankstopp beginnt die laufende Verbrauchssumme wieder bei null.
 Am Tankpunkt wird vorhandener Restkraftstoff auf die Mindest-Auffüllmenge
 angerechnet. Zu kleiner Startbestand, zu geringe Auffüllmenge, negative
 Bestände sowie Überschreitungen der nutzbaren Tankkapazität werden rot
-gekennzeichnet. Die Tabelle trennt Zeit/Verbrauch, Mindestwerte und den blau
-hervorgehobenen tatsächlichen Plan. Der gewählte Tankstopp erscheint als
+gekennzeichnet. Die Tabelle ordnet Minimum, den blau hervorgehobenen Plan,
+Verbrauch und Zeit in getrennten Spalten. Der gewählte Tankstopp erscheint als
 eigene Zeile zwischen den Legs; alle berechneten Literwerte werden auf den
 nächsten vollen Liter aufgerundet. Die Refuel-Menge wird direkt in dieser
 Planzeile manuell, als Minimum oder bis Voll festgelegt. **Tankberechnung

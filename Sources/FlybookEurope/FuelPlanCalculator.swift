@@ -22,6 +22,7 @@ struct FuelPlanRow: Equatable, Identifiable {
     let plannedDepartureLiters: Double
     let plannedArrivalLiters: Double
     let refuelAfterArrivalLiters: Double
+    let stageBurnLiters: Double
 }
 
 struct FuelPlanResult: Equatable {
@@ -154,10 +155,12 @@ enum FuelPlanCalculator {
         var rows: [FuelPlanRow] = []
         var hasFuelExhaustion = false
         var hasOverfill = plannedFuel > capacity + 0.000_1
+        var stageBurn = 0.0
 
         for index in legs.indices {
             let departure = plannedFuel
             let arrival = departure - legs[index].burnLiters
+            stageBurn += legs[index].burnLiters
             if departure + 0.000_1 < legs[index].burnLiters {
                 hasFuelExhaustion = true
             }
@@ -170,12 +173,16 @@ enum FuelPlanCalculator {
                     minimumArrivalLiters: minimumArrivals[index],
                     plannedDepartureLiters: departure,
                     plannedArrivalLiters: arrival,
-                    refuelAfterArrivalLiters: addition
+                    refuelAfterArrivalLiters: addition,
+                    stageBurnLiters: stageBurn
                 )
             )
             plannedFuel = arrival + addition
             if addition > 0, plannedFuel > capacity + 0.000_1 {
                 hasOverfill = true
+            }
+            if index == validRefuelIndex {
+                stageBurn = 0
             }
         }
 
@@ -478,7 +485,7 @@ struct FuelPlanCalculatorView: View {
             Color.clear.frame(width: 20, height: 1)
             tableHeading("GEPLANT LDG", width: 122, emphasized: true)
             tableSeparator(height: 26)
-            tableHeading("VERBRAUCH", width: 92)
+            tableHeading("LEG / GESAMT", width: 92)
             tableHeading("ZEIT", width: 62)
         }
         .padding(.horizontal, 12)
@@ -523,7 +530,7 @@ struct FuelPlanCalculatorView: View {
                     < row.minimumArrivalLiters
             )
             tableSeparator(height: 32)
-            tableValue(liters(row.leg.burnLiters), width: 92)
+            tableValue(stageBurnText(row), width: 92)
             tableValue(FlightMath.duration(row.leg.flightMinutes), width: 62)
         }
         .foregroundStyle(FlybookColor.navy)
@@ -595,6 +602,16 @@ struct FuelPlanCalculatorView: View {
             .first?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? name
         return "\(icao) - \(conciseName)"
+    }
+
+    private func stageBurnText(_ row: FuelPlanRow) -> String {
+        let leg = FuelPlanCalculator.roundedLitersForDisplay(
+            row.leg.burnLiters
+        )
+        let stage = FuelPlanCalculator.roundedLitersForDisplay(
+            row.stageBurnLiters
+        )
+        return "\(leg) / \(stage) L"
     }
 
     @ViewBuilder

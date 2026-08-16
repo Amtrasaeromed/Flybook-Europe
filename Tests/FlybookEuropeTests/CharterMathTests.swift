@@ -2,6 +2,17 @@ import XCTest
 @testable import FlybookEurope
 
 final class CharterMathTests: XCTestCase {
+    func testActualFuelBurnDoesNotAddReserveFuel() {
+        XCTAssertEqual(
+            CharterMath.actualFuelBurnLiters(
+                minutes: 90,
+                consumptionLitersPerHour: 20
+            ),
+            30,
+            accuracy: 0.001
+        )
+    }
+
     func testLandingFeesAreExcludedUnlessEnabled() {
         XCTAssertEqual(
             CharterMath.combinedTotalCost(

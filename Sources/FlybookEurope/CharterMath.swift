@@ -16,6 +16,15 @@ enum CharterMath {
         commercialDecimalHours(minutes: minutes) * max(0, hourlyRateEUR)
     }
 
+    static func actualFuelBurnLiters(
+        minutes: Int,
+        consumptionLitersPerHour: Double
+    ) -> Double {
+        Double(max(0, minutes))
+            * max(0, consumptionLitersPerHour)
+            / 60
+    }
+
     static func combinedTotalCost(
         charterCostEUR: Double,
         landingFeesEUR: Double,
