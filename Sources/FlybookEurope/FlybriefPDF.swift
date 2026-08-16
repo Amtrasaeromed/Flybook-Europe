@@ -116,9 +116,11 @@ struct FlybriefAlternateSnapshot: Identifiable {
     let name: String
     let distanceNM: Double
     let flightTimeText: String
+    let fuelLiters: Int
     let runwayLengthMeters: Int
     let surface: String
     let runwayDirection: String
+    let preferredRunway: String?
     let weatherText: String
     let weatherCategory: String
     let weatherCondition: String
@@ -916,12 +918,13 @@ private struct FlybriefAlternatesMemo: View {
     private var alternateHeader: some View {
         HStack(spacing: 4) {
             headerCell("ICAO", width: 32, alignment: .leading)
-            headerCell("FLUGPLATZ", width: 170, alignment: .leading)
-            headerCell("DIST", width: 45)
-            headerCell("FLUGZEIT", width: 46)
-            headerCell("RWY", width: 58)
-            headerCell("LÄNGE", width: 50)
-            headerCell("BELAG", width: 62, alignment: .leading)
+            headerCell("FLUGPLATZ", width: 138, alignment: .leading)
+            headerCell("DIST", width: 40)
+            headerCell("FLUGZEIT", width: 42)
+            headerCell("SPRIT", width: 32)
+            headerCell("RWY", width: 64)
+            headerCell("LÄNGE", width: 46)
+            headerCell("BELAG", width: 54, alignment: .leading)
         }
         .padding(.vertical, 1.5)
         .background(Color.black.opacity(0.035))
@@ -950,35 +953,42 @@ private struct FlybriefAlternatesMemo: View {
                     .font(.system(size: dense ? 6.2 : 7.2, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                    .frame(width: 170, alignment: .leading)
+                    .frame(width: 138, alignment: .leading)
                 Text("\(Int(alternate.distanceNM.rounded())) NM")
                     .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
-                    .frame(width: 45, alignment: .trailing)
+                    .frame(width: 40, alignment: .trailing)
                 Text(alternate.flightTimeText)
                     .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
-                    .frame(width: 46, alignment: .trailing)
-                Text("RWY \(alternate.runwayDirection)")
+                    .frame(width: 42, alignment: .trailing)
+                Text("\(alternate.fuelLiters) L")
                     .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
-                    .frame(width: 58, alignment: .trailing)
+                    .foregroundStyle(Color.green)
+                    .frame(width: 32, alignment: .trailing)
+                alternateRunway(alternate)
+                    .frame(width: 64, alignment: .trailing)
                 Text("\(alternate.runwayLengthMeters) m")
                     .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
-                    .frame(width: 50, alignment: .trailing)
+                    .frame(width: 46, alignment: .trailing)
                 Text(alternate.surface)
                     .font(.system(size: dense ? 6 : 6.8, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                    .frame(width: 62, alignment: .leading)
+                    .frame(width: 54, alignment: .leading)
             }
 
             HStack(spacing: 4) {
                 Color.clear.frame(width: 32, height: 1)
-                Circle()
-                    .fill(alternate.weatherLevel.color)
-                    .frame(width: 4, height: 4)
-                weatherCell(alternate.weatherCategory, width: 40)
-                weatherCell(alternate.weatherCondition, width: 72)
-                weatherCell(alternate.weatherCloudVisibility, width: 130)
-                weatherCell(alternate.weatherWind, width: 82)
+                HStack(spacing: 2) {
+                    Circle()
+                        .fill(alternate.weatherLevel.color)
+                        .frame(width: 4, height: 4)
+                    weatherCell(alternate.weatherCategory, width: 34)
+                    weatherCell(alternate.weatherCondition, width: 58)
+                    weatherCell(alternate.weatherCloudVisibility, width: 160)
+                }
+                .frame(width: 264, alignment: .leading)
+                weatherCell(alternate.weatherWind, width: 64)
+                Color.clear.frame(width: 104, height: 1)
             }
         }
         .padding(.vertical, 0.5)
@@ -987,6 +997,39 @@ private struct FlybriefAlternatesMemo: View {
                 .fill(FlybookColor.line.opacity(0.45))
                 .frame(height: 0.5)
         }
+    }
+
+    private func alternateRunway(
+        _ alternate: FlybriefAlternateSnapshot
+    ) -> some View {
+        HStack(spacing: 1) {
+            Text("RWY")
+                .foregroundStyle(FlybookColor.muted)
+            let ends = alternate.runwayDirection.split(separator: "/").map(String.init)
+            ForEach(Array(ends.enumerated()), id: \.offset) { index, end in
+                if index > 0 {
+                    Text("/")
+                        .foregroundStyle(FlybookColor.navy)
+                }
+                Text(end)
+                    .foregroundStyle(
+                        alternate.preferredRunway?.uppercased() == end.uppercased()
+                            ? Color.white
+                            : FlybookColor.navy
+                    )
+                    .padding(.horizontal, 1.5)
+                    .padding(.vertical, 0.5)
+                    .background(
+                        Capsule().fill(
+                            alternate.preferredRunway?.uppercased() == end.uppercased()
+                                ? FlybookColor.blue
+                                : Color.clear
+                        )
+                    )
+            }
+        }
+        .font(.system(size: dense ? 5.8 : 6.7, weight: .black, design: .monospaced))
+        .lineLimit(1)
     }
 
     private func weatherCell(_ text: String, width: CGFloat) -> some View {

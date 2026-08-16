@@ -39,11 +39,14 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("EHRD"))
         XCTAssertTrue(text.contains("2.200 m"))
         XCTAssertTrue(text.contains("Asphalt"))
-        XCTAssertTrue(text.contains("06/24"))
+        XCTAssertTrue(text.contains("RWY"))
+        XCTAssertTrue(text.contains("06"))
+        XCTAssertTrue(text.contains("24"))
         XCTAssertTrue(text.contains("VFR"))
         XCTAssertTrue(text.contains("Heiter"))
         XCTAssertTrue(text.contains("FLUGZEIT"))
         XCTAssertTrue(text.contains("0:17"))
+        XCTAssertTrue(text.contains("8 L"))
         XCTAssertTrue(text.contains("Erstellt:"))
         XCTAssertTrue(text.contains("TEILSTRECKE 1/3"))
         XCTAssertTrue(text.contains("EDXE"))
@@ -277,9 +280,11 @@ final class FlybriefPDFTests: XCTestCase {
                 name: "Rotterdam",
                 distanceNM: 31,
                 flightTimeText: "0:17",
+                fuelLiters: 8,
                 runwayLengthMeters: 2200,
                 surface: "Asphalt",
                 runwayDirection: "06/24",
+                preferredRunway: "24",
                 weatherText: "VFR · Heiter · SCT 3500 / 10km+ · 290°/14 kt",
                 weatherCategory: "VFR",
                 weatherCondition: "Heiter",
@@ -292,9 +297,11 @@ final class FlybriefPDFTests: XCTestCase {
                 name: "Lelystad",
                 distanceNM: 34,
                 flightTimeText: "0:19",
+                fuelLiters: 9,
                 runwayLengthMeters: 1250,
                 surface: "Asphalt",
                 runwayDirection: "05/23",
+                preferredRunway: "23",
                 weatherText: "MVFR · Regen · BKN 1800 / 8km · 280°/18 kt",
                 weatherCategory: "MVFR",
                 weatherCondition: "Regen",
@@ -307,9 +314,11 @@ final class FlybriefPDFTests: XCTestCase {
                 name: "Hilversum",
                 distanceNM: 36,
                 flightTimeText: "0:20",
+                fuelLiters: 9,
                 runwayLengthMeters: 700,
                 surface: "Gras",
                 runwayDirection: "07/25",
+                preferredRunway: "25",
                 weatherText: "VFR · Bedeckt · SCT 3000 / 10km+ · 270°/12 kt",
                 weatherCategory: "VFR",
                 weatherCondition: "Bedeckt",

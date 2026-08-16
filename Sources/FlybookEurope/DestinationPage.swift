@@ -2331,6 +2331,7 @@ struct DestinationPage: View {
             alternates: flybriefAlternates(
                 for: destination,
                 at: arrivalInstant,
+                altitudeFeet: altitudeFeet,
                 forecasts: stopForecasts
             )
         )
@@ -2339,6 +2340,7 @@ struct DestinationPage: View {
     private func flybriefAlternates(
         for destination: AirportReference,
         at instant: Date,
+        altitudeFeet: Int,
         forecasts: [String: EDFZForecast]
     ) -> [FlybriefAlternateSnapshot] {
         flybriefAlternateCandidates(for: destination).map { candidate in
@@ -2352,22 +2354,40 @@ struct DestinationPage: View {
                 airport: candidate.reference,
                 instant: instant
             )
+            let flightMinutes = Int(ceil(
+                candidate.distanceNM
+                    / max(1, cruiseGroundSpeedKnots)
+                    * 60
+            ))
+            let fuelFlow = AircraftProfileStore.fuelConsumption(
+                for: selectedAircraft,
+                atPressureAltitudeFeet: Double(altitudeFeet)
+            )
+            let preferredRunway: String?
+            if let direction = sample?.windDirectionDegrees,
+               let speed = sample?.windSpeedKnots,
+               speed >= 0.5 {
+                preferredRunway = EDFZRunway.activeRunway(
+                    for: candidate.reference.icao,
+                    referenceRunway: candidate.reference.referenceRunway,
+                    windFromDegrees: direction,
+                    speedKnots: speed
+                )
+            } else {
+                preferredRunway = nil
+            }
             return FlybriefAlternateSnapshot(
                 icao: candidate.reference.icao,
                 name: candidate.reference.name,
                 distanceNM: candidate.distanceNM,
-                flightTimeText: FlightMath.duration(
-                    Int(ceil(
-                        candidate.distanceNM
-                            / max(1, cruiseGroundSpeedKnots)
-                            * 60
-                    ))
-                ),
+                flightTimeText: FlightMath.duration(flightMinutes),
+                fuelLiters: Int(ceil(Double(flightMinutes) / 60 * fuelFlow)),
                 runwayLengthMeters: candidate.destination.runwayM,
                 surface: candidate.destination.surface.isEmpty
                     ? "–"
                     : candidate.destination.surface,
                 runwayDirection: candidate.reference.referenceRunway ?? "–",
+                preferredRunway: preferredRunway,
                 weatherText: [
                     weather.category,
                     weather.condition,
@@ -2739,7 +2759,8 @@ struct DestinationPage: View {
         ) ?? .eu
         let cloudVisibility = AviationWeatherText.cloudAndVisibility(
             lowCloudCoverPercent: sample?.lowCloudCoverPercent,
-            lowestCloudBaseFeet: sample?.lowestCloudBaseFeetAGL,
+            lowestCloudBaseFeet: sample?.lowestCloudBaseFeetAGL
+                ?? sample?.ceilingFeetAGL,
             visibilityMeters: sample?.visibilityMeters,
             unitSystem: unitSystem
         )
@@ -6016,7 +6037,8 @@ private struct PlanningWeatherCard: View {
     private var metarCloudAndVisibility: String {
         AviationWeatherText.cloudAndVisibility(
             lowCloudCoverPercent: weather.lowCloudCoverPercent,
-            lowestCloudBaseFeet: weather.lowestCloudBaseFeet,
+            lowestCloudBaseFeet: weather.lowestCloudBaseFeet
+                ?? weather.ceilingFeet,
             visibilityMeters: weather.visibilityMeters,
             unitSystem:
                 DisplayUnitSystem(rawValue: displayUnitSystemRaw) ?? .eu

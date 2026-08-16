@@ -11,7 +11,7 @@
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
 - Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich:
-  199 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
+  201 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
 - Hin- und Rückflug besitzen ein editierbares TOW-Feld mit MTOW als
   Ausgangswert. Für A211/DEUKS/DEZHS werden Start- und Landestrecken aus den
   offiziellen POH-Ausgangswerten mit Dichtehöhe, Gewicht und Pistenwind
@@ -92,6 +92,13 @@
   Ausrichtung und Prognose zur Zielankunft. Wegen dieser zusätzlichen
   sicherheitsrelevanten Angaben werden Multi-Stop-Hauptflüge nicht mehr auf
   eine gemeinsame Wetterseite zusammengepresst.
+- Wolkenangaben im Flybrief enthalten bei SCT/BKN/OVC stets die verfügbare
+  direkte Ceiling-/Wolkenbasis; fehlt der Fremdquelle der Höhenwert, wird dies
+  ausdrücklich mit `Höhe ?` kenntlich gemacht. Im Alternate-Memo stehen Wind
+  und Runway exakt untereinander, die rechnerisch bevorzugte Pistenrichtung
+  ist blau markiert und der bis zum Alternate benötigte Kraftstoff wird mit
+  dem höhenabhängigen Profilverbrauch sicherheitsseitig auf volle Liter
+  aufgerundet.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.

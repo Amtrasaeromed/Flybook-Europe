@@ -87,7 +87,14 @@ enum AviationWeatherText {
                 "\(Int(($0 / 100).rounded()) * 100)"
             }
             : nil
-        let cloudText = base.map { "\(cloud) \($0)" } ?? cloud
+        let cloudText: String
+        if let base {
+            cloudText = "\(cloud) \(base)"
+        } else if showsCloudBase {
+            cloudText = "\(cloud) Höhe ?"
+        } else {
+            cloudText = cloud
+        }
 
         guard let visibilityMeters else {
             return "\(cloudText) / —"
