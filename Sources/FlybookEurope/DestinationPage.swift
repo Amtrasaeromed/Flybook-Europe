@@ -259,8 +259,37 @@ struct DestinationPage: View {
     }
 
     private var destinationVATPercent: Double? {
-        let code = refuelAirport.country.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        vatPercent(for: refuelAirport.country)
+    }
+
+    private func vatPercent(for country: String) -> Double? {
+        let code = country.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return ["DE":19,"DEUTSCHLAND":19,"NL":21,"NIEDERLANDE":21,"DK":25,"DÄNEMARK":25,"CZ":21,"TSCHECHIEN":21,"FR":20,"FRANKREICH":20,"AT":20,"ÖSTERREICH":20,"CH":8.1,"SCHWEIZ":8.1,"SI":22,"SLOWENIEN":22,"HR":25,"KROATIEN":25,"IT":22,"ITALIEN":22][code]
+    }
+
+    private var fuelPlanAirportFuelData: [String: FuelPlanAirportFuelData] {
+        availableDestinations.reduce(into: [:]) { result, airport in
+            result[airport.icao] = FuelPlanAirportFuelData(
+                country: airport.country,
+                avgasAvailability: airport.avgas,
+                ul91Availability: airport.ul91,
+                mogasAvailability: airport.mogas,
+                avgasPriceEUR: airport.avgasPricePerLiterEUR,
+                ul91PriceEUR: airport.ul91PricePerLiterEUR,
+                mogasPriceEUR: airport.mogasPricePerLiterEUR,
+                vatPercent: vatPercent(for: airport.country)
+            )
+        }
+    }
+
+    private var fuelPlanSelectedFuelBinding: Binding<String> {
+        Binding(
+            get: { selectedRefuelFuelRaw },
+            set: {
+                selectedRefuelFuelRaw = $0
+                manualRefuelPrice = nil
+            }
+        )
     }
 
     private var refuelLossEUR: Double? {
@@ -3481,8 +3510,10 @@ struct DestinationPage: View {
             VStack(spacing: 12) {
                 HStack(spacing: 9) {
                     Text("FLUGPLAN")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
                             Button(FlightPlanningMode.roundTrip.rawValue) {
                                 flightPlanningMode = .roundTrip
@@ -3667,9 +3698,13 @@ struct DestinationPage: View {
                 usableFuelLiters: usableFuel,
                 aircraftName: selectedAircraft.displayName,
                 airportNames: fuelPlanAirportNames,
+                airportFuelData: fuelPlanAirportFuelData,
+                preferredFuel: preferredFuel,
+                homeReferencePriceEUR: homeReferencePrice,
                 startingFuelLiters: $startingFuelLiters,
                 charterRefuelLiters: $refuelLiters,
                 charterRefuelAirportICAO: $refuelAirportICAO,
+                selectedFuelRaw: fuelPlanSelectedFuelBinding,
                 onConfirm: { confirmedFuelPlan = $0 }
             )
         }
@@ -3826,7 +3861,7 @@ struct DestinationPage: View {
 
                 DestinationRefuelCalculationRow(
                     airportICAO: refuelAirport.icao,
-                    selectedFuelRaw: $selectedRefuelFuelRaw,
+                    selectedFuelRaw: selectedRefuelFuelRaw,
                     knownPrice: price(selectedRefuelFuel, at: refuelAirport),
                     manualPrice: $manualRefuelPrice,
                     liters: $refuelLiters,
@@ -8967,7 +9002,7 @@ private enum CalculationGrid {
 
 private struct DestinationRefuelCalculationRow: View {
     let airportICAO: String
-    @Binding var selectedFuelRaw: String
+    let selectedFuelRaw: String
     let knownPrice: Double?
     @Binding var manualPrice: Double?
     @Binding var liters: Double
@@ -8995,16 +9030,10 @@ private struct DestinationRefuelCalculationRow: View {
                     .foregroundStyle(FlybookColor.navy)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Picker("Kraftstoff", selection: $selectedFuelRaw) {
-                    ForEach(AircraftFuelType.allCases) { fuel in
-                        Text(fuel.rawValue).tag(fuel.rawValue)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(width: CalculationGrid.labelWidth)
-                .onChange(of: selectedFuelRaw) { _ in manualPrice = nil }
+                Text(selectedFuelRaw)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(FlybookColor.muted)
+                    .lineLimit(1)
             }
             .frame(width: CalculationGrid.labelWidth)
 
@@ -9643,10 +9672,11 @@ private struct CalculationRow: View {
             HStack(alignment: .top, spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(FlybookColor.navy)
                         .lineLimit(1)
                         .allowsTightening(true)
+                        .minimumScaleFactor(0.75)
 
                     Text(stopLabel)
                         .font(.system(size: 13, weight: .semibold))

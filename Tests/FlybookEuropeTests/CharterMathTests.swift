@@ -336,6 +336,10 @@ final class CharterMathTests: XCTestCase {
             knownTotalEUR: 0,
             unknownICAOs: ["ZZZZ"]
         )
+        let partialFeeQuote = AirportLandingFeeQuote(
+            knownTotalEUR: 9,
+            unknownICAOs: ["ZZZZ"]
+        )
 
         XCTAssertEqual(
             AirportLandingFeeDisplay.text(
@@ -363,6 +367,13 @@ final class CharterMathTests: XCTestCase {
                 for: freeVoucherQuote,
                 isEnabled: true
             ).isEmpty
+        )
+        XCTAssertEqual(
+            AirportLandingFeeDisplay.text(
+                for: partialFeeQuote,
+                isEnabled: true
+            ),
+            "9 € + ?"
         )
     }
 

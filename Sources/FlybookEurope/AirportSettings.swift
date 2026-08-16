@@ -2018,8 +2018,17 @@ enum AirportLandingFeeDisplay {
         isEnabled: Bool
     ) -> String {
         guard isEnabled else { return "" }
-        guard let total = quote.totalEUR else { return "?" }
-        return total
+        if quote.hasUnknownFees {
+            guard quote.knownTotalEUR > 0 else { return "?" }
+            return quote.knownTotalEUR
+                .rounded(.toNearestOrAwayFromZero)
+                .formatted(
+                    .currency(code: "EUR")
+                        .locale(Locale(identifier: "de_DE"))
+                        .precision(.fractionLength(0))
+                ) + " + ?"
+        }
+        return quote.knownTotalEUR
             .rounded(.toNearestOrAwayFromZero)
             .formatted(
                 .currency(code: "EUR")

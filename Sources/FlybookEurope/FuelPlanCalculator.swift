@@ -53,6 +53,57 @@ struct FuelPlanTransfer: Equatable {
     let refuelLiters: Double
 }
 
+enum FuelPlanFuelAvailability: Equatable {
+    case available
+    case unknown
+    case unavailable
+
+    init(_ rawValue: String) {
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if value.hasPrefix("nein") || value == "no" {
+            self = .unavailable
+        } else if value == "?" || value.isEmpty {
+            self = .unknown
+        } else {
+            self = .available
+        }
+    }
+}
+
+struct FuelPlanAirportFuelData {
+    let country: String
+    let avgasAvailability: String
+    let ul91Availability: String
+    let mogasAvailability: String
+    let avgasPriceEUR: Double?
+    let ul91PriceEUR: Double?
+    let mogasPriceEUR: Double?
+    let vatPercent: Double?
+
+    func availability(for fuel: AircraftFuelType) -> FuelPlanFuelAvailability {
+        switch fuel {
+        case .avgas: return FuelPlanFuelAvailability(avgasAvailability)
+        case .ul91: return FuelPlanFuelAvailability(ul91Availability)
+        case .ul94: return .unknown
+        case .mogas: return FuelPlanFuelAvailability(mogasAvailability)
+        }
+    }
+
+    func price(for fuel: AircraftFuelType) -> Double? {
+        switch fuel {
+        case .avgas: return avgasPriceEUR
+        case .ul91: return ul91PriceEUR
+        case .ul94: return nil
+        case .mogas: return mogasPriceEUR
+        }
+    }
+
+    var isForeign: Bool {
+        !["DE", "DEUTSCHLAND"].contains(country.uppercased())
+    }
+}
+
 struct FuelPlanConfirmation: Equatable {
     let aircraftName: String
     let reserveMinutes: Int
@@ -136,30 +187,37 @@ enum FuelPlanCalculator {
             )
         }
 
-        let capacity = max(0, usableFuelLiters)
-        let startFuel = max(0, startingFuelLiters)
-        let addedFuel = max(0, refuelLiters)
+        // Der sichtbare Tankplan rechnet bewusst nur mit konservativen ganzen
+        // Litern: Verbrauch und Reserve aufwärts, vorhandener Kraftstoff
+        // abwärts. So stimmt jede angezeigte Subtraktion exakt und bleibt auf
+        // der sicheren Seite.
+        let capacity = floor(max(0, usableFuelLiters) + 0.000_001)
+        let startFuel = floor(max(0, startingFuelLiters) + 0.000_001)
+        let addedFuel = floor(max(0, refuelLiters) + 0.000_001)
+        let burns = legs.map {
+            Double(roundedLitersForDisplay($0.burnLiters))
+        }
         let validRefuelIndex = refuelAfterLegIndex.flatMap {
             legs.indices.contains($0) && $0 < legs.count - 1 ? $0 : nil
         }
         let reserveHours = Double(max(0, reserveMinutes)) / 60
         let finalReserve = legs.last.map {
-            max(0, $0.consumptionLitersPerHour) * reserveHours
+            ceil(max(0, $0.consumptionLitersPerHour) * reserveHours - 0.000_001)
         } ?? 0
 
         var minimumDepartures = Array(repeating: 0.0, count: legs.count)
         var minimumArrivals = Array(repeating: 0.0, count: legs.count)
 
         func fillStage(_ range: ClosedRange<Int>) {
-            let stageReserve = max(
+            let stageReserve = ceil(max(
                 0,
                 legs[range.upperBound].consumptionLitersPerHour
-            ) * reserveHours
+            ) * reserveHours - 0.000_001)
             var requiredArrival = stageReserve
             for index in range.reversed() {
                 minimumArrivals[index] = requiredArrival
                 minimumDepartures[index] = requiredArrival
-                    + legs[index].burnLiters
+                    + burns[index]
                 requiredArrival = minimumDepartures[index]
             }
         }
@@ -175,7 +233,7 @@ enum FuelPlanCalculator {
         let fuelAtRefuelBeforeAdding: Double
         if let refuelIndex = validRefuelIndex {
             let burnedBeforeRefuel = legs[0...refuelIndex]
-                .reduce(0) { $0 + $1.burnLiters }
+                .indices.reduce(0) { $0 + burns[$1] }
             fuelAtRefuelBeforeAdding = max(0, startFuel - burnedBeforeRefuel)
         } else {
             fuelAtRefuelBeforeAdding = 0
@@ -195,9 +253,9 @@ enum FuelPlanCalculator {
 
         for index in legs.indices {
             let departure = plannedFuel
-            let arrival = departure - legs[index].burnLiters
-            stageBurn += legs[index].burnLiters
-            if departure + 0.000_1 < legs[index].burnLiters {
+            let arrival = departure - burns[index]
+            stageBurn += burns[index]
+            if departure + 0.000_1 < burns[index] {
                 hasFuelExhaustion = true
             }
             let addition = index == validRefuelIndex ? addedFuel : 0
@@ -256,9 +314,13 @@ struct FuelPlanCalculatorView: View {
     let usableFuelLiters: Double
     let aircraftName: String
     let airportNames: [String: String]
+    let airportFuelData: [String: FuelPlanAirportFuelData]
+    let preferredFuel: AircraftFuelType
+    let homeReferencePriceEUR: Double?
     @Binding var startingFuelLiters: Double
     @Binding var charterRefuelLiters: Double
     @Binding var charterRefuelAirportICAO: String
+    @Binding var selectedFuelRaw: String
     let onConfirm: (FuelPlanConfirmation) -> Void
 
     @State private var refuelAfterLegIndex: Int?
@@ -271,6 +333,42 @@ struct FuelPlanCalculatorView: View {
         return Array(legs.indices.dropLast()).filter {
             legs[$0].destinationICAO == legs[$0 + 1].originICAO
         }
+    }
+
+    private var selectedFuel: AircraftFuelType {
+        AircraftFuelType(rawValue: selectedFuelRaw) ?? preferredFuel
+    }
+
+    private var selectedRefuelAirportICAO: String? {
+        guard let index = refuelAfterLegIndex, legs.indices.contains(index)
+        else { return nil }
+        return legs[index].destinationICAO
+    }
+
+    private var selectedAirportFuelData: FuelPlanAirportFuelData? {
+        selectedRefuelAirportICAO.flatMap { airportFuelData[$0] }
+    }
+
+    private var selectedFuelAvailability: FuelPlanFuelAvailability {
+        selectedAirportFuelData?.availability(for: selectedFuel) ?? .unknown
+    }
+
+    private var preferredFuelAvailability: FuelPlanFuelAvailability {
+        selectedAirportFuelData?.availability(for: preferredFuel) ?? .unknown
+    }
+
+    private var refuelSurchargeEUR: Double? {
+        guard refuelAfterLegIndex != nil else { return 0 }
+        guard selectedFuelAvailability != .unavailable,
+              let data = selectedAirportFuelData
+        else { return nil }
+        return CharterMath.refuelLoss(
+            grossPricePerLiter: data.price(for: selectedFuel),
+            homeReferencePerLiter: homeReferencePriceEUR,
+            liters: refuelLiters,
+            destinationVATPercent: data.vatPercent,
+            isForeign: data.isForeign
+        )
     }
 
     private var result: FuelPlanResult {
@@ -298,9 +396,9 @@ struct FuelPlanCalculatorView: View {
 
     private var startFuelBinding: Binding<Double> {
         Binding(
-            get: { startingFuelLiters },
+            get: { floor(max(0, startingFuelLiters) + 0.000_001) },
             set: { newValue in
-                startingFuelLiters = max(0, newValue)
+                startingFuelLiters = floor(max(0, newValue) + 0.000_001)
                 didTransferRefuel = false
                 if followsMinimumRefuel {
                     refuelLiters = roundedUpMinimumRefuel(
@@ -314,10 +412,10 @@ struct FuelPlanCalculatorView: View {
 
     private var refuelBinding: Binding<Double> {
         Binding(
-            get: { refuelLiters },
+            get: { ceil(max(0, refuelLiters) - 0.000_001) },
             set: {
                 followsMinimumRefuel = false
-                refuelLiters = max(0, $0)
+                refuelLiters = ceil(max(0, $0) - 0.000_001)
                 didTransferRefuel = false
             }
         )
@@ -344,9 +442,13 @@ struct FuelPlanCalculatorView: View {
         usableFuelLiters: Double,
         aircraftName: String,
         airportNames: [String: String] = [:],
+        airportFuelData: [String: FuelPlanAirportFuelData] = [:],
+        preferredFuel: AircraftFuelType = .mogas,
+        homeReferencePriceEUR: Double? = nil,
         startingFuelLiters: Binding<Double>,
         charterRefuelLiters: Binding<Double> = .constant(0),
         charterRefuelAirportICAO: Binding<String> = .constant(""),
+        selectedFuelRaw: Binding<String> = .constant(AircraftFuelType.mogas.rawValue),
         initialRefuelAfterLegIndex: Int? = nil,
         initialRefuelLiters: Double = 0,
         onConfirm: @escaping (FuelPlanConfirmation) -> Void = { _ in }
@@ -356,9 +458,13 @@ struct FuelPlanCalculatorView: View {
         self.usableFuelLiters = usableFuelLiters
         self.aircraftName = aircraftName
         self.airportNames = airportNames
+        self.airportFuelData = airportFuelData
+        self.preferredFuel = preferredFuel
+        self.homeReferencePriceEUR = homeReferencePriceEUR
         _startingFuelLiters = startingFuelLiters
         _charterRefuelLiters = charterRefuelLiters
         _charterRefuelAirportICAO = charterRefuelAirportICAO
+        _selectedFuelRaw = selectedFuelRaw
         self.onConfirm = onConfirm
         _refuelAfterLegIndex = State(initialValue: initialRefuelAfterLegIndex)
         _refuelLiters = State(initialValue: max(0, initialRefuelLiters))
@@ -508,18 +614,20 @@ struct FuelPlanCalculatorView: View {
     }
 
     private var tableGroupHeader: some View {
-        HStack(spacing: 8) {
-            Color.clear.frame(width: 200, height: 20)
-            tableGroupTitle("MINIMUM", width: 240)
+        HStack(spacing: 6) {
+            Color.clear.frame(width: 190, height: 20)
+            tableGroupTitle("MINIMUM", width: 209)
             tableSeparator(height: 20)
             tableGroupTitle(
                 "PLAN",
-                width: 270,
+                width: 235,
                 emphasized: true
             )
             tableSeparator(height: 20)
-            tableGroupTitle("VERBRAUCH", width: 92)
-            tableGroupTitle("ZEIT", width: 62)
+            tableGroupTitle("VERBRAUCH", width: 80)
+            tableGroupTitle("ZEIT", width: 52)
+            tableSeparator(height: 20)
+            tableGroupTitle("MEHRPREIS", width: 78)
         }
         .padding(.horizontal, 12)
         .frame(height: 25)
@@ -527,17 +635,19 @@ struct FuelPlanCalculatorView: View {
     }
 
     private var tableHeader: some View {
-        HStack(spacing: 8) {
-            tableHeading("ABSCHNITT", width: 200, alignment: .leading)
-            tableHeading("MINIMUM T/O", width: 112)
-            tableHeading("MINIMUM LDG", width: 120)
+        HStack(spacing: 6) {
+            tableHeading("ABSCHNITT", width: 190, alignment: .leading)
+            tableHeading("MINIMUM T/O", width: 98)
+            tableHeading("MINIMUM LDG", width: 105)
             tableSeparator(height: 26)
-            tableHeading("GEPLANT T/O", width: 112, emphasized: true)
-            Color.clear.frame(width: 20, height: 1)
-            tableHeading("GEPLANT LDG", width: 122, emphasized: true)
+            tableHeading("GEPLANT T/O", width: 100, emphasized: true)
+            Color.clear.frame(width: 18, height: 1)
+            tableHeading("GEPLANT LDG", width: 105, emphasized: true)
             tableSeparator(height: 26)
-            tableHeading("LEG / GESAMT", width: 92)
-            tableHeading("ZEIT", width: 62)
+            tableHeading("LEG / GESAMT", width: 80)
+            tableHeading("ZEIT", width: 52)
+            tableSeparator(height: 26)
+            tableHeading("BETRAG", width: 78)
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
@@ -549,21 +659,21 @@ struct FuelPlanCalculatorView: View {
             || row.plannedArrivalLiters + 0.000_1
                 < row.minimumArrivalLiters
             || row.plannedDepartureLiters > usableFuelLiters + 0.000_1
-        return HStack(spacing: 8) {
+        return HStack(spacing: 6) {
             Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
                 .font(.system(size: 14, weight: .bold))
-            .frame(width: 200, alignment: .leading)
+            .frame(width: 190, alignment: .leading)
 
             tableValue(
                 liters(row.minimumDepartureLiters),
-                width: 112,
+                width: 98,
                 minimumTakeoff: true
             )
-            tableValue(liters(row.minimumArrivalLiters), width: 120)
+            tableValue(liters(row.minimumArrivalLiters), width: 105)
             tableSeparator(height: 32)
             tableValue(
                 liters(row.plannedDepartureLiters),
-                width: 112,
+                width: 100,
                 emphasized: true,
                 warning: row.plannedDepartureLiters + 0.000_1
                     < row.minimumDepartureLiters
@@ -572,17 +682,19 @@ struct FuelPlanCalculatorView: View {
             Image(systemName: "arrow.right")
                 .font(.system(size: 11, weight: .heavy))
                 .foregroundStyle(FlybookColor.blue)
-                .frame(width: 20)
+                .frame(width: 18)
             tableValue(
                 liters(row.plannedArrivalLiters),
-                width: 122,
+                width: 105,
                 emphasized: true,
                 warning: row.plannedArrivalLiters + 0.000_1
                     < row.minimumArrivalLiters
             )
             tableSeparator(height: 32)
-            tableValue(stageBurnText(row), width: 92)
-            tableValue(FlightMath.duration(row.leg.flightMinutes), width: 62)
+            tableValue(stageBurnText(row), width: 80)
+            tableValue(FlightMath.duration(row.leg.flightMinutes), width: 52)
+            tableSeparator(height: 32)
+            Color.clear.frame(width: 78, height: 1)
         }
         .foregroundStyle(FlybookColor.navy)
         .padding(.horizontal, 12)
@@ -591,7 +703,7 @@ struct FuelPlanCalculatorView: View {
     }
 
     private func tankStopRow(row: FuelPlanRow) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Label(
                 refuelingStopName(for: row.leg.destinationICAO),
                 systemImage: "fuelpump.fill"
@@ -599,21 +711,78 @@ struct FuelPlanCalculatorView: View {
             .font(.system(size: 13, weight: .heavy))
             .lineLimit(1)
             .minimumScaleFactor(0.65)
-            .frame(width: 200, alignment: .leading)
+            .foregroundStyle(refuelingAirportColor)
+            .help(fuelAvailabilityWarning ?? "Bevorzugter Kraftstoff verfügbar")
+            .frame(width: 190, alignment: .leading)
 
-            Color.clear.frame(width: 112, height: 1)
-            Color.clear.frame(width: 120, height: 1)
+            fuelPicker
+                .frame(width: 98)
+            Color.clear.frame(width: 105, height: 1)
             tableSeparator(height: 32)
             refuelPlanControl(row: row)
-                .frame(width: 270)
+                .frame(width: 235)
             tableSeparator(height: 32)
-            Color.clear.frame(width: 92, height: 1)
-            Color.clear.frame(width: 62, height: 1)
+            Color.clear.frame(width: 80, height: 1)
+            Color.clear.frame(width: 52, height: 1)
+            tableSeparator(height: 32)
+            refuelSurchargeView.frame(width: 78)
         }
         .padding(.horizontal, 12)
         .frame(height: tableTankStopRowHeight)
-        .foregroundStyle(FlybookColor.navy)
         .background(FlybookColor.blue.opacity(0.12))
+    }
+
+    private var fuelPicker: some View {
+        Picker("Kraftstoff", selection: $selectedFuelRaw) {
+            ForEach(AircraftFuelType.allCases) { fuel in
+                Text(fuel.rawValue).tag(fuel.rawValue)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .controlSize(.mini)
+        .onChange(of: selectedFuelRaw) { _ in didTransferRefuel = false }
+    }
+
+    private var refuelingAirportColor: Color {
+        switch preferredFuelAvailability {
+        case .available: return FlybookColor.navy
+        case .unknown: return .orange
+        case .unavailable: return .red
+        }
+    }
+
+    private var fuelAvailabilityWarning: String? {
+        guard refuelAfterLegIndex != nil else { return nil }
+        switch preferredFuelAvailability {
+        case .available:
+            return nil
+        case .unknown:
+            return "Verfügbarkeit von (preferredFuel.rawValue) ist an diesem Tankstopp unbekannt."
+        case .unavailable:
+            return "Bevorzugter Kraftstoff (preferredFuel.rawValue) ist an diesem Tankstopp nicht verfügbar."
+        }
+    }
+
+    @ViewBuilder
+    private var refuelSurchargeView: some View {
+        if let amount = refuelSurchargeEUR {
+            Text(amount <= 0.004 ? "0 €" : currency(amount))
+                .font(.system(size: 13, weight: .heavy, design: .monospaced))
+                .foregroundStyle(amount > 0.004 ? Color.red : FlybookColor.navy)
+        } else {
+            Text("?")
+                .font(.system(size: 15, weight: .heavy))
+                .foregroundStyle(.orange)
+        }
+    }
+
+    private func currency(_ amount: Double) -> String {
+        amount.rounded(.toNearestOrAwayFromZero).formatted(
+            .currency(code: "EUR")
+                .locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(0))
+        )
     }
 
     private func refuelPlanControl(row: FuelPlanRow) -> some View {
@@ -667,7 +836,7 @@ struct FuelPlanCalculatorView: View {
 
     @ViewBuilder
     private var warnings: some View {
-        if result.hasWarning {
+        if result.hasWarning || fuelAvailabilityWarning != nil {
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(warningMessages, id: \.self) { message in
                     Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -709,6 +878,9 @@ struct FuelPlanCalculatorView: View {
         if result.hasOverfill {
             messages.append("Der geplante Tankbestand überschreitet die nutzbare Tankkapazität.")
         }
+        if let fuelAvailabilityWarning {
+            messages.append(fuelAvailabilityWarning)
+        }
         return messages
     }
 
@@ -726,7 +898,7 @@ struct FuelPlanCalculatorView: View {
                 TextField(
                     "",
                     value: value,
-                    format: .number.precision(.fractionLength(1))
+                    format: .number.precision(.fractionLength(0))
                 )
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 14, weight: .bold, design: .monospaced))

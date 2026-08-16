@@ -24,6 +24,12 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertEqual(FuelPlanCalculator.roundedLitersForDisplay(-0.2), -1)
     }
 
+    func testFuelAvailabilityDistinguishesNoUnknownAndKnown() {
+        XCTAssertEqual(FuelPlanFuelAvailability("Nein"), .unavailable)
+        XCTAssertEqual(FuelPlanFuelAvailability("?"), .unknown)
+        XCTAssertEqual(FuelPlanFuelAvailability("Ja – nur PPR"), .available)
+    }
+
     func testTransferIncludesRefuelAirportAndSelectedQuantity() {
         XCTAssertEqual(
             FuelPlanCalculator.transfer(
@@ -105,6 +111,38 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertEqual(result.rows[2].minimumDepartureLiters, 25, accuracy: 0.001)
         XCTAssertEqual(result.rows[2].plannedArrivalLiters, 15, accuracy: 0.001)
         XCTAssertFalse(result.hasWarning)
+    }
+
+    func testVisibleWholeLiterPlanIsConservativeAndArithmeticallyExact() {
+        let fractionalLeg = FuelPlanLeg(
+            id: "fractional",
+            originICAO: "EDFZ",
+            destinationICAO: "EDKA",
+            flightMinutes: 64,
+            consumptionLitersPerHour: 21.5
+        )
+        let result = FuelPlanCalculator.calculate(
+            legs: [fractionalLeg],
+            reserveMinutes: 45,
+            usableFuelLiters: 98,
+            startingFuelLiters: 40.9,
+            refuelAfterLegIndex: nil,
+            refuelLiters: 0
+        )
+
+        let row = try! XCTUnwrap(result.rows.first)
+        XCTAssertEqual(row.plannedDepartureLiters, 40)
+        XCTAssertEqual(row.leg.burnLiters, 22.933_333, accuracy: 0.001)
+        XCTAssertEqual(row.stageBurnLiters, 23)
+        XCTAssertEqual(row.plannedArrivalLiters, 17)
+        XCTAssertEqual(
+            row.plannedDepartureLiters - row.stageBurnLiters,
+            row.plannedArrivalLiters
+        )
+        XCTAssertEqual(
+            row.minimumDepartureLiters - row.minimumArrivalLiters,
+            row.stageBurnLiters
+        )
     }
 
     func testRefuelAtBRequiresEnoughStartingFuelToReachBWithReserve() {
