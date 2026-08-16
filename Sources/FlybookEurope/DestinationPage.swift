@@ -8161,41 +8161,57 @@ private struct FlightPlanningLine<
                     Double(result.over50FeetMeters) / Double($0) * 100
                 ))
             }
-            HStack(spacing: 2) {
+            HStack(spacing: 8) {
                 if isDeparture {
-                    Text("T/O Roll")
-                    performanceValue(
+                    performanceMetric(
+                        label: "T/O Roll",
                         meters: result.rollMeters,
                         percentage: rollPercentage
                     )
-                    Text("· 50 ft")
-                    performanceValue(
+                    performanceMetric(
+                        label: "50 ft",
                         meters: result.over50FeetMeters,
                         percentage: fiftyFeetPercentage,
                         isFiftyFeet: true
                     )
                 } else {
-                    Text("50 ft")
-                    performanceValue(
+                    performanceMetric(
+                        label: "50 ft",
                         meters: result.over50FeetMeters,
                         percentage: fiftyFeetPercentage,
                         isFiftyFeet: true
                     )
-                    Text("· LDG Roll")
-                    performanceValue(
+                    performanceMetric(
+                        label: "LDG Roll",
                         meters: result.rollMeters,
                         percentage: rollPercentage
                     )
                 }
             }
-            .font(.system(size: 9.6, weight: .bold, design: .rounded))
-            .lineLimit(1)
-            .minimumScaleFactor(0.62)
+            .font(.system(size: 10.2, weight: .bold, design: .rounded))
         } else {
             Text(isDeparture ? "Takeoff Roll: –" : "Landing Roll: –")
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
         }
+    }
+
+    private func performanceMetric(
+        label: String,
+        meters: Int,
+        percentage: Int?,
+        isFiftyFeet: Bool = false
+    ) -> some View {
+        VStack(spacing: 1) {
+            Text(label)
+            performanceValue(
+                meters: meters,
+                percentage: percentage,
+                isFiftyFeet: isFiftyFeet
+            )
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private func performanceValue(
