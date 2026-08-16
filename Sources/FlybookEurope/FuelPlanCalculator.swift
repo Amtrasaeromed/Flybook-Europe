@@ -685,19 +685,17 @@ struct FuelPlanCalculatorView: View {
 
     private var tableGroupHeader: some View {
         HStack(spacing: 6) {
-            Color.clear.frame(width: 190, height: 20)
-            tableGroupTitle("MINIMUM", width: 209)
+            Color.clear.frame(width: 200, height: 20)
+            tableGroupTitle("MINIMUM", width: 238)
             tableSeparator(height: 20)
             tableGroupTitle(
                 "PLAN",
-                width: 235,
+                width: 270,
                 emphasized: true
             )
             tableSeparator(height: 20)
-            tableGroupTitle("VERBRAUCH", width: 80)
-            tableGroupTitle("ZEIT", width: 52)
-            tableSeparator(height: 20)
-            tableGroupTitle("MEHRPREIS", width: 78)
+            tableGroupTitle("VERBRAUCH", width: 92)
+            tableGroupTitle("ZEIT", width: 62)
         }
         .padding(.horizontal, 12)
         .frame(height: 25)
@@ -706,18 +704,16 @@ struct FuelPlanCalculatorView: View {
 
     private var tableHeader: some View {
         HStack(spacing: 6) {
-            tableHeading("ABSCHNITT", width: 190, alignment: .leading)
-            tableHeading("MINIMUM T/O", width: 98)
-            tableHeading("MINIMUM LDG", width: 105)
+            tableHeading("ABSCHNITT", width: 200, alignment: .leading)
+            tableHeading("MINIMUM T/O", width: 112)
+            tableHeading("MINIMUM LDG", width: 120)
             tableSeparator(height: 26)
-            tableHeading("GEPLANT T/O", width: 100, emphasized: true)
-            Color.clear.frame(width: 18, height: 1)
-            tableHeading("GEPLANT LDG", width: 105, emphasized: true)
+            tableHeading("GEPLANT T/O", width: 112, emphasized: true)
+            Color.clear.frame(width: 20, height: 1)
+            tableHeading("GEPLANT LDG", width: 122, emphasized: true)
             tableSeparator(height: 26)
-            tableHeading("LEG / GESAMT", width: 80)
-            tableHeading("ZEIT", width: 52)
-            tableSeparator(height: 26)
-            tableHeading("BETRAG", width: 78)
+            tableHeading("LEG / GESAMT", width: 92)
+            tableHeading("ZEIT", width: 62)
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
@@ -732,18 +728,18 @@ struct FuelPlanCalculatorView: View {
         return HStack(spacing: 6) {
             Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
                 .font(.system(size: 14, weight: .bold))
-            .frame(width: 190, alignment: .leading)
+            .frame(width: 200, alignment: .leading)
 
             tableValue(
                 liters(row.minimumDepartureLiters),
-                width: 98,
+                width: 112,
                 minimumTakeoff: true
             )
-            tableValue(liters(row.minimumArrivalLiters), width: 105)
+            tableValue(liters(row.minimumArrivalLiters), width: 120)
             tableSeparator(height: 32)
             tableValue(
                 liters(row.plannedDepartureLiters),
-                width: 100,
+                width: 112,
                 emphasized: true,
                 warning: row.plannedDepartureLiters + 0.000_1
                     < row.minimumDepartureLiters
@@ -752,19 +748,17 @@ struct FuelPlanCalculatorView: View {
             Image(systemName: "arrow.right")
                 .font(.system(size: 11, weight: .heavy))
                 .foregroundStyle(FlybookColor.blue)
-                .frame(width: 18)
+                .frame(width: 20)
             tableValue(
                 liters(row.plannedArrivalLiters),
-                width: 105,
+                width: 122,
                 emphasized: true,
                 warning: row.plannedArrivalLiters + 0.000_1
                     < row.minimumArrivalLiters
             )
             tableSeparator(height: 32)
-            tableValue(stageBurnText(row), width: 80)
-            tableValue(FlightMath.duration(row.leg.flightMinutes), width: 52)
-            tableSeparator(height: 32)
-            Color.clear.frame(width: 78, height: 1)
+            tableValue(stageBurnText(row), width: 92)
+            tableValue(FlightMath.duration(row.leg.flightMinutes), width: 62)
         }
         .foregroundStyle(FlybookColor.navy)
         .padding(.horizontal, 12)
@@ -786,35 +780,69 @@ struct FuelPlanCalculatorView: View {
                 fuelAvailabilityWarning(after: index)
                     ?? "Bevorzugter Kraftstoff verfügbar"
             )
-            .frame(width: 190, alignment: .leading)
+            .frame(width: 200, alignment: .leading)
 
-            fuelPicker
-                .frame(width: 98)
-            Color.clear.frame(width: 105, height: 1)
+            fuelPicker(index: index)
+                .frame(width: 112)
+            refuelSurchargeView(index: index)
+                .frame(width: 120)
             tableSeparator(height: 32)
             refuelPlanControl(index: index, row: row)
-                .frame(width: 235)
+                .frame(width: 270)
             tableSeparator(height: 32)
-            Color.clear.frame(width: 80, height: 1)
-            Color.clear.frame(width: 52, height: 1)
-            tableSeparator(height: 32)
-            refuelSurchargeView(index: index).frame(width: 78)
+            Color.clear.frame(width: 92, height: 1)
+            Color.clear.frame(width: 62, height: 1)
         }
         .padding(.horizontal, 12)
         .frame(height: tableTankStopRowHeight)
         .background(FlybookColor.blue.opacity(0.12))
     }
 
-    private var fuelPicker: some View {
+    private func fuelPicker(index: Int) -> some View {
         Picker("Kraftstoff", selection: $selectedFuelRaw) {
             ForEach(AircraftFuelType.allCases) { fuel in
-                Text(fuel.rawValue).tag(fuel.rawValue)
+                Text(fuel.rawValue)
+                    .font(
+                        .system(
+                            size: 12,
+                            weight: fuelOptionWeight(fuel, after: index)
+                        )
+                    )
+                    .foregroundStyle(fuelOptionColor(fuel, after: index))
+                    .tag(fuel.rawValue)
             }
         }
         .labelsHidden()
         .pickerStyle(.menu)
         .controlSize(.mini)
+        .font(
+            .system(
+                size: 12,
+                weight: fuelOptionWeight(selectedFuel, after: index)
+            )
+        )
+        .foregroundStyle(fuelOptionColor(selectedFuel, after: index))
         .onChange(of: selectedFuelRaw) { _ in didTransferRefuel = false }
+    }
+
+    private func fuelOptionWeight(
+        _ fuel: AircraftFuelType,
+        after index: Int
+    ) -> Font.Weight {
+        fuelData(after: index)?.availability(for: fuel) == .available
+            ? .bold
+            : .regular
+    }
+
+    private func fuelOptionColor(
+        _ fuel: AircraftFuelType,
+        after index: Int
+    ) -> Color {
+        switch fuelData(after: index)?.availability(for: fuel) ?? .unknown {
+        case .available: return FlybookColor.navy
+        case .unknown: return FlybookColor.muted
+        case .unavailable: return .red
+        }
     }
 
     private func refuelingAirportColor(after index: Int) -> Color {
