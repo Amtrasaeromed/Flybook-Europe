@@ -390,10 +390,11 @@ private struct FlybriefPDFPage: View {
     let pageCount: Int
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 4) {
             header
+                .fixedSize(horizontal: false, vertical: true)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 4) {
                 ForEach(legs) { leg in
                     FlybriefLegCard(
                         leg: leg,
@@ -404,9 +405,10 @@ private struct FlybriefPDFPage: View {
             .frame(maxHeight: .infinity, alignment: .top)
 
             footer
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 18)
+        .padding(.vertical, 5)
         .foregroundStyle(FlybookColor.navy)
     }
 
@@ -414,9 +416,9 @@ private struct FlybriefPDFPage: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(snapshot.title.uppercased())
-                    .font(.system(size: 22, weight: .black))
+                    .font(.system(size: 19, weight: .bold))
                 Text(snapshot.route)
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
                 Spacer()
                 Text(Self.date(snapshot.flightDate))
                     .font(.system(size: 10, weight: .black, design: .monospaced))
@@ -432,9 +434,9 @@ private struct FlybriefPDFPage: View {
                 headerValue("BASIS", snapshot.base)
             }
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 6)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(FlybookColor.navy).frame(height: 2)
+            Rectangle().fill(FlybookColor.navy.opacity(0.75)).frame(height: 1)
         }
     }
 
@@ -459,7 +461,7 @@ private struct FlybriefPDFPage: View {
 
     private var footer: some View {
         HStack(alignment: .bottom) {
-            Text("Planungshilfe - vor dem Flug AIP, NOTAM, Wetterbriefing, Masse/Schwerpunkt und Kraftstoff prüfen.")
+            Text("Planungshilfe · AIP, NOTAM, Wetter, Masse/Schwerpunkt und Kraftstoff prüfen.")
                 .font(.system(size: 7, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
             Spacer()
@@ -507,50 +509,39 @@ private struct FlybriefFuelPlanPDFPage: View {
     }
 
     private var header: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("FLYBOOK DISPATCH")
-                        .font(.system(size: 7, weight: .black))
-                        .tracking(1.3)
-                    Text("FUELPLAN / OPERATIONAL RELEASE")
-                        .font(.system(size: 18, weight: .black))
-                }
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("FUELPLAN")
+                    .font(.system(size: 20, weight: .bold))
+                Text(snapshot.route)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                 Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(snapshot.route)
-                        .font(.system(size: 13, weight: .black, design: .monospaced))
-                    Text("RELEASED " + timestamp(fuelPlan.confirmedAt))
-                        .font(.system(size: 6.8, weight: .bold, design: .monospaced))
-                }
+                Text("Bestätigt " + timestamp(fuelPlan.confirmedAt))
+                    .font(.system(size: 7.2, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(FlybookColor.muted)
             }
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, 12)
-            .frame(height: 52)
-            .background(FlybookColor.navy)
+
+            Rectangle()
+                .fill(FlybookColor.navy.opacity(0.75))
+                .frame(height: 1)
 
             HStack(spacing: 0) {
                 headerValue("FLUGZEUG", fuelPlan.aircraftName)
                 Spacer()
-                headerValue("ROUTE", snapshot.route)
+                headerValue("RESERVE", "\(fuelPlan.reserveMinutes) min")
                 Spacer()
-                headerValue("RESERVE POLICY", "\(fuelPlan.reserveMinutes) MIN")
+                headerValue("ZEITEN", snapshot.timeBasis)
                 Spacer()
-                headerValue("TIME BASIS", snapshot.timeBasis.uppercased())
-                Spacer()
-                headerValue("STATUS", fuelPlan.result.hasWarning ? "CHECK" : "RELEASED")
+                headerValue("NUTZBAR", liters(fuelPlan.usableFuelLiters))
             }
-            .padding(.horizontal, 10)
-            .frame(height: 34)
-            .background(Color.black.opacity(0.045))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .padding(.bottom, 2)
     }
 
     private var summary: some View {
         HStack(spacing: 8) {
             summaryBox(
-                "RELEASE FUEL",
+                "START PLAN",
                 liters(fuelPlan.startingFuelLiters),
                 emphasized: true
             )
@@ -559,17 +550,17 @@ private struct FlybriefFuelPlanPDFPage: View {
                 liters(fuelPlan.result.minimumStartingFuelLiters)
             )
             summaryBox(
-                "TRIP FUEL",
+                "FLUGVERBRAUCH",
                 liters(plannedTripFuel)
             )
             summaryBox(
-                "PLAN REFUEL",
+                "TANKEN PLAN",
                 plannedRefuelTotal <= 0
                     ? "–"
                     : liters(plannedRefuelTotal)
             )
             summaryBox(
-                "RESERVE ZIEL",
+                "RESERVE",
                 liters(fuelPlan.result.finalReserveLiters)
             )
         }
@@ -578,11 +569,10 @@ private struct FlybriefFuelPlanPDFPage: View {
     private var fuelTable: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("OPERATIONAL FUEL SCHEDULE")
-                    .font(.system(size: 8, weight: .black))
-                    .tracking(0.8)
+                Text("KRAFTSTOFFVERLAUF")
+                    .font(.system(size: 8, weight: .bold))
                 Spacer()
-                Text("ALL VALUES LITRES · CONSERVATIVE WHOLE-LITRE PLAN")
+                Text("Liter · konservativ auf ganze Liter gerundet")
                     .font(.system(size: 5.8, weight: .bold, design: .monospaced))
                     .foregroundStyle(FlybookColor.muted)
             }
@@ -591,15 +581,15 @@ private struct FlybriefFuelPlanPDFPage: View {
 
             HStack(spacing: 4) {
                 heading("ABSCHNITT", width: 110, alignment: .leading)
-                heading("MINIMUM T/O", width: 65)
-                heading("MINIMUM LDG", width: 65)
+                heading("MIN T/O", width: 65)
+                heading("MIN LDG", width: 65)
                 heading("PLAN T/O → LDG", width: 115)
                 heading("LEG / GESAMT", width: 85)
                 heading("ZEIT", width: 48)
             }
             .padding(.horizontal, 10)
             .frame(height: 30)
-            .background(FlybookColor.navy)
+            .background(Color.black.opacity(0.055))
 
             ForEach(Array(fuelPlan.result.rows.enumerated()), id: \.element.id) {
                 index, row in
@@ -614,10 +604,10 @@ private struct FlybriefFuelPlanPDFPage: View {
         }
         .background(Color.white)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(FlybookColor.navy.opacity(0.28), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 5)
+                .stroke(FlybookColor.line, lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 
     private func fuelRow(_ row: FuelPlanRow, index: Int) -> some View {
@@ -654,8 +644,8 @@ private struct FlybriefFuelPlanPDFPage: View {
             HStack(spacing: 5) {
                 Image(systemName: "fuelpump.fill")
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("REFUEL ACTION")
-                        .font(.system(size: 5.8, weight: .black))
+                    Text("TANKSTOP")
+                        .font(.system(size: 5.8, weight: .bold))
                     Text(refuelAirportName(row.leg.destinationICAO))
                         .font(.system(size: 8, weight: .black))
                 }
@@ -674,7 +664,7 @@ private struct FlybriefFuelPlanPDFPage: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 38)
-        .background(FlybookColor.blue.opacity(0.14))
+        .background(FlybookColor.blue.opacity(0.07))
     }
 
     private var plannedRefuelTotal: Double {
@@ -705,48 +695,35 @@ private struct FlybriefFuelPlanPDFPage: View {
         )
         .font(.system(size: 9, weight: .bold))
         .foregroundStyle(fuelPlan.result.hasWarning ? Color.red : Color.green)
-        .padding(.horizontal, 10)
-        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 5)
-                .fill((fuelPlan.result.hasWarning ? Color.red : Color.green).opacity(0.07))
-        )
+        .padding(.horizontal, 2)
+        .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
     }
 
     private var releaseNotes: some View {
         HStack(spacing: 8) {
-            releaseNote("CAPACITY", liters(fuelPlan.usableFuelLiters))
-            releaseNote("FINAL PLAN", fuelPlan.result.rows.last.map { liters($0.plannedArrivalLiters) } ?? "–")
-            releaseNote("RESERVE", liters(fuelPlan.result.finalReserveLiters))
-            VStack(alignment: .leading, spacing: 3) {
-                Text("PIC ACCEPTANCE")
-                    .font(.system(size: 6.2, weight: .black))
-                    .foregroundStyle(FlybookColor.muted)
-                Rectangle()
-                    .fill(FlybookColor.navy.opacity(0.45))
-                    .frame(height: 1)
-                Text("SIGN / TIME")
-                    .font(.system(size: 5.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(FlybookColor.muted)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
-            .frame(height: 42)
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(FlybookColor.line))
+            releaseNote("STARTBESTAND", liters(fuelPlan.startingFuelLiters))
+            releaseNote("VERBRAUCH", liters(plannedTripFuel))
+            releaseNote(
+                "ANKUNFT PLAN",
+                fuelPlan.result.rows.last.map {
+                    liters($0.plannedArrivalLiters)
+                } ?? "–"
+            )
+            releaseNote("MIN. RESERVE", liters(fuelPlan.result.finalReserveLiters))
         }
     }
 
     private func releaseNote(_ label: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.system(size: 6.2, weight: .black))
+                .font(.system(size: 6.2, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
             Text(text)
                 .font(.system(size: 9, weight: .black, design: .monospaced))
         }
         .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
         .padding(.horizontal, 8)
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(FlybookColor.line))
+        .overlay(Rectangle().stroke(FlybookColor.line, lineWidth: 0.8))
     }
 
     private var footer: some View {
@@ -788,18 +765,16 @@ private struct FlybriefFuelPlanPDFPage: View {
                 .font(.system(size: 6.5, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
             Text(text)
-                .font(.system(size: 13, weight: .black, design: .monospaced))
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
         }
         .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
         .padding(.horizontal, 7)
         .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(
-                    emphasized
-                        ? Color.yellow.opacity(0.22)
-                        : FlybookColor.blue.opacity(0.08)
-                )
+            emphasized
+                ? Color.yellow.opacity(0.12)
+                : Color.black.opacity(0.025)
         )
+        .overlay(Rectangle().stroke(FlybookColor.line.opacity(0.8), lineWidth: 0.6))
     }
 
     private func heading(
@@ -808,8 +783,8 @@ private struct FlybriefFuelPlanPDFPage: View {
         alignment: Alignment = .trailing
     ) -> some View {
         Text(text)
-            .font(.system(size: 6.5, weight: .black))
-            .foregroundStyle(Color.white)
+            .font(.system(size: 6.5, weight: .bold))
+            .foregroundStyle(FlybookColor.muted)
             .frame(width: width, alignment: alignment)
     }
 
@@ -820,17 +795,17 @@ private struct FlybriefFuelPlanPDFPage: View {
         plan: Bool = false
     ) -> some View {
         Text(text)
-            .font(.system(size: 8.5, weight: .black, design: .monospaced))
+            .font(.system(size: 8.5, weight: .bold, design: .monospaced))
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(width: width, height: 27, alignment: .trailing)
             .background(
-                RoundedRectangle(cornerRadius: 5)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(
                         minimum
-                            ? Color.yellow.opacity(0.20)
+                            ? Color.yellow.opacity(0.12)
                             : plan
-                                ? FlybookColor.blue.opacity(0.10)
+                                ? FlybookColor.blue.opacity(0.06)
                                 : Color.clear
                     )
             )
@@ -869,11 +844,11 @@ private struct FlybriefLegCard: View {
     let sharesPage: Bool
 
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 5) {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(leg.title.uppercased())
-                        .font(.system(size: 11, weight: .black))
+                        .font(.system(size: 11, weight: .bold))
                     Text("\(leg.dateText)  \(leg.routeText)")
                         .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                 }
@@ -883,7 +858,7 @@ private struct FlybriefLegCard: View {
                         .font(.system(size: 7.5, weight: .bold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(FlybookColor.blue.opacity(0.12)))
+                        .background(Capsule().fill(Color.black.opacity(0.045)))
                 }
 
                 Spacer()
@@ -903,7 +878,7 @@ private struct FlybriefLegCard: View {
             routeMetrics
 
             if leg.segments.count > 1 {
-                VStack(spacing: 7) {
+                VStack(spacing: 4) {
                     ForEach(leg.segments) { segment in
                         FlybriefSegmentCard(
                             segment: segment,
@@ -932,14 +907,14 @@ private struct FlybriefLegCard: View {
                 dense: sharesPage || leg.segments.count > 1
             )
         }
-        .padding(sharesPage ? 7 : 10)
+        .padding(5)
         .background(
             RoundedRectangle(cornerRadius: 9)
-                .fill(FlybookColor.blue.opacity(0.035))
+                .fill(Color.white)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 9)
-                .stroke(FlybookColor.navy.opacity(0.28), lineWidth: 1.2)
+                .stroke(FlybookColor.line, lineWidth: 0.9)
         )
     }
 
@@ -983,7 +958,7 @@ private struct FlybriefLegCard: View {
             .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color.white)
+                    .fill(Color.black.opacity(0.018))
             )
         }
     }
@@ -1006,7 +981,7 @@ private struct FlybriefLegCard: View {
         .padding(.horizontal, 5)
         .background(
             RoundedRectangle(cornerRadius: 5)
-                .fill(level == .neutral ? Color.white : level.paleColor)
+                .fill(level == .neutral ? Color.black.opacity(0.018) : level.paleColor.opacity(0.7))
         )
     }
 }
@@ -1020,7 +995,7 @@ private struct FlybriefAlternatesMemo: View {
         VStack(alignment: .leading, spacing: dense ? 2 : 3) {
             HStack(spacing: 5) {
                 Image(systemName: "airplane.circle.fill")
-                    .foregroundStyle(FlybookColor.blue)
+                    .foregroundStyle(FlybookColor.navy.opacity(0.75))
                 Text("ALTERNATES FÜR \(destinationICAO)")
                     .font(.system(size: dense ? 6.5 : 7.5, weight: .black))
                 Text("Schnell-Memo · Entfernung und Flugzeit ab Ziel")
@@ -1041,14 +1016,14 @@ private struct FlybriefAlternatesMemo: View {
             }
         }
         .padding(.horizontal, dense ? 5 : 7)
-        .padding(.vertical, dense ? 4 : 5)
+        .padding(.vertical, dense ? 3 : 4)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color.white)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(FlybookColor.blue.opacity(0.32), lineWidth: 1)
+                .stroke(FlybookColor.line, lineWidth: 0.8)
         )
     }
 
@@ -1084,7 +1059,7 @@ private struct FlybriefAlternatesMemo: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(alternate.icao)
                     .font(.system(size: dense ? 6.8 : 8, weight: .black, design: .monospaced))
-                    .foregroundStyle(FlybookColor.blue)
+                    .foregroundStyle(FlybookColor.navy)
                     .frame(width: 32, alignment: .leading)
                 Text(alternate.name)
                     .font(.system(size: dense ? 6.2 : 7.2, weight: .bold))
@@ -1099,7 +1074,7 @@ private struct FlybriefAlternatesMemo: View {
                     .frame(width: 42, alignment: .trailing)
                 Text("\(alternate.fuelLiters) L")
                     .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
-                    .foregroundStyle(Color.green)
+                    .foregroundStyle(FlybookColor.navy)
                     .frame(width: 32, alignment: .trailing)
                 alternateRunway(alternate)
                     .frame(width: 64, alignment: .trailing)
@@ -1187,7 +1162,7 @@ private struct FlybriefSegmentCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(segment.title.uppercased())
                     .font(.system(size: dense ? 7 : 8, weight: .black))
-                    .foregroundStyle(FlybookColor.blue)
+                    .foregroundStyle(FlybookColor.navy.opacity(0.78))
                 Text(segment.routeText)
                     .font(.system(size: dense ? 8.5 : 9.5, weight: .black, design: .monospaced))
                 Text("BLOCK " + segment.blockTimeText)
@@ -1228,11 +1203,11 @@ private struct FlybriefSegmentCard: View {
                 )
             }
         }
-        .padding(dense ? 5 : 7)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.72)))
+        .padding(dense ? 4 : 6)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white))
         .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(FlybookColor.blue.opacity(0.24), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(FlybookColor.line, lineWidth: 0.8)
         )
     }
 }
@@ -1397,10 +1372,10 @@ private struct FlybriefEndpointCard: View {
         }
         .padding(dense ? 5 : 7)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 5).fill(Color.white))
         .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(FlybookColor.line, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 5)
+                .stroke(FlybookColor.line.opacity(0.85), lineWidth: 0.7)
         )
     }
 
@@ -1436,9 +1411,8 @@ private struct FlybriefEndpointCard: View {
                 .font(.system(size: dense ? 6.2 : 7, weight: .bold))
                 .lineLimit(1)
         }
-        .padding(.horizontal, dense ? 4 : 5)
-        .padding(.vertical, dense ? 1.5 : 2.5)
-        .background(Capsule().fill(level.paleColor))
+        .padding(.horizontal, dense ? 2 : 3)
+        .padding(.vertical, dense ? 1 : 1.5)
     }
 
     private func weatherLine(_ text: String, bold: Bool = false) -> some View {
@@ -1457,11 +1431,11 @@ private struct FlybriefEndpointCard: View {
             .padding(.vertical, dense ? 2 : 3)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(FlybookColor.blue.opacity(0.08))
+                    .fill(Color.black.opacity(0.025))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 4)
-                    .stroke(FlybookColor.navy.opacity(0.72), lineWidth: 1.2)
+                    .stroke(FlybookColor.line, lineWidth: 0.7)
             )
     }
 

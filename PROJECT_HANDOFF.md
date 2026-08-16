@@ -33,6 +33,9 @@
   Gewicht je Teilstrecke fortgeschrieben; bestätigte Refuel-Mengen erhöhen das
   T/O-Gewicht des Folgesegments. Auch dort stehen die getrennten Roll-/50-ft-
   Prozentwerte mit derselben getrennten Roll-/50-ft-Warnlogik.
+- Das gesamte Flybrief-PDF verwendet ein dezentes Arbeitsunterlagen-Layout:
+  dünne Linien, zurückhaltende Flächen und Farben sowie klare Tabellen statt
+  stark gerahmter Karten oder dekorativer Dispatch-Elemente.
 - Im aktiven Nutzerprofil ist unter Flugkalkulation eine Sicherheitsmarge von
   0 bis 50 Prozent in 5-Prozent-Schritten hinterlegt. Sie erhöht Roll- und
   50-ft-Strecke für Start und Landung und damit auch die Pistenprozentwerte.
@@ -101,9 +104,10 @@
 - Die Flybrief-Wetterseiten enthalten keine Kraftstoffangaben mehr. Nach
   „Tankberechnung übernehmen“ wird der bestätigte Tankplan als eigene letzte
   PDF-Seite mit Minimum, Plan, Refueling-Stop, Leg-/Etappenverbrauch, Zeit und
-  Endreserve angehängt. Die Seite ist als professionelles Operational Fuel
-  Release mit Dispatch-Kopf, Fuel-Schedule, Refuel-Action, Warnstatus und
-  PIC-Acceptance aufgebaut. Ändert sich Route, Flugzeug, Reserve, Startbestand oder
+  Endreserve angehängt. Die Seite ist als ruhige, gut lesbare Tabelle mit
+  dezentem Kopf, Kraftstoffverlauf, Tankstopps und Warnstatus aufgebaut; auf
+  inszenierte Dispatch-/Unterschriftsfelder wird bewusst verzichtet. Ändert
+  sich Route, Flugzeug, Reserve, Startbestand oder
   übernommene Tankmenge, wird die Bestätigung als veraltet behandelt und die
   Fuelplan-Seite bis zur erneuten Bestätigung nicht ausgegeben.
 - Unter jedem Flybrief-Zielblock folgt ein kompaktes Memo der drei
@@ -126,6 +130,11 @@
   kompakten Entscheidungshilfen `FL30`, `FL60` und `FL90`; Windrichtungen sind
   auf zehn Grad gerundet, Geschwindigkeiten auf volle Knoten und Böen entfallen.
   Die Windzeile wird auch in jeder einzelnen Multi-Stop-Teilstrecke wiederholt.
+- Die Flugplanungsblöcke bleiben innerhalb der unveränderten Kartenhöhe: Nur
+  Kopf-/Blockabstände und der Abstand zwischen Hin- und Rückflug wurden leicht
+  verdichtet. Bei Windstille bleibt die Runway-Anzeige nicht mehr leer, sondern
+  zeigt das verfügbare Bahnpaar (zum Beispiel `07/25`); eine einzelne
+  Vorzugsrichtung wird ohne Wind bewusst nicht behauptet.
 - In der Flugzeugkonfiguration erzeugt `Profil kopieren` ein neues editierbares
   Profil und übernimmt alle Basis-, Kosten-, Gewichts-, Lärm-, Kraftstoff-,
   Climb- und Cruise-Werte des Ausgangsflugzeugs.

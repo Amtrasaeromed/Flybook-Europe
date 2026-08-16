@@ -581,6 +581,15 @@ final class CharterMathTests: XCTestCase {
             ),
             "28R"
         )
+        XCTAssertEqual(
+            EDFZRunway.activeRunway(
+                for: "EDFZ",
+                referenceRunway: "07/25",
+                windFromDegrees: 180,
+                speedKnots: 0
+            ),
+            "07/25"
+        )
     }
     func testCommercialBlockTimeRoundsUpBySixMinuteSteps() {
         XCTAssertEqual(CharterMath.commercialDecimalHours(minutes: 65), 1.1)

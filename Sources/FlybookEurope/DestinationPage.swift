@@ -3714,7 +3714,7 @@ struct DestinationPage: View {
 
     private var flightSection: some View {
         FlybookCard {
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 HStack(spacing: 9) {
                     Text("FLUGPLAN")
                         .font(.system(size: 17, weight: .bold))
@@ -5822,8 +5822,7 @@ private struct PlanningWeather {
         self.foehnWarning = foehnWarning
         if let runwayICAO,
            let direction,
-           let speed,
-           speed >= 0.5
+           let speed
         {
             runway = EDFZRunway.activeRunway(
                 for: runwayICAO,
@@ -6667,8 +6666,7 @@ private struct FlightTimePlanningRows: View {
         for sample: EDFZWeatherSample?
     ) -> String? {
         guard let direction = sample?.windDirectionDegrees,
-              let speed = sample?.windSpeedKnots,
-              speed >= 0.5
+              let speed = sample?.windSpeedKnots
         else { return "—" }
         return EDFZRunway.activeRunway(
             for: origin.icao,
@@ -7074,7 +7072,7 @@ private struct FlightTimePlanningRows: View {
             .flightLegPanel()
 
             if !isOneWay {
-                Color.clear.frame(height: 18)
+                Color.clear.frame(height: 12)
 
                 FlightPlanningLine(
                 directionTitle:
@@ -7252,7 +7250,7 @@ private struct FlightTimePlanningRows: View {
                     }
                 }
                 )
-                .padding(.bottom, 8)
+                .padding(.bottom, 2)
                 .flightLegPanel()
             }
         }
