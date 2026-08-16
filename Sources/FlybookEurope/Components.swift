@@ -82,14 +82,18 @@ enum AviationWeatherText {
     ) -> String {
         let cloud = cloudAmount(lowCloudCoverPercent)
         let showsCloudBase = (lowCloudCoverPercent ?? 0) >= 12.5
-        let base = showsCloudBase
-            ? lowestCloudBaseFeet.map {
-                "\(Int(($0 / 100).rounded()) * 100)"
+        let base: String? = showsCloudBase
+            ? lowestCloudBaseFeet.flatMap { feet in
+                guard feet <= 10_000 else { return nil }
+                return "\(Int((feet / 100).rounded()) * 100)"
             }
             : nil
         let cloudText: String
         if let base {
             cloudText = "\(cloud) \(base)"
+        } else if (lowCloudCoverPercent ?? 0) >= 62.5,
+                  lowestCloudBaseFeet == nil {
+            cloudText = "\(cloud) Basis n/v"
         } else {
             cloudText = cloud
         }

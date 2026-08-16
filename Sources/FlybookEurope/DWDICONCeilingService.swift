@@ -3,6 +3,7 @@ import Foundation
 enum PlanningCeilingSource: String, Codable, Hashable {
     case dwdICOND2 = "DWD ICON-D2"
     case dwdICONEU = "DWD ICON-EU"
+    case dwdMOSMIX = "DWD MOSMIX"
     case unavailable = "Keine direkte Ceiling"
 }
 

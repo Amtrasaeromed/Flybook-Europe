@@ -14,10 +14,15 @@ final class WeatherSourcePriorityTests: XCTestCase {
         let timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Berlin"))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
-        let target = try XCTUnwrap(calendar.date(
+        let tomorrow = try XCTUnwrap(calendar.date(
             byAdding: .day,
             value: 1,
-            to: Date()
+            to: calendar.startOfDay(for: Date())
+        ))
+        let target = try XCTUnwrap(calendar.date(
+            byAdding: .hour,
+            value: 12,
+            to: tomorrow
         ))
         let airports = [
             AirportReference(
@@ -28,6 +33,15 @@ final class WeatherSourcePriorityTests: XCTestCase {
                 elevationFeet: 423,
                 timeZone: timeZone,
                 referenceRunway: "06/24"
+            ),
+            AirportReference(
+                icao: "EDTG",
+                name: "Bremgarten",
+                latitude: 47.9028,
+                longitude: 7.6178,
+                elevationFeet: 695,
+                timeZone: timeZone,
+                referenceRunway: "05/23"
             ),
             AirportReference.edfz
         ]
@@ -43,11 +57,18 @@ final class WeatherSourcePriorityTests: XCTestCase {
                 forecast.sample(nearestTo: target),
                 "Keine zeitlich passende Prognose für \(airport.icao)"
             )
-            XCTAssertTrue(
-                sample.ceilingSource == .dwdICOND2
-                    || sample.ceilingSource == .dwdICONEU,
-                "Keine direkte DWD-Ceiling für \(airport.icao)"
-            )
+            if (sample.lowCloudCoverPercent ?? 0) >= 62.5 {
+                XCTAssertTrue(
+                    sample.ceilingSource == .dwdICOND2
+                        || sample.ceilingSource == .dwdICONEU
+                        || sample.ceilingSource == .dwdMOSMIX,
+                    "Keine DWD-Ceiling für \(airport.icao)"
+                )
+                XCTAssertNotNil(
+                    sample.ceilingFeetAGL,
+                    "BKN/OVC ohne Ceiling für \(airport.icao)"
+                )
+            }
         }
 
         let store = DestinationStore()

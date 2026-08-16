@@ -64,6 +64,7 @@ struct FlybriefSegmentSnapshot: Identifiable {
     let routeWindDetail: String
     let routeWeather: [FlybriefRouteWeatherPoint]
     let routeWeatherSummary: String
+    let altitudeWindsText: String
     let departure: FlybriefEndpointSnapshot
     let arrival: FlybriefEndpointSnapshot
 }
@@ -91,6 +92,42 @@ struct FlybriefRunwayPerformanceSnapshot {
     let over50FeetMeters: Int
     let over50FeetPercentage: Int?
     let weightKilograms: Int
+}
+
+struct FlybriefSegmentWeight: Equatable {
+    let takeoffKilograms: Double
+    let landingKilograms: Double
+}
+
+enum FlybriefWeightMath {
+    static func progression(
+        initialTakeoffKilograms: Double,
+        flightMinutes: [Int],
+        consumptionLitersPerHour: Double,
+        fuelDensityKilogramsPerLiter: Double,
+        refuelLitersAfterSegment: [Double] = []
+    ) -> [FlybriefSegmentWeight] {
+        var takeoff = max(1, initialTakeoffKilograms)
+        return flightMinutes.enumerated().map { index, minutes in
+            let burnedLiters = CharterMath.actualFuelBurnLiters(
+                minutes: minutes,
+                consumptionLitersPerHour: consumptionLitersPerHour
+            )
+            let landing = max(
+                1,
+                takeoff - burnedLiters * max(0, fuelDensityKilogramsPerLiter)
+            )
+            let result = FlybriefSegmentWeight(
+                takeoffKilograms: takeoff,
+                landingKilograms: landing
+            )
+            let refuel = refuelLitersAfterSegment.indices.contains(index)
+                ? max(0, refuelLitersAfterSegment[index])
+                : 0
+            takeoff = landing + refuel * max(0, fuelDensityKilogramsPerLiter)
+            return result
+        }
+    }
 }
 
 struct FlybriefWeatherSnapshot {
@@ -454,66 +491,76 @@ private struct FlybriefFuelPlanPDFPage: View {
     let pageCount: Int
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 9) {
             header
             summary
             fuelTable
             status
+            releaseNotes
             Spacer(minLength: 0)
             footer
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 18)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
         .foregroundStyle(FlybookColor.navy)
+        .background(Color.white)
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("FUELPLAN")
-                    .font(.system(size: 22, weight: .black))
-                Text(snapshot.route)
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("FLYBOOK DISPATCH")
+                        .font(.system(size: 7, weight: .black))
+                        .tracking(1.3)
+                    Text("FUELPLAN / OPERATIONAL RELEASE")
+                        .font(.system(size: 18, weight: .black))
+                }
                 Spacer()
-                Text("BESTÄTIGT " + timestamp(fuelPlan.confirmedAt))
-                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(snapshot.route)
+                        .font(.system(size: 13, weight: .black, design: .monospaced))
+                    Text("RELEASED " + timestamp(fuelPlan.confirmedAt))
+                        .font(.system(size: 6.8, weight: .bold, design: .monospaced))
+                }
             }
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 12)
+            .frame(height: 52)
+            .background(FlybookColor.navy)
 
             HStack(spacing: 0) {
                 headerValue("FLUGZEUG", fuelPlan.aircraftName)
                 Spacer()
-                headerValue("RESERVE", "\(fuelPlan.reserveMinutes) min")
+                headerValue("ROUTE", snapshot.route)
                 Spacer()
-                headerValue(
-                    "NUTZBARER TANK",
-                    liters(fuelPlan.usableFuelLiters)
-                )
+                headerValue("RESERVE POLICY", "\(fuelPlan.reserveMinutes) MIN")
                 Spacer()
-                headerValue("ZEITEN", snapshot.timeBasis)
+                headerValue("TIME BASIS", snapshot.timeBasis.uppercased())
+                Spacer()
+                headerValue("STATUS", fuelPlan.result.hasWarning ? "CHECK" : "RELEASED")
             }
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+            .background(Color.black.opacity(0.045))
         }
-        .padding(.bottom, 8)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(FlybookColor.navy).frame(height: 2)
-        }
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private var summary: some View {
         HStack(spacing: 8) {
             summaryBox(
-                "MINIMUM T/O",
-                liters(fuelPlan.result.minimumStartingFuelLiters),
+                "RELEASE FUEL",
+                liters(fuelPlan.startingFuelLiters),
                 emphasized: true
             )
-            summaryBox("PLAN T/O", liters(fuelPlan.startingFuelLiters))
             summaryBox(
-                "MINIMUM REFUEL",
-                fuelPlan.result.minimumRefuelLitersByLegIndex.isEmpty
-                    ? "–"
-                    : liters(
-                        fuelPlan.result.minimumRefuelLitersByLegIndex.values
-                            .reduce(0, +)
-                    )
+                "MINIMUM T/O",
+                liters(fuelPlan.result.minimumStartingFuelLiters)
+            )
+            summaryBox(
+                "TRIP FUEL",
+                liters(plannedTripFuel)
             )
             summaryBox(
                 "PLAN REFUEL",
@@ -530,25 +577,34 @@ private struct FlybriefFuelPlanPDFPage: View {
 
     private var fuelTable: some View {
         VStack(spacing: 0) {
+            HStack {
+                Text("OPERATIONAL FUEL SCHEDULE")
+                    .font(.system(size: 8, weight: .black))
+                    .tracking(0.8)
+                Spacer()
+                Text("ALL VALUES LITRES · CONSERVATIVE WHOLE-LITRE PLAN")
+                    .font(.system(size: 5.8, weight: .bold, design: .monospaced))
+                    .foregroundStyle(FlybookColor.muted)
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 25)
+
             HStack(spacing: 4) {
                 heading("ABSCHNITT", width: 110, alignment: .leading)
-                heading("MIN T/O", width: 65)
-                heading("MIN LDG", width: 65)
+                heading("MINIMUM T/O", width: 65)
+                heading("MINIMUM LDG", width: 65)
                 heading("PLAN T/O → LDG", width: 115)
                 heading("LEG / GESAMT", width: 85)
                 heading("ZEIT", width: 48)
             }
             .padding(.horizontal, 10)
             .frame(height: 30)
-            .background(Color.black.opacity(0.035))
-
-            Divider()
+            .background(FlybookColor.navy)
 
             ForEach(Array(fuelPlan.result.rows.enumerated()), id: \.element.id) {
                 index, row in
-                fuelRow(row)
+                fuelRow(row, index: index)
                 if row.refuelAfterArrivalLiters > 0 {
-                    Divider().overlay(FlybookColor.blue.opacity(0.55))
                     refuelRow(row)
                 }
                 if index < fuelPlan.result.rows.count - 1 {
@@ -564,11 +620,15 @@ private struct FlybriefFuelPlanPDFPage: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func fuelRow(_ row: FuelPlanRow) -> some View {
+    private func fuelRow(_ row: FuelPlanRow, index: Int) -> some View {
         HStack(spacing: 4) {
-            Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
-                .font(.system(size: 8.5, weight: .black, design: .monospaced))
-                .frame(width: 110, alignment: .leading)
+            HStack(spacing: 5) {
+                Text(String(format: "%02d", index + 1))
+                    .foregroundStyle(FlybookColor.muted)
+                Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
+            }
+            .font(.system(size: 8.3, weight: .black, design: .monospaced))
+            .frame(width: 110, alignment: .leading)
             value(liters(row.minimumDepartureLiters), width: 65, minimum: true)
             value(liters(row.minimumArrivalLiters), width: 65)
             value(
@@ -586,32 +646,52 @@ private struct FlybriefFuelPlanPDFPage: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 42)
+        .background(index.isMultiple(of: 2) ? Color.white : Color.black.opacity(0.018))
     }
 
     private func refuelRow(_ row: FuelPlanRow) -> some View {
         HStack(spacing: 4) {
-            Label(
-                refuelAirportName(row.leg.destinationICAO),
-                systemImage: "fuelpump.fill"
-            )
-            .font(.system(size: 8, weight: .black))
+            HStack(spacing: 5) {
+                Image(systemName: "fuelpump.fill")
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("REFUEL ACTION")
+                        .font(.system(size: 5.8, weight: .black))
+                    Text(refuelAirportName(row.leg.destinationICAO))
+                        .font(.system(size: 8, weight: .black))
+                }
+            }
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .frame(width: 248, alignment: .leading)
 
-            value(liters(row.refuelAfterArrivalLiters), width: 115, plan: true)
+            value(
+                "MIN \(liters(minimumRefuel(for: row))) · PLAN \(liters(row.refuelAfterArrivalLiters))",
+                width: 115,
+                plan: true
+            )
             Color.clear.frame(width: 85, height: 1)
             Color.clear.frame(width: 48, height: 1)
         }
         .padding(.horizontal, 10)
         .frame(height: 38)
-        .background(FlybookColor.blue.opacity(0.12))
+        .background(FlybookColor.blue.opacity(0.14))
     }
 
     private var plannedRefuelTotal: Double {
         fuelPlan.result.rows.reduce(0) {
             $0 + $1.refuelAfterArrivalLiters
         }
+    }
+
+    private var plannedTripFuel: Double {
+        fuelPlan.result.rows.reduce(0) { $0 + $1.leg.burnLiters }
+    }
+
+    private func minimumRefuel(for row: FuelPlanRow) -> Double {
+        guard let index = fuelPlan.result.rows.firstIndex(where: { $0.id == row.id }) else {
+            return 0
+        }
+        return fuelPlan.result.minimumRefuelLitersByLegIndex[index] ?? 0
     }
 
     private var status: some View {
@@ -625,7 +705,48 @@ private struct FlybriefFuelPlanPDFPage: View {
         )
         .font(.system(size: 9, weight: .bold))
         .foregroundStyle(fuelPlan.result.hasWarning ? Color.red : Color.green)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill((fuelPlan.result.hasWarning ? Color.red : Color.green).opacity(0.07))
+        )
+    }
+
+    private var releaseNotes: some View {
+        HStack(spacing: 8) {
+            releaseNote("CAPACITY", liters(fuelPlan.usableFuelLiters))
+            releaseNote("FINAL PLAN", fuelPlan.result.rows.last.map { liters($0.plannedArrivalLiters) } ?? "–")
+            releaseNote("RESERVE", liters(fuelPlan.result.finalReserveLiters))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("PIC ACCEPTANCE")
+                    .font(.system(size: 6.2, weight: .black))
+                    .foregroundStyle(FlybookColor.muted)
+                Rectangle()
+                    .fill(FlybookColor.navy.opacity(0.45))
+                    .frame(height: 1)
+                Text("SIGN / TIME")
+                    .font(.system(size: 5.5, weight: .bold, design: .monospaced))
+                    .foregroundStyle(FlybookColor.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .frame(height: 42)
+            .overlay(RoundedRectangle(cornerRadius: 5).stroke(FlybookColor.line))
+        }
+    }
+
+    private func releaseNote(_ label: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 6.2, weight: .black))
+                .foregroundStyle(FlybookColor.muted)
+            Text(text)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+        }
+        .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+        .padding(.horizontal, 8)
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(FlybookColor.line))
     }
 
     private var footer: some View {
@@ -688,7 +809,7 @@ private struct FlybriefFuelPlanPDFPage: View {
     ) -> some View {
         Text(text)
             .font(.system(size: 6.5, weight: .black))
-            .foregroundStyle(FlybookColor.muted)
+            .foregroundStyle(Color.white)
             .frame(width: width, alignment: alignment)
     }
 
@@ -1074,10 +1195,16 @@ private struct FlybriefSegmentCard: View {
                 Text("TRACK " + segment.trackText)
                     .font(.system(size: 8.5, weight: .bold, design: .monospaced))
                 Spacer(minLength: 2)
-                RouteWeatherStrip(
-                    points: segment.routeWeather,
-                    summary: segment.routeWeatherSummary
-                )
+                VStack(alignment: .leading, spacing: 1) {
+                    RouteWeatherStrip(
+                        points: segment.routeWeather,
+                        summary: segment.routeWeatherSummary
+                    )
+                    Text(segment.altitudeWindsText)
+                        .font(.system(size: dense ? 5.7 : 6.4, weight: .bold, design: .monospaced))
+                        .foregroundStyle(FlybookColor.muted)
+                        .lineLimit(1)
+                }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 7) {

@@ -2282,12 +2282,13 @@ struct DestinationPage: View {
         let etopsMinutes = plannedSegments.map(\.travelMinutes).max()
             ?? selectedLegMinutes
         let etops = flybriefETOPS(minutes: etopsMinutes)
+        let fuelConsumptionPerHour = AircraftProfileStore.fuelConsumption(
+            for: selectedAircraft,
+            atPressureAltitudeFeet: Double(altitudeFeet)
+        )
         let actualFuelBurnLiters = CharterMath.actualFuelBurnLiters(
             minutes: blockMinutes,
-            consumptionLitersPerHour: AircraftProfileStore.fuelConsumption(
-                for: selectedAircraft,
-                atPressureAltitudeFeet: Double(altitudeFeet)
-            )
+            consumptionLitersPerHour: fuelConsumptionPerHour
         )
         let fuelDensity = AircraftProfileStore.preferredFuel(
             for: selectedAircraft
@@ -2322,6 +2323,8 @@ struct DestinationPage: View {
             arrivalSample: arrivalSample,
             routeWind: routeWind,
             routeAssessments: routeAssessments,
+            altitudeWindsText: altitudeWindsText,
+            fuelConsumptionPerHour: fuelConsumptionPerHour,
             takeoffWeightKilograms: takeoffWeightKilograms,
             stopForecasts: stopForecasts,
             plannedSegments: plannedSegments
@@ -2433,11 +2436,32 @@ struct DestinationPage: View {
         arrivalSample: EDFZWeatherSample?,
         routeWind: RouteWind?,
         routeAssessments: [RouteWeatherSegmentAssessment],
+        altitudeWindsText: String,
+        fuelConsumptionPerHour: Double,
         takeoffWeightKilograms: Double,
         stopForecasts: [String: EDFZForecast],
         plannedSegments: [FlybriefPlannedSegment]
     ) -> [FlybriefSegmentSnapshot] {
         guard plannedSegments.count > 1 else { return [] }
+
+        let fuelDensity = AircraftProfileStore.preferredFuel(
+            for: selectedAircraft
+        ).densityKilogramsPerLiter
+        let fuelPlanPrefix = legID == "outbound" ? "hin-" : "rueck-"
+        let confirmedRows = confirmedFlybriefFuelPlan?.result.rows.filter {
+            $0.leg.id.hasPrefix(fuelPlanPrefix)
+        } ?? []
+        let segmentWeights = FlybriefWeightMath.progression(
+            initialTakeoffKilograms: takeoffWeightKilograms,
+            flightMinutes: plannedSegments.map(\.travelMinutes),
+            consumptionLitersPerHour: fuelConsumptionPerHour,
+            fuelDensityKilogramsPerLiter: fuelDensity,
+            refuelLitersAfterSegment: plannedSegments.indices.map { index in
+                confirmedRows.indices.contains(index)
+                    ? confirmedRows[index].refuelAfterArrivalLiters
+                    : 0
+            }
+        )
 
         return plannedSegments.enumerated().map { index, segment in
             let assessments = flybriefAssessments(
@@ -2497,6 +2521,7 @@ struct DestinationPage: View {
                 arrivalSample: arrivalSample,
                 stopForecasts: stopForecasts
             )
+            let segmentWeight = segmentWeights[index]
             return FlybriefSegmentSnapshot(
                 id: "\(legID)-\(index)",
                 title: "Teilstrecke \(index + 1)/\(plannedSegments.count)",
@@ -2508,6 +2533,7 @@ struct DestinationPage: View {
                 routeWeather: weatherPoints,
                 routeWeatherSummary: worst?.explanation
                     ?? "Keine ausreichenden Routendaten",
+                altitudeWindsText: altitudeWindsText,
                 departure: flybriefEndpoint(
                     role: "Abflug",
                     airport: segment.origin,
@@ -2515,7 +2541,7 @@ struct DestinationPage: View {
                     operation: .departure,
                     sample: departureWeather,
                     legOriginICAO: segment.origin.icao,
-                    weightKilograms: takeoffWeightKilograms
+                    weightKilograms: segmentWeight.takeoffKilograms
                 ),
                 arrival: flybriefEndpoint(
                     role: "Ankunft",
@@ -2524,7 +2550,7 @@ struct DestinationPage: View {
                     operation: .arrival,
                     sample: arrivalWeather,
                     legOriginICAO: segment.origin.icao,
-                    weightKilograms: takeoffWeightKilograms
+                    weightKilograms: segmentWeight.landingKilograms
                 )
             )
         }
@@ -2850,6 +2876,13 @@ struct DestinationPage: View {
             localGustKnots: sample?.windGustKnots
         )
         let category = sample?.category ?? .unavailable
+        let missingCeilingBase = (sample?.lowCloudCoverPercent ?? 0) >= 62.5
+            && sample?.lowestCloudBaseFeetAGL == nil
+            && sample?.ceilingFeetAGL == nil
+        let warnings = [
+            foehn.map { $0.level.title },
+            missingCeilingBase ? "Ceiling-Basis nicht verfügbar" : nil
+        ].compactMap { $0 }
         return FlybriefWeatherSnapshot(
             category: category.rawValue,
             categoryLevel: flybriefLevel(for: category),
@@ -2867,7 +2900,9 @@ struct DestinationPage: View {
                     airport: airport
                 )
             } ?? "Wetter nicht verfügbar",
-            warningText: foehn.map { $0.level.title }
+            warningText: warnings.isEmpty
+                ? nil
+                : warnings.joined(separator: " · ")
         )
     }
 
@@ -6152,6 +6187,9 @@ private struct PlanningWeatherCard: View {
                 + ": direkte Modell-Ceiling über Grund. "
                 + "Wolkenanteil und Sichtweite stammen aus der externen "
                 + "Punktprognose."
+        case .dwdMOSMIX:
+            return "DWD MOSMIX: Ersatz-Ceiling aus der externen "
+                + "Punktprognose, aus Temperatur/Taupunkt abgeleitet."
         case .unavailable:
             return "Keine direkte DWD-Ceiling verfügbar; es wird keine "
                 + "Wolkenbasis geschätzt. Die Flugwetterkategorie nutzt "

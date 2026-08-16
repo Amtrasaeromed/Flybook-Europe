@@ -22,7 +22,19 @@ final class AviationWeatherTextTests: XCTestCase {
                 visibilityMeters: 10_000,
                 unitSystem: .eu
             ),
-            "BKN / 10km+"
+            "BKN Basis n/v / 10km+"
+        )
+    }
+
+    func testCloudBaseAboveTenThousandFeetIsHidden() {
+        XCTAssertEqual(
+            AviationWeatherText.cloudAndVisibility(
+                lowCloudCoverPercent: 25,
+                lowestCloudBaseFeet: 53_200,
+                visibilityMeters: 10_000,
+                unitSystem: .eu
+            ),
+            "FEW / 10km+"
         )
     }
 }

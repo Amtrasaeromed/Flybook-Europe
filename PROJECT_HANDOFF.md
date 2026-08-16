@@ -1,6 +1,6 @@
 # Flybook Europe – Übergabe v1.47.0
 
-## Sofortübergabe (16. August 2026)
+## Sofortübergabe (17. August 2026)
 
 - Arbeitsverzeichnis: `/Users/stephan/Documents/ChatGPT/Flybook`
 - Branch: `codex/ipad-migration`
@@ -11,7 +11,7 @@
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
 - Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich:
-  201 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
+  203 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
 - Hin- und Rückflug besitzen ein editierbares TOW-Feld mit MTOW als
   Ausgangswert. Für A211/DEUKS/DEZHS werden Start- und Landestrecken aus den
   offiziellen POH-Ausgangswerten mit Dichtehöhe, Gewicht und Pistenwind
@@ -25,12 +25,13 @@
   orange und ab 75 Prozent rot; die
   50-ft-Strecke wird ausschließlich ab 100 Prozent rot. Beim Start gilt die
   physische Pistenlänge, bei der Landung die LDA.
-- Der Flybrief schreibt die Performance kompakt als `T/O Roll`, `50ft` und
+- Der Flybrief schreibt die Performance kompakt als `T/O Roll`, `50 ft` und
   Gewicht; bei Landungen steht die `50ft`-Strecke vor dem `LDG Roll`. Das
   Landing Weight zieht den
-  tatsächlich
-  verflogenen Blockkraftstoff ohne Reserve mit der Dichte der im Flugzeugprofil
-  bevorzugten Sorte vom TOW ab. Auch dort stehen die getrennten Roll-/50-ft-
+  tatsächlich verflogenen Blockkraftstoff ohne Reserve mit der Dichte der im
+  Flugzeugprofil bevorzugten Sorte vom TOW ab. Bei Multi-Stop-Flügen wird das
+  Gewicht je Teilstrecke fortgeschrieben; bestätigte Refuel-Mengen erhöhen das
+  T/O-Gewicht des Folgesegments. Auch dort stehen die getrennten Roll-/50-ft-
   Prozentwerte mit derselben getrennten Roll-/50-ft-Warnlogik.
 - Im aktiven Nutzerprofil ist unter Flugkalkulation eine Sicherheitsmarge von
   0 bis 50 Prozent in 5-Prozent-Schritten hinterlegt. Sie erhöht Roll- und
@@ -68,8 +69,8 @@
   Streckenwind beginnen als entzerrte Fußzeile am linken Rand.
 - Das Planungsfeld verwendet für den konkreten An-/Abflugzeitpunkt das direkte
   DWD-GRIB-Feld `CEILING`: ICON-D2 bis 48 Stunden, danach ICON-EU bis fünf
-  Tage. Es findet dort keine Temperatur-/Taupunkt- oder Wolkenprofil-Schätzung
-  mehr statt; ohne direkten Wert bleibt die Ceiling leer.
+  Tage. Bei BKN/OVC dient DWD MOSMIX transparent als letzte Ersatzquelle; ist
+  auch dort keine Basis verfügbar, erscheint ausdrücklich `Basis n/v`.
 - Das validierte eigene Nebel-/Tiefwolken-Risikomodell bleibt ausschließlich
   in der farbcodierten 5-Tages-Wetteranzeige aktiv.
 - Die gewählte Flughöhe wird im Flugplan-Picker wieder als konkreter Wert
@@ -100,7 +101,9 @@
 - Die Flybrief-Wetterseiten enthalten keine Kraftstoffangaben mehr. Nach
   „Tankberechnung übernehmen“ wird der bestätigte Tankplan als eigene letzte
   PDF-Seite mit Minimum, Plan, Refueling-Stop, Leg-/Etappenverbrauch, Zeit und
-  Endreserve angehängt. Ändert sich Route, Flugzeug, Reserve, Startbestand oder
+  Endreserve angehängt. Die Seite ist als professionelles Operational Fuel
+  Release mit Dispatch-Kopf, Fuel-Schedule, Refuel-Action, Warnstatus und
+  PIC-Acceptance aufgebaut. Ändert sich Route, Flugzeug, Reserve, Startbestand oder
   übernommene Tankmenge, wird die Bestätigung als veraltet behandelt und die
   Fuelplan-Seite bis zur erneuten Bestätigung nicht ausgegeben.
 - Unter jedem Flybrief-Zielblock folgt ein kompaktes Memo der drei
@@ -108,10 +111,12 @@
   Ausrichtung und Prognose zur Zielankunft. Wegen dieser zusätzlichen
   sicherheitsrelevanten Angaben werden Multi-Stop-Hauptflüge nicht mehr auf
   eine gemeinsame Wetterseite zusammengepresst.
-- Wolkenangaben im Flybrief enthalten bei SCT/BKN/OVC stets die verfügbare
+- Wolkenangaben im Flybrief enthalten bei FEW/SCT/BKN/OVC die verfügbare
   direkte Ceiling-/Wolkenbasis. Frische Cachetreffer ohne Höhenwert werden mit
   dem direkten DWD-ICON-Ceiling-Feld nachangereichert; ein fehlgeschlagener
-  Direktabruf löscht keinen bereits vorhandenen externen Basiswert mehr. Im
+  Direktabruf löscht keinen bereits vorhandenen externen Basiswert mehr.
+  Höhen oberhalb 10.000 ft entfallen in der kompakten Anzeige; BKN/OVC ohne
+  belastbare Basis werden dagegen nie stillschweigend ohne Warnung gezeigt. Im
   Alternate-Memo stehen Wind und Runway exakt untereinander, die rechnerisch
   bevorzugte Pistenrichtung
   ist blau markiert und der bis zum Alternate benötigte Kraftstoff wird mit
@@ -120,14 +125,16 @@
 - Direkt unter dem farbcodierten Streckenwetter nennt der Flybrief die drei
   kompakten Entscheidungshilfen `FL30`, `FL60` und `FL90`; Windrichtungen sind
   auf zehn Grad gerundet, Geschwindigkeiten auf volle Knoten und Böen entfallen.
+  Die Windzeile wird auch in jeder einzelnen Multi-Stop-Teilstrecke wiederholt.
 - In der Flugzeugkonfiguration erzeugt `Profil kopieren` ein neues editierbares
   Profil und übernimmt alle Basis-, Kosten-, Gewichts-, Lärm-, Kraftstoff-,
   Climb- und Cruise-Werte des Ausgangsflugzeugs.
 - Das Zahnrad für das allgemeine Setup steht als letztes Symbol ganz rechts in
   der Hauptnavigation.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
-  komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
-  Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.
+  komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und verwendet bei
+  BKN/OVC deshalb die gekennzeichnete DWD-MOSMIX-Ersatzquelle; eine fehlende
+  Basis wird als `Basis n/v` ausgewiesen.
   Der signaturfreie iPad-Gerätebuild wurde erfolgreich geprüft.
 
 ## Noch offen / nächste Aufgabe

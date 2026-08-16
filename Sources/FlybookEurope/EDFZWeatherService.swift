@@ -350,7 +350,9 @@ actor EDFZWeatherService {
            let cached = previousForecast,
            Date().timeIntervalSince(cached.retrievedAt)
                 < cacheLifetime(for: cached) {
-            if cached.sample(nearestTo: plannedDate)?.ceilingFeetAGL == nil {
+            if let sample = cached.sample(nearestTo: plannedDate),
+               (sample.lowCloudCoverPercent ?? 0) >= 62.5,
+               sample.ceilingFeetAGL == nil {
                 let enriched = await applyingDirectCeiling(
                     to: cached,
                     plannedDate: plannedDate,
@@ -416,7 +418,7 @@ actor EDFZWeatherService {
             dayOfMonth
         )
         return "\(airport.icao)-\(startDay)-"
-            + "\(String(format: "%02d", hour))-direct-ceiling-v1"
+            + "\(String(format: "%02d", hour))-direct-ceiling-v2"
     }
 
     private func applyingDirectCeiling(
@@ -424,18 +426,30 @@ actor EDFZWeatherService {
         plannedDate: Date,
         airport: AirportReference
     ) async -> EDFZForecast {
-        let direct = await DWDICONCeilingService.shared.ceiling(
+        guard let target = forecast.sample(nearestTo: plannedDate),
+              (target.lowCloudCoverPercent ?? 0) >= 62.5
+        else { return forecast }
+        var resolved = await DWDICONCeilingService.shared.ceiling(
             latitude: airport.latitude,
             longitude: airport.longitude,
             validTime: plannedDate
         )
-        guard let direct else { return forecast }
-        guard let target = forecast.sample(nearestTo: plannedDate) else {
-            return forecast
+        if resolved == nil,
+           let mosmix = try? await DWDMOSMIXService.shared.forecast(
+                airport: airport
+           ),
+           let mosmixCeiling = mosmix.sample(
+                nearestTo: plannedDate
+           )?.ceilingFeetAGL {
+            resolved = DWDICONCeilingValue(
+                feetAGL: mosmixCeiling,
+                source: .dwdMOSMIX
+            )
         }
+        guard let resolved else { return forecast }
         let samples = forecast.samples.map { sample in
             guard sample.validTime == target.validTime else { return sample }
-            let ceiling = direct.feetAGL
+            let ceiling = resolved.feetAGL
             return EDFZWeatherSample(
                 validTime: sample.validTime,
                 windDirectionDegrees: sample.windDirectionDegrees,
@@ -449,7 +463,7 @@ actor EDFZWeatherService {
                 totalCloudCoverPercent: sample.totalCloudCoverPercent,
                 lowestCloudBaseFeetAGL: ceiling,
                 ceilingFeetAGL: ceiling,
-                ceilingSource: direct.source,
+                ceilingSource: resolved.source,
                 category: flightCategory(
                     visibilityMeters: sample.visibilityMeters,
                     ceilingFeet: ceiling

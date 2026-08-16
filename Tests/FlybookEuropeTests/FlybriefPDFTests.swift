@@ -31,6 +31,9 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertFalse(outboundPage.string?.contains("KRAFTSTOFF") == true)
         XCTAssertFalse(returnPage.string?.contains("KRAFTSTOFF") == true)
         XCTAssertTrue(fuelPage.string?.contains("FUELPLAN") == true)
+        XCTAssertTrue(fuelPage.string?.contains("RELEASE FUEL") == true)
+        XCTAssertTrue(fuelPage.string?.contains("REFUEL ACTION") == true)
+        XCTAssertTrue(fuelPage.string?.contains("PIC ACCEPTANCE") == true)
         XCTAssertTrue(fuelPage.string?.contains("MINIMUM T/O") == true)
         XCTAssertTrue(fuelPage.string?.contains("LEG / GESAMT") == true)
         XCTAssertTrue(fuelPage.string?.contains("EHAM - Amsterdam Schiphol") == true)
@@ -50,6 +53,10 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("FL30 240/09"))
         XCTAssertTrue(text.contains("FL60 250/12"))
         XCTAssertTrue(text.contains("FL90 260/18"))
+        XCTAssertGreaterThanOrEqual(
+            text.components(separatedBy: "FL30 240/09").count - 1,
+            4
+        )
         XCTAssertTrue(text.contains("T/O Roll"))
         XCTAssertTrue(text.contains("250m (22%)"))
         XCTAssertTrue(text.contains("430m (38%)"))
@@ -70,6 +77,24 @@ final class FlybriefPDFTests: XCTestCase {
         if let output = ProcessInfo.processInfo.environment["FLYBRIEF_PREVIEW_PATH"] {
             try data.write(to: URL(fileURLWithPath: output), options: .atomic)
         }
+    }
+
+    func testSegmentLandingWeightsConsumeFuelAndIncludeConfirmedRefuel() {
+        let weights = FlybriefWeightMath.progression(
+            initialTakeoffKilograms: 750,
+            flightMinutes: [60, 30, 60],
+            consumptionLitersPerHour: 20,
+            fuelDensityKilogramsPerLiter: 0.75,
+            refuelLitersAfterSegment: [0, 10, 0]
+        )
+
+        XCTAssertEqual(weights.count, 3)
+        XCTAssertEqual(weights[0].takeoffKilograms, 750, accuracy: 0.01)
+        XCTAssertEqual(weights[0].landingKilograms, 735, accuracy: 0.01)
+        XCTAssertEqual(weights[1].takeoffKilograms, 735, accuracy: 0.01)
+        XCTAssertEqual(weights[1].landingKilograms, 727.5, accuracy: 0.01)
+        XCTAssertEqual(weights[2].takeoffKilograms, 735, accuracy: 0.01)
+        XCTAssertEqual(weights[2].landingKilograms, 720, accuracy: 0.01)
     }
 
     func testMultiStopWithAlternateMemosUsesSeparateA4Pages() throws {
@@ -238,6 +263,7 @@ final class FlybriefPDFTests: XCTestCase {
                 FlybriefRouteWeatherPoint(id: $0, level: .good)
             },
             routeWeatherSummary: "Routenwetter unkritisch",
+            altitudeWindsText: "FL30 240/09 · FL60 250/12 · FL90 260/18",
             departure: departure,
             arrival: arrival
         )
