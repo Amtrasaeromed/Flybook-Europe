@@ -77,7 +77,8 @@ denselben kommerziellen Rundungspfad.
 Die Charterkalkulation führt Landegebühr, Übernachtungsgebühr, Zoll Einreise,
 Zoll Ausreise und Handling als fünf unabhängige Schalter. Landegebühren sind
 standardmäßig aktiv; Übernachtung und Zoll werden aus dem Flugplan vorbelegt.
-Parken sowie Zoll/Handling erscheinen als eigene Tabellenzeilen unter Tanken.
+Tanken, Parken, Zoll und Handling erscheinen als vier einheitliche eigene
+Tabellenzeilen.
 Zollkosten werden dem tatsächlichen Ausreise- und Einreiseflugplatz am
 Grenzsegment zugeordnet; unbekannte Tarife bleiben sichtbar als `?` und werden
 nicht in die Gesamtsumme erfunden.
@@ -92,7 +93,11 @@ Bestände sowie Überschreitungen der nutzbaren Tankkapazität werden rot
 gekennzeichnet. Die Tabelle trennt Zeit/Verbrauch, Mindestwerte und den blau
 hervorgehobenen tatsächlichen Plan. Der gewählte Tankstopp erscheint als
 eigene Zeile zwischen den Legs; alle berechneten Literwerte werden auf den
-nächsten vollen Liter aufgerundet.
+nächsten vollen Liter aufgerundet. Die Refuel-Menge wird direkt in dieser
+Planzeile manuell, als Minimum oder bis Voll festgelegt. **Tankberechnung
+übernehmen** überträgt Menge und Refueling-Stop in die weiterhin manuell
+editierbare Tanken-Zeile der Charterkalkulation, sodass der passende bekannte
+Platzpreis für die Zusatzkosten verwendet wird.
 
 ## Start und Prüfung
 

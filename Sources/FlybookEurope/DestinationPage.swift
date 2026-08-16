@@ -51,12 +51,6 @@ enum FlightPlanningDestinationSync {
     }
 }
 
-private enum StartingFuelPreset {
-    case full
-    case minimum
-    case manual
-}
-
 private struct FlybriefPlannedSegment {
     let origin: AirportReference
     let destination: AirportReference
@@ -151,8 +145,6 @@ struct DestinationPage: View {
     @State private var flightPlanningMode = FlightPlanningMode.roundTrip
     @State private var isOneWay = true
     @State private var outboundReserveNotConsumed = false
-    @State private var reserveToggleMustNotEnableRefuel = false
-    @State private var refuelAtDestination = false
     @State private var includeLandingFeesInTotal = true
     @State private var includeOvernightParkingFee = false
     @State private var includeCustomsEntryFee = false
@@ -164,11 +156,11 @@ struct DestinationPage: View {
     @State private var flybriefExportError: String?
     @State private var flybriefPreview: FlybriefPreviewDocument?
     @State private var isFlybriefPreviewLoading = false
-    @State private var refuelLiters = 70.0
+    @State private var refuelLiters = 0.0
+    @State private var refuelAirportICAO = ""
     @State private var manualRefuelPrice: Double?
     @State private var selectedRefuelFuelRaw = AircraftFuelType.mogas.rawValue
     @State private var startingFuelLiters = 1.0
-    @State private var startingFuelPreset = StartingFuelPreset.full
     @State private var intermediateICAO = "EDFZ"
     @AppStorage(CalculationSettingsKey.reservationFromTimestamp)
     private var reservationFromTimestamp = Date().timeIntervalSince1970
@@ -222,6 +214,12 @@ struct DestinationPage: View {
     }
 
     private var refuelAirport: Destination {
+        if !refuelAirportICAO.isEmpty,
+           let transferredAirport = availableDestinations.first(where: {
+               $0.icao == refuelAirportICAO
+           }) {
+            return transferredAirport
+        }
         let arrivalICAO = firstLegDestination.icao
         return availableDestinations.first { $0.icao == arrivalICAO }
             ?? destination
@@ -259,7 +257,7 @@ struct DestinationPage: View {
     }
 
     private var refuelLossEUR: Double? {
-        guard refuelAtDestination else { return 0 }
+        guard refuelLiters > 0 else { return 0 }
         let foreign = !["DE", "DEUTSCHLAND"].contains(refuelAirport.country.uppercased())
         return CharterMath.refuelLoss(
             grossPricePerLiter: destinationFuelPrice,
@@ -637,8 +635,12 @@ struct DestinationPage: View {
         )
     }
 
+    private var customsFeeQuote: AncillaryFeeQuote {
+        customsEntryFeeQuote + customsExitFeeQuote
+    }
+
     private var customsAndHandlingFeeQuote: AncillaryFeeQuote {
-        customsEntryFeeQuote + customsExitFeeQuote + handlingFeeQuote
+        customsFeeQuote + handlingFeeQuote
     }
 
     private var includedAncillaryAirportFeesEUR: Double {
@@ -1355,35 +1357,11 @@ struct DestinationPage: View {
         .onChange(of: ancillaryFeeContext) { _ in
             refreshAncillaryFeeDefaults()
         }
+        .onChange(of: refuelAirportICAO) { _ in
+            manualRefuelPrice = nil
+        }
         .onChange(of: totalCommercialBlockMinutes) { _ in
             storedCalculatedBlockMinutes = commercialEquivalentBlockMinutes
-        }
-        .onChange(of: totalRequiredFuelForRoute) { _ in
-            let suppressAutomaticActivation =
-                reserveToggleMustNotEnableRefuel
-            reserveToggleMustNotEnableRefuel = false
-            if refuelAtDestination {
-                selectSuggestedRefuelAmount()
-            }
-            if routeExceedsUsableFuel && !suppressAutomaticActivation {
-                refuelAtDestination = true
-                selectSuggestedRefuelAmount()
-            }
-        }
-        .onChange(of: outboundRequiredFuel) { _ in
-            updateAutomaticStartingFuel()
-        }
-        .onChange(of: usableFuel) { _ in
-            updateAutomaticStartingFuel()
-            if routeExceedsUsableFuel {
-                refuelAtDestination = true
-                selectSuggestedRefuelAmount()
-            }
-        }
-        .onChange(of: startingFuelLiters) { _ in
-            if refuelAtDestination {
-                selectSuggestedRefuelAmount()
-            }
         }
         .onChange(of: outboundStartInstant) { _ in
             synchronizeReservationWindow()
@@ -1417,10 +1395,6 @@ struct DestinationPage: View {
             normalizeFlightAltitudes()
             storedCalculatedBlockMinutes = commercialEquivalentBlockMinutes
             selectFullStartingFuel()
-            if routeExceedsUsableFuel {
-                refuelAtDestination = true
-                selectSuggestedRefuelAmount()
-            }
             synchronizeReservationWindow()
             plannedMainDestinationArrival =
                 plannedMainDestinationArrivalInstant
@@ -1428,14 +1402,11 @@ struct DestinationPage: View {
     }
 
     private func resetRefuelEntry() {
-        refuelAtDestination = routeExceedsUsableFuel
         refuelLiters = 0
+        refuelAirportICAO = ""
         manualRefuelPrice = nil
         selectedRefuelFuelRaw = preferredFuel.rawValue
         selectFullStartingFuel()
-        if refuelAtDestination {
-            selectSuggestedRefuelAmount()
-        }
     }
 
     private var outboundStopsBinding: Binding<Int> {
@@ -1793,92 +1764,8 @@ struct DestinationPage: View {
         return blockFuel + returnReserve
     }
 
-    private var totalRequiredFuelForRoute: Double {
-        let blockFuel = outboundBlockFuel
-            + (isOneWay ? 0 : Double(returnCalculatedBlockMinutes)
-                * returnFuelConsumptionPerHour / 60.0)
-        let reserves = CharterMath.requiredReserveLiters(
-            outboundConsumptionPerHour: outboundFuelConsumptionPerHour,
-            returnConsumptionPerHour:
-                isOneWay ? nil : returnFuelConsumptionPerHour,
-            reserveMinutes: reserveMinutes,
-            outboundReserveIsReused:
-                !isOneWay && outboundReserveNotConsumed
-        )
-        return blockFuel + reserves
-    }
-
-    private var routeExceedsUsableFuel: Bool {
-        usableFuel > 0 && totalRequiredFuelForRoute > usableFuel
-    }
-
-    private var refuelAtDestinationBinding: Binding<Bool> {
-        Binding(
-            get: { refuelAtDestination },
-            set: { isEnabled in
-                refuelAtDestination = isEnabled
-                if isEnabled {
-                    selectSuggestedRefuelAmount()
-                }
-            }
-        )
-    }
-
-    private var outboundReserveNotConsumedBinding: Binding<Bool> {
-        Binding(
-            get: { outboundReserveNotConsumed },
-            set: { newValue in
-                reserveToggleMustNotEnableRefuel = true
-                outboundReserveNotConsumed = newValue
-            }
-        )
-    }
-
-    private var startingFuelMaximumDisplayed: Int {
-        max(1, Int(floor(fuelDisplayUnit.fromLiters(usableFuel))))
-    }
-
-    private var startingFuelDisplayedBinding: Binding<Int> {
-        Binding(
-            get: {
-                min(
-                    startingFuelMaximumDisplayed,
-                    max(1, Int(ceil(fuelDisplayUnit.fromLiters(startingFuelLiters))))
-                )
-            },
-            set: {
-                startingFuelPreset = .manual
-                startingFuelLiters = fuelDisplayUnit.toLiters(Double($0))
-            }
-        )
-    }
-
-    private func selectMinimumStartingFuel() {
-        startingFuelPreset = .minimum
-        startingFuelLiters = min(
-            max(1, usableFuel),
-            max(1, roundedUpForFuelDisplay(outboundRequiredFuel))
-        )
-    }
-
     private func selectFullStartingFuel() {
-        startingFuelPreset = .full
         startingFuelLiters = max(1, usableFuel)
-    }
-
-    private func updateAutomaticStartingFuel() {
-        switch startingFuelPreset {
-        case .minimum:
-            selectMinimumStartingFuel()
-        case .full:
-            selectFullStartingFuel()
-        case .manual:
-            break
-        }
-    }
-
-    private func selectSuggestedRefuelAmount() {
-        refuelLiters = minimumSuggestedRefuelLiters
     }
 
     private var minimumSuggestedRefuelLiters: Double {
@@ -3676,7 +3563,6 @@ struct DestinationPage: View {
                     returnDirectNM: returnDirectNM,
                     outboundTrackMiles: outboundTrackMilesBinding,
                     returnTrackMiles: returnTrackMilesBinding,
-                    refuelAtDestination: refuelAtDestinationBinding,
                     destinationTimeZone: planningDestination.timeZone,
                     timeDisplayMode: timeDisplayMode,
                     tankStopMinutes: tankStopMinutes,
@@ -3705,7 +3591,9 @@ struct DestinationPage: View {
                 reserveMinutes: reserveMinutes,
                 usableFuelLiters: usableFuel,
                 aircraftName: selectedAircraft.displayName,
-                startingFuelLiters: $startingFuelLiters
+                startingFuelLiters: $startingFuelLiters,
+                charterRefuelLiters: $refuelLiters,
+                charterRefuelAirportICAO: $refuelAirportICAO
             )
         }
         .sheet(item: $flybriefPreview) { document in
@@ -3761,49 +3649,12 @@ struct DestinationPage: View {
                         Toggle("Handling", isOn: $includeHandlingFee)
                             .toggleStyle(.checkbox)
                     }
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 10.5, weight: .semibold))
                     .foregroundStyle(FlybookColor.navy)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.82)
 
                     HStack {
-                        HStack(spacing: 6) {
-                            Button {
-                                refuelAtDestination.toggle()
-                            } label: {
-                                Image(systemName: "fuelpump.fill")
-                                    .font(.system(size: 23, weight: .bold))
-                                    .foregroundStyle(
-                                        refuelAtDestination
-                                            ? FlybookColor.blue
-                                            : FlybookColor.muted
-                                    )
-                                    .frame(width: 30, height: 30)
-                            }
-                            .buttonStyle(.plain)
-                            .help(
-                                refuelAtDestination
-                                    ? "Tanken am Ziel: ein"
-                                    : "Tanken am Ziel: aus"
-                            )
-                            Picker("Startkraftstoff", selection: startingFuelDisplayedBinding) {
-                                ForEach(1...startingFuelMaximumDisplayed, id: \.self) { amount in
-                                    Text("\(amount) \(fuelDisplayUnit.symbol)").tag(amount)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.menu)
-                            .frame(width: 94)
-                            Button("Voll") {
-                                selectFullStartingFuel()
-                            }
-                            .controlSize(.small)
-                            Button("Minimum") {
-                                selectMinimumStartingFuel()
-                            }
-                            .controlSize(.small)
-                        }
-
                         Spacer()
                         Picker("Kraftstoffeinheit", selection: $fuelDisplayUnitRaw) {
                             ForEach(FuelDisplayUnit.allCases) { unit in
@@ -3898,16 +3749,14 @@ struct DestinationPage: View {
                         prepaymentDiscount30PlusEnabled:
                             prepaymentDiscount30PlusEnabled,
                         landingFeeQuote: returnLandingFeeQuote,
-                        showsLandingFee: includeLandingFeesInTotal,
-                        reserveToggle:
-                            outboundReserveNotConsumedBinding
+                        showsLandingFee: includeLandingFeesInTotal
                     )
                 }
 
                 Divider()
 
                 DestinationRefuelCalculationRow(
-                    enabled: refuelAtDestinationBinding,
+                    airportICAO: refuelAirport.icao,
                     selectedFuelRaw: $selectedRefuelFuelRaw,
                     knownPrice: price(selectedRefuelFuel, at: refuelAirport),
                     manualPrice: $manualRefuelPrice,
@@ -3923,12 +3772,17 @@ struct DestinationPage: View {
                 )
 
                 AncillaryCalculationRow(
-                    title: "ZOLL / HANDLING",
-                    quote: customsAndHandlingFeeQuote,
+                    title: "ZOLL",
+                    quote: customsFeeQuote,
                     isEnabled:
                         includeCustomsEntryFee
                         || includeCustomsExitFee
-                        || includeHandlingFee
+                )
+
+                AncillaryCalculationRow(
+                    title: "HANDLING",
+                    quote: handlingFeeQuote,
+                    isEnabled: includeHandlingFee
                 )
 
                 CalculationTotalRow(
@@ -3990,7 +3844,7 @@ struct DestinationPage: View {
                         hasUnknownAncillaryAirportFees,
                     refuelLossEUR: refuelLossEUR,
                     startingFuelLiters: startingFuelLiters,
-                    refuelEnabled: refuelAtDestination,
+                    refuelEnabled: refuelLiters > 0,
                     refuelLiters: refuelLiters,
                     minimumRequiredRefuelLiters:
                         minimumSuggestedRefuelLiters,
@@ -6075,7 +5929,6 @@ private struct FlightTimePlanningRows: View {
     let returnDirectNM: Double
     @Binding var outboundTrackMiles: Double
     @Binding var returnTrackMiles: Double
-    @Binding var refuelAtDestination: Bool
     let destinationTimeZone: TimeZone
     let timeDisplayMode: TimeDisplayMode
     let tankStopMinutes: Int
@@ -9044,7 +8897,7 @@ private enum CalculationGrid {
 }
 
 private struct DestinationRefuelCalculationRow: View {
-    @Binding var enabled: Bool
+    let airportICAO: String
     @Binding var selectedFuelRaw: String
     let knownPrice: Double?
     @Binding var manualPrice: Double?
@@ -9054,16 +8907,25 @@ private struct DestinationRefuelCalculationRow: View {
 
     private var effectivePrice: Double? { manualPrice ?? knownPrice }
     private var shownQuantity: Double { unit.fromLiters(liters) }
+    private var lossText: String {
+        guard let lossEUR else { return "?" }
+        return lossEUR
+            .rounded(.toNearestOrAwayFromZero)
+            .formatted(
+                .currency(code: "EUR")
+                    .locale(Locale(identifier: "de_DE"))
+                    .precision(.fractionLength(0))
+            )
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            VStack(spacing: 3) {
-                Button { enabled.toggle() } label: {
-                    Text("TANKEN")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(enabled ? FlybookColor.blue : FlybookColor.navy)
-                }
-                .buttonStyle(.plain)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("TANKEN \(airportICAO)")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(FlybookColor.navy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Picker("Kraftstoff", selection: $selectedFuelRaw) {
                     ForEach(AircraftFuelType.allCases) { fuel in
                         Text(fuel.rawValue).tag(fuel.rawValue)
@@ -9094,10 +8956,9 @@ private struct DestinationRefuelCalculationRow: View {
                     width: CalculationGrid.columnWidth,
                     height: 1
                 )
-            resultBox(lossEUR.map { String(format: "%.2f €", $0) } ?? "?")
+            resultBox(lossText)
         }
-        .opacity(enabled ? 1 : 0.45)
-        .frame(height: 54, alignment: .top)
+        .frame(height: 46, alignment: .top)
     }
 
     private func refuelInputBox<F: ParseableFormatStyle>(
@@ -9141,7 +9002,6 @@ private struct DestinationRefuelCalculationRow: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.gray.opacity(0.08))
         )
-        .disabled(!enabled)
     }
 
     private func resultBox(_ value: String) -> some View {
@@ -9571,7 +9431,6 @@ private struct CalculationRow: View {
     let landingFeeQuote: AirportLandingFeeQuote
     let showsLandingFee: Bool
     var reserveNotConsumed = false
-    var reserveToggle: Binding<Bool>? = nil
 
     private var blockMinutes: Int {
         FlightMath.adjustedBlockMinutes(
@@ -9767,16 +9626,6 @@ private struct CalculationRow: View {
                 )
             }
 
-            if let reserveToggle {
-                Toggle(
-                    "Hinflugreserve nicht verbraucht",
-                    isOn: reserveToggle
-                )
-                .toggleStyle(.checkbox)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(FlybookColor.navy)
-                .padding(.leading, CalculationGrid.labelWidth + 6)
-            }
         }
         .fixedSize(horizontal: false, vertical: true)
     }

@@ -11,7 +11,7 @@
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
 - Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich:
-  187 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
+  188 Tests, 0 Fehler, 3 bewusst deaktivierte Live-Quellentests.
 - Daten-, Quellen-, Datenfluss-, Persistenz- und Rechenaudit sind grün.
 - Der Destination Finder behält Ziele bei unvollständigem Streckenwetter als
   Treffer und kennzeichnet sie als nicht vollständig geprüft. Alpenföhn wird
@@ -52,7 +52,7 @@
 - Die gewählte Flughöhe wird im Flugplan-Picker wieder als konkreter Wert
   angezeigt. Die Charterkalkulation besitzt fünf unabhängige Gebührenhaken
   für Landung, Übernachtung, Zoll Einreise, Zoll Ausreise und Handling.
-  Parken sowie Zoll/Handling stehen als Tabellenzeilen unter Tanken; Zoll wird
+  Tanken, Parken, Zoll und Handling stehen als vier eigene Kostenzeilen; Zoll wird
   am tatsächlichen Grenzsegment dem Ausreise- beziehungsweise Einreiseplatz
   zugeordnet. Die Außenmaße der Kalkulations- und Zielblöcke bleiben gleich.
 - Zwischen Lokal/UTC und Drucken öffnet ein Tanksäulen-Schalter den neuen
@@ -65,6 +65,11 @@
   Minimum und tatsächlicher Plan sind tabellarisch getrennt; der Plan ist blau
   hervorgehoben und der Tankstopp steht als eigene Zwischenzeile. Berechnete
   Literwerte werden stets auf den nächsten vollen Liter aufgerundet.
+  Die Refuel-Menge wird in der Planzeile manuell, per Minimum oder per Voll
+  gesetzt und mit „Tankberechnung übernehmen“ samt Refueling-Stop an die
+  weiterhin editierbare Tanken-Zeile der Charterkalkulation übergeben. Die
+  frühere Tanksäulen-/Starttankbedienung und der Hinflugreserve-Schalter der
+  Charterkarte entfallen.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.

@@ -24,6 +24,24 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertEqual(FuelPlanCalculator.roundedLitersForDisplay(-0.2), -1)
     }
 
+    func testTransferIncludesRefuelAirportAndSelectedQuantity() {
+        XCTAssertEqual(
+            FuelPlanCalculator.transfer(
+                legs: legs,
+                refuelAfterLegIndex: 0,
+                refuelLiters: 20
+            ),
+            FuelPlanTransfer(airportICAO: "C", refuelLiters: 20)
+        )
+        XCTAssertNil(
+            FuelPlanCalculator.transfer(
+                legs: legs,
+                refuelAfterLegIndex: nil,
+                refuelLiters: 20
+            )
+        )
+    }
+
     func testRefuelAtCReusesArrivalReserveForTheReturnTrip() {
         let result = FuelPlanCalculator.calculate(
             legs: legs,
