@@ -40,7 +40,9 @@ final class LayoutSmokeTests: XCTestCase {
             ],
             startingFuelLiters: .constant(70),
             initialRefuelAfterLegIndex: 0,
-            initialRefuelLiters: 25
+            initialRefuelLiters: 25,
+            initialSecondRefuelAfterLegIndex: 1,
+            initialSecondRefuelLiters: 15
         )
 
         let renderer = ImageRenderer(content: view)

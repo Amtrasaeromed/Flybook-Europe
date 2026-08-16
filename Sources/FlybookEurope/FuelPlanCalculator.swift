@@ -29,6 +29,7 @@ struct FuelPlanResult: Equatable {
     let rows: [FuelPlanRow]
     let minimumStartingFuelLiters: Double
     let minimumRefuelLiters: Double
+    let minimumRefuelLitersByLegIndex: [Int: Double]
     let finalReserveLiters: Double
     let usableFuelLiters: Double
     let hasCapacityViolation: Bool
@@ -141,6 +142,13 @@ struct FuelPlanConfirmation: Equatable {
 }
 
 enum FuelPlanCalculator {
+    static func refuelCandidateIndices(legs: [FuelPlanLeg]) -> [Int] {
+        guard legs.count > 1 else { return [] }
+        return Array(legs.indices.dropLast()).filter {
+            legs[$0].destinationICAO == legs[$0 + 1].originICAO
+        }
+    }
+
     static func roundedLitersForDisplay(_ value: Double) -> Int {
         if value >= 0 {
             return Int(ceil(value - 0.000_001))
@@ -171,11 +179,28 @@ enum FuelPlanCalculator {
         refuelAfterLegIndex: Int?,
         refuelLiters: Double
     ) -> FuelPlanResult {
+        calculate(
+            legs: legs,
+            reserveMinutes: reserveMinutes,
+            usableFuelLiters: usableFuelLiters,
+            startingFuelLiters: startingFuelLiters,
+            refuelsByLegIndex: refuelAfterLegIndex.map { [$0: refuelLiters] } ?? [:]
+        )
+    }
+
+    static func calculate(
+        legs: [FuelPlanLeg],
+        reserveMinutes: Int,
+        usableFuelLiters: Double,
+        startingFuelLiters: Double,
+        refuelsByLegIndex: [Int: Double]
+    ) -> FuelPlanResult {
         guard !legs.isEmpty else {
             return FuelPlanResult(
                 rows: [],
                 minimumStartingFuelLiters: 0,
                 minimumRefuelLiters: 0,
+                minimumRefuelLitersByLegIndex: [:],
                 finalReserveLiters: 0,
                 usableFuelLiters: max(0, usableFuelLiters),
                 hasCapacityViolation: false,
@@ -193,12 +218,14 @@ enum FuelPlanCalculator {
         // der sicheren Seite.
         let capacity = floor(max(0, usableFuelLiters) + 0.000_001)
         let startFuel = floor(max(0, startingFuelLiters) + 0.000_001)
-        let addedFuel = floor(max(0, refuelLiters) + 0.000_001)
         let burns = legs.map {
             Double(roundedLitersForDisplay($0.burnLiters))
         }
-        let validRefuelIndex = refuelAfterLegIndex.flatMap {
-            legs.indices.contains($0) && $0 < legs.count - 1 ? $0 : nil
+        let validRefuelIndices = refuelsByLegIndex.keys.filter {
+            legs.indices.contains($0) && $0 < legs.count - 1
+        }.sorted()
+        let additions = validRefuelIndices.reduce(into: [Int: Double]()) {
+            $0[$1] = floor(max(0, refuelsByLegIndex[$1] ?? 0) + 0.000_001)
         }
         let reserveHours = Double(max(0, reserveMinutes)) / 60
         let finalReserve = legs.last.map {
@@ -222,31 +249,20 @@ enum FuelPlanCalculator {
             }
         }
 
-        if let refuelIndex = validRefuelIndex {
-            fillStage(0...refuelIndex)
-            fillStage((refuelIndex + 1)...(legs.count - 1))
-        } else {
-            fillStage(0...(legs.count - 1))
+        var stageStart = 0
+        for refuelIndex in validRefuelIndices {
+            fillStage(stageStart...refuelIndex)
+            stageStart = refuelIndex + 1
+        }
+        if stageStart < legs.count {
+            fillStage(stageStart...(legs.count - 1))
         }
 
         let minimumStart = minimumDepartures[0]
-        let fuelAtRefuelBeforeAdding: Double
-        if let refuelIndex = validRefuelIndex {
-            let burnedBeforeRefuel = legs[0...refuelIndex]
-                .indices.reduce(0) { $0 + burns[$1] }
-            fuelAtRefuelBeforeAdding = max(0, startFuel - burnedBeforeRefuel)
-        } else {
-            fuelAtRefuelBeforeAdding = 0
-        }
-        let minimumRefuel = validRefuelIndex.map {
-            max(
-                0,
-                minimumDepartures[$0 + 1] - fuelAtRefuelBeforeAdding
-            )
-        } ?? 0
 
         var plannedFuel = startFuel
         var rows: [FuelPlanRow] = []
+        var minimumRefuels: [Int: Double] = [:]
         var hasFuelExhaustion = false
         var hasOverfill = plannedFuel > capacity + 0.000_1
         var stageBurn = 0.0
@@ -258,7 +274,13 @@ enum FuelPlanCalculator {
             if departure + 0.000_1 < burns[index] {
                 hasFuelExhaustion = true
             }
-            let addition = index == validRefuelIndex ? addedFuel : 0
+            let addition = additions[index] ?? 0
+            if validRefuelIndices.contains(index) {
+                minimumRefuels[index] = max(
+                    0,
+                    minimumDepartures[index + 1] - max(0, arrival)
+                )
+            }
             rows.append(
                 FuelPlanRow(
                     id: legs[index].id,
@@ -275,7 +297,7 @@ enum FuelPlanCalculator {
             if addition > 0, plannedFuel > capacity + 0.000_1 {
                 hasOverfill = true
             }
-            if index == validRefuelIndex {
+            if validRefuelIndices.contains(index) {
                 stageBurn = 0
             }
         }
@@ -284,8 +306,9 @@ enum FuelPlanCalculator {
             $0 > capacity + 0.000_1
         }
         let hasStartingFuelShortfall = startFuel + 0.000_1 < minimumStart
-        let hasRefuelShortfall = validRefuelIndex != nil
-            && addedFuel + 0.000_1 < minimumRefuel
+        let hasRefuelShortfall = validRefuelIndices.contains { index in
+            (additions[index] ?? 0) + 0.000_1 < (minimumRefuels[index] ?? 0)
+        }
         let finalArrival = rows.last?.plannedArrivalLiters ?? 0
         let hasFinalReserveShortfall =
             finalArrival + 0.000_1 < finalReserve
@@ -293,7 +316,10 @@ enum FuelPlanCalculator {
         return FuelPlanResult(
             rows: rows,
             minimumStartingFuelLiters: minimumStart,
-            minimumRefuelLiters: minimumRefuel,
+            minimumRefuelLiters: validRefuelIndices.first.flatMap {
+                minimumRefuels[$0]
+            } ?? 0,
+            minimumRefuelLitersByLegIndex: minimumRefuels,
             finalReserveLiters: finalReserve,
             usableFuelLiters: capacity,
             hasCapacityViolation: hasCapacityViolation,
@@ -326,46 +352,59 @@ struct FuelPlanCalculatorView: View {
     @State private var refuelAfterLegIndex: Int?
     @State private var refuelLiters = 0.0
     @State private var followsMinimumRefuel = true
+    @State private var secondRefuelAfterLegIndex: Int?
+    @State private var secondRefuelLiters = 0.0
+    @State private var secondFollowsMinimumRefuel = true
     @State private var didTransferRefuel = false
 
     private var refuelOptions: [Int] {
-        guard legs.count > 1 else { return [] }
-        return Array(legs.indices.dropLast()).filter {
-            legs[$0].destinationICAO == legs[$0 + 1].originICAO
+        FuelPlanCalculator.refuelCandidateIndices(legs: legs)
+    }
+
+    private var secondRefuelOptions: [Int] {
+        guard let first = refuelAfterLegIndex else { return [] }
+        return refuelOptions.filter { $0 > first }
+    }
+
+    private var selectedRefuels: [Int: Double] {
+        var values: [Int: Double] = [:]
+        if let index = refuelAfterLegIndex { values[index] = refuelLiters }
+        if let index = secondRefuelAfterLegIndex {
+            values[index] = secondRefuelLiters
         }
+        return values
     }
 
     private var selectedFuel: AircraftFuelType {
         AircraftFuelType(rawValue: selectedFuelRaw) ?? preferredFuel
     }
 
-    private var selectedRefuelAirportICAO: String? {
-        guard let index = refuelAfterLegIndex, legs.indices.contains(index)
+    private func refuelAirportICAO(after index: Int) -> String? {
+        guard legs.indices.contains(index)
         else { return nil }
         return legs[index].destinationICAO
     }
 
-    private var selectedAirportFuelData: FuelPlanAirportFuelData? {
-        selectedRefuelAirportICAO.flatMap { airportFuelData[$0] }
+    private func fuelData(after index: Int) -> FuelPlanAirportFuelData? {
+        refuelAirportICAO(after: index).flatMap { airportFuelData[$0] }
     }
 
-    private var selectedFuelAvailability: FuelPlanFuelAvailability {
-        selectedAirportFuelData?.availability(for: selectedFuel) ?? .unknown
+    private func selectedFuelAvailability(after index: Int) -> FuelPlanFuelAvailability {
+        fuelData(after: index)?.availability(for: selectedFuel) ?? .unknown
     }
 
-    private var preferredFuelAvailability: FuelPlanFuelAvailability {
-        selectedAirportFuelData?.availability(for: preferredFuel) ?? .unknown
+    private func preferredFuelAvailability(after index: Int) -> FuelPlanFuelAvailability {
+        fuelData(after: index)?.availability(for: preferredFuel) ?? .unknown
     }
 
-    private var refuelSurchargeEUR: Double? {
-        guard refuelAfterLegIndex != nil else { return 0 }
-        guard selectedFuelAvailability != .unavailable,
-              let data = selectedAirportFuelData
+    private func refuelSurchargeEUR(after index: Int, liters: Double) -> Double? {
+        guard selectedFuelAvailability(after: index) != .unavailable,
+              let data = fuelData(after: index)
         else { return nil }
         return CharterMath.refuelLoss(
             grossPricePerLiter: data.price(for: selectedFuel),
             homeReferencePerLiter: homeReferencePriceEUR,
-            liters: refuelLiters,
+            liters: liters,
             destinationVATPercent: data.vatPercent,
             isForeign: data.isForeign
         )
@@ -377,13 +416,12 @@ struct FuelPlanCalculatorView: View {
             reserveMinutes: reserveMinutes,
             usableFuelLiters: usableFuelLiters,
             startingFuelLiters: startingFuelLiters,
-            refuelAfterLegIndex: refuelAfterLegIndex,
-            refuelLiters: refuelLiters
+            refuelsByLegIndex: selectedRefuels
         )
     }
 
     private var tableEntryCount: Int {
-        result.rows.count + (refuelAfterLegIndex == nil ? 0 : 1)
+        result.rows.count + selectedRefuels.count
     }
 
     private var tableLegRowHeight: CGFloat {
@@ -400,22 +438,25 @@ struct FuelPlanCalculatorView: View {
             set: { newValue in
                 startingFuelLiters = floor(max(0, newValue) + 0.000_001)
                 didTransferRefuel = false
-                if followsMinimumRefuel {
-                    refuelLiters = roundedUpMinimumRefuel(
-                        after: refuelAfterLegIndex,
-                        startingFuel: startingFuelLiters
-                    )
-                }
+                refreshFollowingMinimumRefuels()
             }
         )
     }
 
-    private var refuelBinding: Binding<Double> {
+    private func refuelBinding(second: Bool) -> Binding<Double> {
         Binding(
-            get: { ceil(max(0, refuelLiters) - 0.000_001) },
+            get: {
+                ceil(max(0, second ? secondRefuelLiters : refuelLiters) - 0.000_001)
+            },
             set: {
-                followsMinimumRefuel = false
-                refuelLiters = ceil(max(0, $0) - 0.000_001)
+                if second {
+                    secondFollowsMinimumRefuel = false
+                    secondRefuelLiters = ceil(max(0, $0) - 0.000_001)
+                } else {
+                    followsMinimumRefuel = false
+                    refuelLiters = ceil(max(0, $0) - 0.000_001)
+                    refreshSecondMinimumRefuel()
+                }
                 didTransferRefuel = false
             }
         )
@@ -428,10 +469,24 @@ struct FuelPlanCalculatorView: View {
                 refuelAfterLegIndex = newValue
                 followsMinimumRefuel = true
                 didTransferRefuel = false
-                refuelLiters = roundedUpMinimumRefuel(
-                    after: newValue,
-                    startingFuel: startingFuelLiters
-                )
+                if let second = secondRefuelAfterLegIndex,
+                   newValue == nil || second <= (newValue ?? -1) {
+                    secondRefuelAfterLegIndex = nil
+                    secondRefuelLiters = 0
+                }
+                refreshFollowingMinimumRefuels()
+            }
+        )
+    }
+
+    private var secondRefuelSelectionBinding: Binding<Int?> {
+        Binding(
+            get: { secondRefuelAfterLegIndex },
+            set: { newValue in
+                secondRefuelAfterLegIndex = newValue
+                secondFollowsMinimumRefuel = true
+                didTransferRefuel = false
+                refreshSecondMinimumRefuel()
             }
         )
     }
@@ -451,6 +506,8 @@ struct FuelPlanCalculatorView: View {
         selectedFuelRaw: Binding<String> = .constant(AircraftFuelType.mogas.rawValue),
         initialRefuelAfterLegIndex: Int? = nil,
         initialRefuelLiters: Double = 0,
+        initialSecondRefuelAfterLegIndex: Int? = nil,
+        initialSecondRefuelLiters: Double = 0,
         onConfirm: @escaping (FuelPlanConfirmation) -> Void = { _ in }
     ) {
         self.legs = legs
@@ -468,6 +525,12 @@ struct FuelPlanCalculatorView: View {
         self.onConfirm = onConfirm
         _refuelAfterLegIndex = State(initialValue: initialRefuelAfterLegIndex)
         _refuelLiters = State(initialValue: max(0, initialRefuelLiters))
+        _secondRefuelAfterLegIndex = State(
+            initialValue: initialSecondRefuelAfterLegIndex
+        )
+        _secondRefuelLiters = State(
+            initialValue: max(0, initialSecondRefuelLiters)
+        )
     }
 
     var body: some View {
@@ -545,40 +608,47 @@ struct FuelPlanCalculatorView: View {
             Button("Minimum") {
                 startingFuelLiters = roundedUp(result.minimumStartingFuelLiters)
                 didTransferRefuel = false
-                if followsMinimumRefuel {
-                    refuelLiters = roundedUpMinimumRefuel(
-                        after: refuelAfterLegIndex,
-                        startingFuel: startingFuelLiters
-                    )
-                }
+                refreshFollowingMinimumRefuels()
             }
             .controlSize(.small)
             Button("Voll") {
                 startingFuelLiters = max(0, usableFuelLiters)
                 didTransferRefuel = false
-                if followsMinimumRefuel {
-                    refuelLiters = roundedUpMinimumRefuel(
-                        after: refuelAfterLegIndex,
-                        startingFuel: startingFuelLiters
-                    )
-                }
+                refreshFollowingMinimumRefuels()
             }
             .controlSize(.small)
 
             Divider().frame(height: 38)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Refueling-Stop")
+                Text("Refueling-Stop 1")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(FlybookColor.muted)
                 Picker("Refueling-Stop", selection: refuelSelectionBinding) {
                     Text("Kein Refueling-Stop").tag(Int?.none)
                     ForEach(refuelOptions, id: \.self) { index in
-                        Text(legs[index].destinationICAO).tag(Optional(index))
+                        Text(refuelingStopName(for: legs[index].destinationICAO))
+                            .tag(Optional(index))
                     }
                 }
                 .labelsHidden()
-                .frame(width: 210)
+                .frame(width: 190)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Refueling-Stop 2")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+                Picker("Refueling-Stop 2", selection: secondRefuelSelectionBinding) {
+                    Text("Kein zweiter Stop").tag(Int?.none)
+                    ForEach(secondRefuelOptions, id: \.self) { index in
+                        Text(refuelingStopName(for: legs[index].destinationICAO))
+                            .tag(Optional(index))
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 190)
+                .disabled(refuelAfterLegIndex == nil)
             }
         }
     }
@@ -592,9 +662,9 @@ struct FuelPlanCalculatorView: View {
                 ForEach(Array(result.rows.enumerated()), id: \.element.id) {
                     index, row in
                     tableRow(index: index, row: row)
-                    if refuelAfterLegIndex == index {
+                    if selectedRefuels[index] != nil {
                         Divider().overlay(FlybookColor.blue.opacity(0.55))
-                        tankStopRow(row: row)
+                        tankStopRow(index: index, row: row)
                         if index < result.rows.count - 1 {
                             Divider().overlay(FlybookColor.blue.opacity(0.55))
                         }
@@ -702,7 +772,7 @@ struct FuelPlanCalculatorView: View {
         .background(isWarning ? Color.red.opacity(0.07) : Color.clear)
     }
 
-    private func tankStopRow(row: FuelPlanRow) -> some View {
+    private func tankStopRow(index: Int, row: FuelPlanRow) -> some View {
         HStack(spacing: 6) {
             Label(
                 refuelingStopName(for: row.leg.destinationICAO),
@@ -711,21 +781,24 @@ struct FuelPlanCalculatorView: View {
             .font(.system(size: 13, weight: .heavy))
             .lineLimit(1)
             .minimumScaleFactor(0.65)
-            .foregroundStyle(refuelingAirportColor)
-            .help(fuelAvailabilityWarning ?? "Bevorzugter Kraftstoff verfügbar")
+            .foregroundStyle(refuelingAirportColor(after: index))
+            .help(
+                fuelAvailabilityWarning(after: index)
+                    ?? "Bevorzugter Kraftstoff verfügbar"
+            )
             .frame(width: 190, alignment: .leading)
 
             fuelPicker
                 .frame(width: 98)
             Color.clear.frame(width: 105, height: 1)
             tableSeparator(height: 32)
-            refuelPlanControl(row: row)
+            refuelPlanControl(index: index, row: row)
                 .frame(width: 235)
             tableSeparator(height: 32)
             Color.clear.frame(width: 80, height: 1)
             Color.clear.frame(width: 52, height: 1)
             tableSeparator(height: 32)
-            refuelSurchargeView.frame(width: 78)
+            refuelSurchargeView(index: index).frame(width: 78)
         }
         .padding(.horizontal, 12)
         .frame(height: tableTankStopRowHeight)
@@ -744,29 +817,31 @@ struct FuelPlanCalculatorView: View {
         .onChange(of: selectedFuelRaw) { _ in didTransferRefuel = false }
     }
 
-    private var refuelingAirportColor: Color {
-        switch preferredFuelAvailability {
+    private func refuelingAirportColor(after index: Int) -> Color {
+        switch preferredFuelAvailability(after: index) {
         case .available: return FlybookColor.navy
         case .unknown: return .orange
         case .unavailable: return .red
         }
     }
 
-    private var fuelAvailabilityWarning: String? {
-        guard refuelAfterLegIndex != nil else { return nil }
-        switch preferredFuelAvailability {
+    private func fuelAvailabilityWarning(after index: Int) -> String? {
+        switch preferredFuelAvailability(after: index) {
         case .available:
             return nil
         case .unknown:
-            return "Verfügbarkeit von (preferredFuel.rawValue) ist an diesem Tankstopp unbekannt."
+            return "Verfügbarkeit von \(preferredFuel.rawValue) ist in \(legs[index].destinationICAO) unbekannt."
         case .unavailable:
-            return "Bevorzugter Kraftstoff (preferredFuel.rawValue) ist an diesem Tankstopp nicht verfügbar."
+            return "Bevorzugter Kraftstoff \(preferredFuel.rawValue) ist in \(legs[index].destinationICAO) nicht verfügbar."
         }
     }
 
     @ViewBuilder
-    private var refuelSurchargeView: some View {
-        if let amount = refuelSurchargeEUR {
+    private func refuelSurchargeView(index: Int) -> some View {
+        let liters = index == refuelAfterLegIndex
+            ? refuelLiters
+            : secondRefuelLiters
+        if let amount = refuelSurchargeEUR(after: index, liters: liters) {
             Text(amount <= 0.004 ? "0 €" : currency(amount))
                 .font(.system(size: 13, weight: .heavy, design: .monospaced))
                 .foregroundStyle(amount > 0.004 ? Color.red : FlybookColor.navy)
@@ -785,11 +860,12 @@ struct FuelPlanCalculatorView: View {
         )
     }
 
-    private func refuelPlanControl(row: FuelPlanRow) -> some View {
-        HStack(spacing: 5) {
+    private func refuelPlanControl(index: Int, row: FuelPlanRow) -> some View {
+        let isSecond = index == secondRefuelAfterLegIndex
+        return HStack(spacing: 5) {
             TextField(
                 "",
-                value: refuelBinding,
+                value: refuelBinding(second: isSecond),
                 format: .number.precision(.fractionLength(0))
             )
             .textFieldStyle(.roundedBorder)
@@ -799,16 +875,34 @@ struct FuelPlanCalculatorView: View {
             Text("L")
                 .font(.system(size: 11, weight: .bold))
             Button("Minimum") {
-                followsMinimumRefuel = true
-                refuelLiters = roundedUp(result.minimumRefuelLiters)
+                if isSecond {
+                    secondFollowsMinimumRefuel = true
+                    secondRefuelLiters = roundedUp(
+                        result.minimumRefuelLitersByLegIndex[index] ?? 0
+                    )
+                } else {
+                    followsMinimumRefuel = true
+                    refuelLiters = roundedUp(
+                        result.minimumRefuelLitersByLegIndex[index] ?? 0
+                    )
+                    refreshSecondMinimumRefuel()
+                }
                 didTransferRefuel = false
             }
             .controlSize(.mini)
             Button("Voll") {
-                followsMinimumRefuel = false
-                refuelLiters = floor(
-                    max(0, usableFuelLiters - row.plannedArrivalLiters)
-                )
+                if isSecond {
+                    secondFollowsMinimumRefuel = false
+                    secondRefuelLiters = floor(
+                        max(0, usableFuelLiters - row.plannedArrivalLiters)
+                    )
+                } else {
+                    followsMinimumRefuel = false
+                    refuelLiters = floor(
+                        max(0, usableFuelLiters - row.plannedArrivalLiters)
+                    )
+                    refreshSecondMinimumRefuel()
+                }
                 didTransferRefuel = false
             }
             .controlSize(.mini)
@@ -836,7 +930,7 @@ struct FuelPlanCalculatorView: View {
 
     @ViewBuilder
     private var warnings: some View {
-        if result.hasWarning || fuelAvailabilityWarning != nil {
+        if result.hasWarning || !fuelAvailabilityWarnings.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
                 ForEach(warningMessages, id: \.self) { message in
                     Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -878,10 +972,14 @@ struct FuelPlanCalculatorView: View {
         if result.hasOverfill {
             messages.append("Der geplante Tankbestand überschreitet die nutzbare Tankkapazität.")
         }
-        if let fuelAvailabilityWarning {
-            messages.append(fuelAvailabilityWarning)
-        }
+        messages.append(contentsOf: fuelAvailabilityWarnings)
         return messages
+    }
+
+    private var fuelAvailabilityWarnings: [String] {
+        selectedRefuels.keys.sorted().compactMap {
+            fuelAvailabilityWarning(after: $0)
+        }
     }
 
     private func fuelInput(
@@ -982,19 +1080,39 @@ struct FuelPlanCalculatorView: View {
             )
     }
 
-    private func roundedUpMinimumRefuel(
-        after index: Int?,
-        startingFuel: Double
+    private func calculatedMinimumRefuel(
+        after index: Int,
+        refuels: [Int: Double]
     ) -> Double {
-        let minimum = FuelPlanCalculator.calculate(
+        FuelPlanCalculator.calculate(
             legs: legs,
             reserveMinutes: reserveMinutes,
             usableFuelLiters: usableFuelLiters,
-            startingFuelLiters: startingFuel,
-            refuelAfterLegIndex: index,
-            refuelLiters: 0
-        ).minimumRefuelLiters
-        return roundedUp(minimum)
+            startingFuelLiters: startingFuelLiters,
+            refuelsByLegIndex: refuels
+        ).minimumRefuelLitersByLegIndex[index] ?? 0
+    }
+
+    private func refreshFollowingMinimumRefuels() {
+        if followsMinimumRefuel, let first = refuelAfterLegIndex {
+            var refuels = selectedRefuels
+            refuels[first] = 0
+            refuelLiters = roundedUp(
+                calculatedMinimumRefuel(after: first, refuels: refuels)
+            )
+        }
+        refreshSecondMinimumRefuel()
+    }
+
+    private func refreshSecondMinimumRefuel() {
+        guard secondFollowsMinimumRefuel,
+              let second = secondRefuelAfterLegIndex
+        else { return }
+        var refuels = selectedRefuels
+        refuels[second] = 0
+        secondRefuelLiters = roundedUp(
+            calculatedMinimumRefuel(after: second, refuels: refuels)
+        )
     }
 
     private func roundedUp(_ value: Double) -> Double {

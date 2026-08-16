@@ -490,15 +490,18 @@ private struct FlybriefFuelPlanPDFPage: View {
             summaryBox("PLAN T/O", liters(fuelPlan.startingFuelLiters))
             summaryBox(
                 "MINIMUM REFUEL",
-                fuelPlan.refuelAfterLegIndex == nil
+                fuelPlan.result.minimumRefuelLitersByLegIndex.isEmpty
                     ? "–"
-                    : liters(fuelPlan.result.minimumRefuelLiters)
+                    : liters(
+                        fuelPlan.result.minimumRefuelLitersByLegIndex.values
+                            .reduce(0, +)
+                    )
             )
             summaryBox(
                 "PLAN REFUEL",
-                fuelPlan.refuelAfterLegIndex == nil
+                plannedRefuelTotal <= 0
                     ? "–"
-                    : liters(fuelPlan.refuelLiters)
+                    : liters(plannedRefuelTotal)
             )
             summaryBox(
                 "RESERVE ZIEL",
@@ -526,7 +529,7 @@ private struct FlybriefFuelPlanPDFPage: View {
             ForEach(Array(fuelPlan.result.rows.enumerated()), id: \.element.id) {
                 index, row in
                 fuelRow(row)
-                if fuelPlan.refuelAfterLegIndex == index {
+                if row.refuelAfterArrivalLiters > 0 {
                     Divider().overlay(FlybookColor.blue.opacity(0.55))
                     refuelRow(row)
                 }
@@ -578,13 +581,19 @@ private struct FlybriefFuelPlanPDFPage: View {
             .minimumScaleFactor(0.75)
             .frame(width: 248, alignment: .leading)
 
-            value(liters(fuelPlan.refuelLiters), width: 115, plan: true)
+            value(liters(row.refuelAfterArrivalLiters), width: 115, plan: true)
             Color.clear.frame(width: 85, height: 1)
             Color.clear.frame(width: 48, height: 1)
         }
         .padding(.horizontal, 10)
         .frame(height: 38)
         .background(FlybookColor.blue.opacity(0.12))
+    }
+
+    private var plannedRefuelTotal: Double {
+        fuelPlan.result.rows.reduce(0) {
+            $0 + $1.refuelAfterArrivalLiters
+        }
     }
 
     private var status: some View {

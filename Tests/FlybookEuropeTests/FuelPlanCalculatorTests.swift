@@ -163,6 +163,38 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertFalse(result.hasWarning)
     }
 
+    func testTwoRefuelingStopsCreateThreeIndependentReserveStages() {
+        let repeatedAirportLegs = [
+            FuelPlanLeg(id: "A-C-1", originICAO: "A", destinationICAO: "C", flightMinutes: 30, consumptionLitersPerHour: 20),
+            FuelPlanLeg(id: "C-B", originICAO: "C", destinationICAO: "B", flightMinutes: 30, consumptionLitersPerHour: 20),
+            FuelPlanLeg(id: "B-C", originICAO: "B", destinationICAO: "C", flightMinutes: 30, consumptionLitersPerHour: 20),
+            FuelPlanLeg(id: "C-A", originICAO: "C", destinationICAO: "A", flightMinutes: 30, consumptionLitersPerHour: 20)
+        ]
+        let result = FuelPlanCalculator.calculate(
+            legs: repeatedAirportLegs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelsByLegIndex: [0: 20, 2: 10]
+        )
+
+        XCTAssertEqual(result.minimumRefuelLitersByLegIndex[0], 20)
+        XCTAssertEqual(result.minimumRefuelLitersByLegIndex[2], 10)
+        XCTAssertEqual(result.rows.map(\.stageBurnLiters), [10, 10, 20, 10])
+        XCTAssertEqual(result.rows.map(\.refuelAfterArrivalLiters), [20, 0, 10, 0])
+        XCTAssertEqual(result.rows.last?.plannedArrivalLiters, 15)
+        XCTAssertFalse(result.hasWarning)
+
+        let candidates = FuelPlanCalculator.refuelCandidateIndices(
+            legs: repeatedAirportLegs
+        )
+        XCTAssertEqual(candidates, [0, 1, 2])
+        XCTAssertEqual(
+            candidates.map { repeatedAirportLegs[$0].destinationICAO },
+            ["C", "B", "C"]
+        )
+    }
+
     func testTooSmallTankAndManualShortfallsAreWarnings() {
         let result = FuelPlanCalculator.calculate(
             legs: legs,
