@@ -80,6 +80,11 @@
   Endreserve angehängt. Ändert sich Route, Flugzeug, Reserve, Startbestand oder
   übernommene Tankmenge, wird die Bestätigung als veraltet behandelt und die
   Fuelplan-Seite bis zur erneuten Bestätigung nicht ausgegeben.
+- Unter jedem Flybrief-Zielblock folgt ein kompaktes Memo der drei
+  geografisch nächsten Alternates mit Entfernung, Runwaylänge, Belag,
+  Ausrichtung und Prognose zur Zielankunft. Wegen dieser zusätzlichen
+  sicherheitsrelevanten Angaben werden Multi-Stop-Hauptflüge nicht mehr auf
+  eine gemeinsame Wetterseite zusammengepresst.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.

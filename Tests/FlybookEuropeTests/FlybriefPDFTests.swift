@@ -35,6 +35,12 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(fuelPage.string?.contains("LEG / GESAMT") == true)
         XCTAssertTrue(fuelPage.string?.contains("EHAM - Amsterdam Schiphol") == true)
         XCTAssertTrue(text.contains("Seitenwind rechts 8 G12 kt"))
+        XCTAssertTrue(text.contains("ALTERNATES FÜR EHAM"))
+        XCTAssertTrue(text.contains("EHRD"))
+        XCTAssertTrue(text.contains("2.200 m"))
+        XCTAssertTrue(text.contains("Asphalt"))
+        XCTAssertTrue(text.contains("06/24"))
+        XCTAssertTrue(text.contains("VFR · Heiter"))
         XCTAssertTrue(text.contains("Erstellt:"))
         XCTAssertTrue(text.contains("TEILSTRECKE 1/3"))
         XCTAssertTrue(text.contains("EDXE"))
@@ -49,7 +55,7 @@ final class FlybriefPDFTests: XCTestCase {
         }
     }
 
-    func testMultiStopWithAtMostFourRouteLegsUsesOneA4Page() throws {
+    func testMultiStopWithAlternateMemosUsesSeparateA4Pages() throws {
         let base = sampleSnapshot()
         let snapshot = FlybriefSnapshot(
             title: base.title,
@@ -65,13 +71,13 @@ final class FlybriefPDFTests: XCTestCase {
         )
 
         let groups = FlybriefPDFExporter.pageLegGroups(for: snapshot)
-        XCTAssertEqual(groups.count, 1)
-        XCTAssertEqual(groups.first?.count, 2)
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertEqual(groups.first?.count, 1)
 
         let document = try XCTUnwrap(
             PDFDocument(data: FlybriefPDFExporter.pdfData(for: snapshot))
         )
-        XCTAssertEqual(document.pageCount, 1)
+        XCTAssertEqual(document.pageCount, 2)
         XCTAssertTrue(document.string?.contains("1. FLUG") == false)
         XCTAssertTrue(document.string?.contains("HINFLUG") == true)
         XCTAssertTrue(document.string?.contains("RÜCKFLUG") == true)
@@ -190,7 +196,8 @@ final class FlybriefPDFTests: XCTestCase {
             routeWeatherSummary: "Routenwetter marginal",
             departure: departure,
             arrival: arrival,
-            segments: segments
+            segments: segments,
+            alternates: sampleAlternates()
         )
     }
 
@@ -257,6 +264,41 @@ final class FlybriefPDFTests: XCTestCase {
             ),
             sunText: "Dawn 05:45 · SR 06:20 · SS 20:48 · Dusk 21:24 LCL"
         )
+    }
+
+    private func sampleAlternates() -> [FlybriefAlternateSnapshot] {
+        [
+            FlybriefAlternateSnapshot(
+                icao: "EHRD",
+                name: "Rotterdam",
+                distanceNM: 31,
+                runwayLengthMeters: 2200,
+                surface: "Asphalt",
+                runwayDirection: "06/24",
+                weatherText: "VFR · Heiter · SCT 3500 / 10km+ · 290°/14 kt",
+                weatherLevel: .good
+            ),
+            FlybriefAlternateSnapshot(
+                icao: "EHLE",
+                name: "Lelystad",
+                distanceNM: 34,
+                runwayLengthMeters: 1250,
+                surface: "Asphalt",
+                runwayDirection: "05/23",
+                weatherText: "MVFR · Regen · BKN 1800 / 8km · 280°/18 kt",
+                weatherLevel: .info
+            ),
+            FlybriefAlternateSnapshot(
+                icao: "EHHV",
+                name: "Hilversum",
+                distanceNM: 36,
+                runwayLengthMeters: 700,
+                surface: "Gras",
+                runwayDirection: "07/25",
+                weatherText: "VFR · Bedeckt · SCT 3000 / 10km+ · 270°/12 kt",
+                weatherLevel: .good
+            )
+        ]
     }
 
     private func sampleFuelPlan(confirmedAt: Date) -> FuelPlanConfirmation {

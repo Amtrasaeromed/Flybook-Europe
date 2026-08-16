@@ -60,6 +60,12 @@ private struct FlybriefPlannedSegment {
     let travelMinutes: Int
 }
 
+private struct FlybriefAlternateCandidate {
+    let destination: Destination
+    let reference: AirportReference
+    let distanceNM: Double
+}
+
 private struct AncillaryFeeQuote {
     var knownTotalEUR = 0.0
     var unknownICAOs: [String] = []
@@ -1955,6 +1961,10 @@ struct DestinationPage: View {
             trackMiles: outboundTrackMiles
         )
         requests += flybriefStopWeatherRequests(from: outboundSegments)
+        requests += flybriefAlternateWeatherRequests(
+            for: firstLegDestination,
+            at: outboundArrivalInstantForWeather
+        )
         if !isOneWay {
             let returnSegments = flybriefPlannedSegments(
                 origin: secondLegOrigin,
@@ -1966,6 +1976,10 @@ struct DestinationPage: View {
                 trackMiles: returnTrackMiles
             )
             requests += flybriefStopWeatherRequests(from: returnSegments)
+            requests += flybriefAlternateWeatherRequests(
+                for: secondLegDestination,
+                at: returnArrivalInstant
+            )
         }
 
         var forecasts: [String: EDFZForecast] = [:]
@@ -1978,6 +1992,38 @@ struct DestinationPage: View {
             )
         }
         return forecasts
+    }
+
+    private func flybriefAlternateWeatherRequests(
+        for destination: AirportReference,
+        at instant: Date
+    ) -> [(AirportReference, Date)] {
+        flybriefAlternateCandidates(for: destination).map {
+            ($0.reference, instant)
+        }
+    }
+
+    private func flybriefAlternateCandidates(
+        for destination: AirportReference
+    ) -> [FlybriefAlternateCandidate] {
+        availableDestinations.compactMap { airport in
+            guard airport.icao != destination.icao,
+                  let reference = allRouteAirportOptions.first(where: {
+                    $0.icao == airport.icao
+                  })
+            else { return nil }
+            return FlybriefAlternateCandidate(
+                destination: airport,
+                reference: reference,
+                distanceNM: AirportDistance.nauticalMiles(
+                    from: destination,
+                    to: reference
+                )
+            )
+        }
+        .sorted { $0.distanceNM < $1.distanceNM }
+        .prefix(3)
+        .map { $0 }
     }
 
     private func flybriefStopWeatherRequests(
@@ -2232,8 +2278,49 @@ struct DestinationPage: View {
                 ?? "Keine ausreichenden Routendaten",
             departure: departure,
             arrival: arrival,
-            segments: segments
+            segments: segments,
+            alternates: flybriefAlternates(
+                for: destination,
+                at: arrivalInstant,
+                forecasts: stopForecasts
+            )
         )
+    }
+
+    private func flybriefAlternates(
+        for destination: AirportReference,
+        at instant: Date,
+        forecasts: [String: EDFZForecast]
+    ) -> [FlybriefAlternateSnapshot] {
+        flybriefAlternateCandidates(for: destination).map { candidate in
+            let key = flybriefForecastKey(
+                airport: candidate.reference,
+                instant: instant
+            )
+            let sample = forecasts[key]?.sample(nearestTo: instant)
+            let weather = flybriefWeather(
+                sample: sample,
+                airport: candidate.reference,
+                instant: instant
+            )
+            return FlybriefAlternateSnapshot(
+                icao: candidate.reference.icao,
+                name: candidate.reference.name,
+                distanceNM: candidate.distanceNM,
+                runwayLengthMeters: candidate.destination.runwayM,
+                surface: candidate.destination.surface.isEmpty
+                    ? "–"
+                    : candidate.destination.surface,
+                runwayDirection: candidate.reference.referenceRunway ?? "–",
+                weatherText: [
+                    weather.category,
+                    weather.condition,
+                    weather.cloudVisibilityText,
+                    weather.windText
+                ].joined(separator: " · "),
+                weatherLevel: weather.categoryLevel
+            )
+        }
     }
 
     private func flybriefSegments(

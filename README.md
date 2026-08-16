@@ -109,6 +109,12 @@ hängt der Flybrief eine eigene Fuelplan-Seite mit Minimum- und Planbeständen,
 Refueling-Stop, Leg-/Etappenverbrauch, Zeiten und Endreserve an. Ein geänderter
 Flugplan, Startbestand, Reservewert oder Tankwert macht die alte Bestätigung
 ungültig; die Fuelplan-Seite erscheint erst nach erneuter Bestätigung wieder.
+Unter dem Ziel jedes Hauptflugs steht außerdem ein kompaktes Alternate-Memo
+mit den drei geografisch nächstgelegenen Plätzen. Es zeigt ICAO und Name,
+Entfernung ab Ziel, Bahnlänge, Belag, Runway-Ausrichtung sowie die für die
+Zielankunft abgerufene Wetterprognose. Multi-Stop-Hauptflüge werden dafür auf
+getrennte Wetterseiten verteilt, damit Memo und Wetterblöcke vollständig auf
+A4 bleiben.
 
 ## Start und Prüfung
 

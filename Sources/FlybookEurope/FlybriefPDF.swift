@@ -50,6 +50,7 @@ struct FlybriefLegSnapshot: Identifiable {
     let departure: FlybriefEndpointSnapshot
     let arrival: FlybriefEndpointSnapshot
     let segments: [FlybriefSegmentSnapshot]
+    let alternates: [FlybriefAlternateSnapshot]
 }
 
 struct FlybriefSegmentSnapshot: Identifiable {
@@ -106,6 +107,18 @@ struct FlybriefRunwayWindSnapshot {
 struct FlybriefRouteWeatherPoint: Identifiable {
     let id: Int
     let level: FlybriefAlertLevel
+}
+
+struct FlybriefAlternateSnapshot: Identifiable {
+    var id: String { icao }
+    let icao: String
+    let name: String
+    let distanceNM: Double
+    let runwayLengthMeters: Int
+    let surface: String
+    let runwayDirection: String
+    let weatherText: String
+    let weatherLevel: FlybriefAlertLevel
 }
 
 enum FlybriefAlertLevel {
@@ -227,7 +240,8 @@ enum FlybriefPDFExporter {
             partial + max(1, leg.segments.count)
         }
         if snapshot.planningMode == FlightPlanningMode.multiStop.rawValue,
-           totalRouteLegs <= 4 {
+           totalRouteLegs <= 4,
+           snapshot.legs.allSatisfy(\.alternates.isEmpty) {
             return snapshot.legs.isEmpty ? [] : [snapshot.legs]
         }
         return snapshot.legs.map { [$0] }
@@ -757,6 +771,12 @@ private struct FlybriefLegCard: View {
                     )
                 }
             }
+
+            FlybriefAlternatesMemo(
+                destinationICAO: leg.arrival.icao,
+                alternates: leg.alternates,
+                dense: sharesPage || leg.segments.count > 1
+            )
         }
         .padding(sharesPage ? 7 : 10)
         .background(
@@ -834,6 +854,82 @@ private struct FlybriefLegCard: View {
             RoundedRectangle(cornerRadius: 5)
                 .fill(level == .neutral ? Color.white : level.paleColor)
         )
+    }
+}
+
+private struct FlybriefAlternatesMemo: View {
+    let destinationICAO: String
+    let alternates: [FlybriefAlternateSnapshot]
+    let dense: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: dense ? 2 : 3) {
+            HStack(spacing: 5) {
+                Image(systemName: "airplane.circle.fill")
+                    .foregroundStyle(FlybookColor.blue)
+                Text("ALTERNATES FÜR \(destinationICAO)")
+                    .font(.system(size: dense ? 6.5 : 7.5, weight: .black))
+                Text("Schnell-Memo · Entfernung ab Ziel")
+                    .font(.system(size: dense ? 5.5 : 6.5, weight: .semibold))
+                    .foregroundStyle(FlybookColor.muted)
+                Spacer()
+            }
+
+            if alternates.isEmpty {
+                Text("Keine Alternate-Daten verfügbar")
+                    .font(.system(size: 7, weight: .semibold))
+                    .foregroundStyle(FlybookColor.muted)
+            } else {
+                ForEach(alternates.prefix(3)) { alternate in
+                    alternateRow(alternate)
+                }
+            }
+        }
+        .padding(.horizontal, dense ? 5 : 7)
+        .padding(.vertical, dense ? 4 : 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(FlybookColor.blue.opacity(0.32), lineWidth: 1)
+        )
+    }
+
+    private func alternateRow(_ alternate: FlybriefAlternateSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(alternate.icao)
+                    .font(.system(size: dense ? 6.8 : 8, weight: .black, design: .monospaced))
+                    .foregroundStyle(FlybookColor.blue)
+                    .frame(width: dense ? 27 : 32, alignment: .leading)
+                Text(alternate.name)
+                    .font(.system(size: dense ? 6.2 : 7.2, weight: .bold))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("\(Int(alternate.distanceNM.rounded())) NM")
+                    .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
+                Text("RWY \(alternate.runwayDirection)")
+                    .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
+                Text("\(alternate.runwayLengthMeters) m")
+                    .font(.system(size: dense ? 6.2 : 7, weight: .black, design: .monospaced))
+                Text(alternate.surface)
+                    .font(.system(size: dense ? 6 : 6.8, weight: .semibold))
+                    .lineLimit(1)
+            }
+
+            HStack(spacing: 3) {
+                Circle()
+                    .fill(alternate.weatherLevel.color)
+                    .frame(width: 4, height: 4)
+                Text(alternate.weatherText)
+                    .font(.system(size: dense ? 5.9 : 6.8, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
+            .padding(.leading, dense ? 32 : 37)
+        }
     }
 }
 
