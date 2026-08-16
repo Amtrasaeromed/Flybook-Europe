@@ -5,6 +5,53 @@ import XCTest
 
 @MainActor
 final class LayoutSmokeTests: XCTestCase {
+    func testFuelPlanCalculatorRendersAtSheetSize() throws {
+        let view = FuelPlanCalculatorView(
+            legs: [
+                FuelPlanLeg(
+                    id: "outbound",
+                    originICAO: "EDFZ",
+                    destinationICAO: "EDTG",
+                    flightMinutes: 88,
+                    consumptionLitersPerHour: 25
+                ),
+                FuelPlanLeg(
+                    id: "return-one",
+                    originICAO: "EDTG",
+                    destinationICAO: "EDFM",
+                    flightMinutes: 52,
+                    consumptionLitersPerHour: 23
+                ),
+                FuelPlanLeg(
+                    id: "return-two",
+                    originICAO: "EDFM",
+                    destinationICAO: "EDFZ",
+                    flightMinutes: 24,
+                    consumptionLitersPerHour: 23
+                )
+            ],
+            reserveMinutes: 45,
+            usableFuelLiters: 98,
+            aircraftName: "D-EZHS · Aquila A211",
+            startingFuelLiters: .constant(70)
+        )
+
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 1
+        guard let image = renderer.nsImage,
+              let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else {
+            return XCTFail("Tankkalkulator konnte nicht gerendert werden")
+        }
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("flybook-fuel-plan-calculator-audit.png")
+        try png.write(to: url, options: .atomic)
+        XCTAssertEqual(Int(image.size.width), 980)
+        XCTAssertEqual(Int(image.size.height), 640)
+    }
+
     func testDestinationFinderRendersWithVoucherButton() throws {
         let store = DestinationStore()
         let origins = [AirportReference.edfz] + store.destinations.compactMap {

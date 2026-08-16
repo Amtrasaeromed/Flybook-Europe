@@ -82,6 +82,15 @@ Zollkosten werden dem tatsächlichen Ausreise- und Einreiseflugplatz am
 Grenzsegment zugeordnet; unbekannte Tarife bleiben sichtbar als `?` und werden
 nicht in die Gesamtsumme erfunden.
 
+Der Tanksäulen-Schalter zwischen Lokal/UTC und Drucken öffnet den
+Tankkalkulator für alle aktuell geplanten Legs. Er berechnet die erforderlichen
+Bestände vom Reservekraftstoff am letzten Ziel rückwärts, zeigt je Abschnitt
+Verbrauch, Mindest- und Planbestand und erlaubt einen frei wählbaren Tankpunkt.
+Am Tankpunkt wird vorhandener Restkraftstoff auf die Mindest-Auffüllmenge
+angerechnet. Zu kleiner Startbestand, zu geringe Auffüllmenge, negative
+Bestände sowie Überschreitungen der nutzbaren Tankkapazität werden rot
+gekennzeichnet.
+
 ## Start und Prüfung
 
 `Flybook Europe starten.command` doppelklicken oder `Package.swift` in Xcode

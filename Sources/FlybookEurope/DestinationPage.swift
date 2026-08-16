@@ -160,6 +160,7 @@ struct DestinationPage: View {
     @State private var includeHandlingFee = false
     @State private var ancillaryFeeContextSignature = ""
     @State private var isLiveWeatherLoading = false
+    @State private var showsFuelPlanCalculator = false
     @State private var flybriefExportError: String?
     @State private var flybriefPreview: FlybriefPreviewDocument?
     @State private var isFlybriefPreviewLoading = false
@@ -879,6 +880,87 @@ struct DestinationPage: View {
         AircraftProfileStore.usableFuel(
             for: selectedAircraft
         )
+    }
+
+    private var activeFuelPlanLegs: [FuelPlanLeg] {
+        var result = fuelPlanLegs(
+            idPrefix: "hin",
+            origin: planningOrigin,
+            destination: firstLegDestination,
+            stopAirports: outboundSelectedStopAirports,
+            expectedStopCount: outboundStops,
+            totalBlockMinutes: outboundCalculatedBlockMinutes,
+            consumptionLitersPerHour: outboundFuelConsumptionPerHour
+        )
+        if !isOneWay {
+            result += fuelPlanLegs(
+                idPrefix: "rueck",
+                origin: secondLegOrigin,
+                destination: secondLegDestination,
+                stopAirports: returnSelectedStopAirports,
+                expectedStopCount: returnStops,
+                totalBlockMinutes: returnCalculatedBlockMinutes,
+                consumptionLitersPerHour: returnFuelConsumptionPerHour
+            )
+        }
+        return result
+    }
+
+    private func fuelPlanLegs(
+        idPrefix: String,
+        origin: AirportReference,
+        destination: AirportReference,
+        stopAirports: [AirportReference],
+        expectedStopCount: Int,
+        totalBlockMinutes: Int,
+        consumptionLitersPerHour: Double
+    ) -> [FuelPlanLeg] {
+        let waypoints: [AirportReference]
+        if expectedStopCount > 0,
+           stopAirports.count == expectedStopCount {
+            waypoints = [origin] + stopAirports + [destination]
+        } else {
+            waypoints = [origin, destination]
+        }
+        let distances = zip(waypoints, waypoints.dropFirst()).map {
+            AirportDistance.nauticalMiles(from: $0.0, to: $0.1)
+        }
+        let totalDistance = distances.reduce(0, +)
+        let legCount = max(1, distances.count)
+        var remainingMinutes = max(legCount, totalBlockMinutes)
+
+        return distances.indices.map { index in
+            let remainingLegs = distances.count - index - 1
+            let minutes: Int
+            if index == distances.count - 1 {
+                minutes = remainingMinutes
+            } else if totalDistance > 0 {
+                minutes = min(
+                    remainingMinutes - remainingLegs,
+                    max(
+                        1,
+                        Int(round(
+                            Double(max(legCount, totalBlockMinutes))
+                                * distances[index]
+                                / totalDistance
+                        ))
+                    )
+                )
+            } else {
+                minutes = max(
+                    1,
+                    remainingMinutes / (remainingLegs + 1)
+                )
+            }
+            remainingMinutes -= minutes
+            return FuelPlanLeg(
+                id: "\(idPrefix)-\(index)-\(waypoints[index].icao)-\(waypoints[index + 1].icao)",
+                originICAO: waypoints[index].icao,
+                destinationICAO: waypoints[index + 1].icao,
+                flightMinutes: minutes,
+                consumptionLitersPerHour: consumptionLitersPerHour
+            )
+        }
     }
 
     private var climbPerformance: ClimbPerformance {
@@ -3488,6 +3570,18 @@ struct DestinationPage: View {
                     .frame(width: 112)
 
                     Button {
+                        showsFuelPlanCalculator = true
+                    } label: {
+                        Image(systemName: "fuelpump.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .frame(width: 26, height: 20)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Tankkalkulator für die aktive Flugplanung öffnen")
+                    .accessibilityLabel("Tankkalkulator öffnen")
+
+                    Button {
                         showFlybriefPreview()
                     } label: {
                         Group {
@@ -3605,6 +3699,15 @@ struct DestinationPage: View {
         }
         .frame(height: 870, alignment: .top)
         .clipped()
+        .sheet(isPresented: $showsFuelPlanCalculator) {
+            FuelPlanCalculatorView(
+                legs: activeFuelPlanLegs,
+                reserveMinutes: reserveMinutes,
+                usableFuelLiters: usableFuel,
+                aircraftName: selectedAircraft.displayName,
+                startingFuelLiters: $startingFuelLiters
+            )
+        }
         .sheet(item: $flybriefPreview) { document in
             FlybriefPDFPreview(document: document) { error in
                 flybriefExportError = error.localizedDescription
