@@ -24,8 +24,9 @@ enum CharterMath {
     ) -> Double {
         max(0, charterCostEUR)
             + (includeLandingFees
-                ? max(0, landingFeesEUR) + max(0, ancillaryAirportFeesEUR)
+                ? max(0, landingFeesEUR)
                 : 0)
+            + max(0, ancillaryAirportFeesEUR)
     }
 
     static func overnightCount(
@@ -259,16 +260,17 @@ struct CustomsControlCounts: Equatable {
     let exit: Int
 }
 
+struct CustomsControlAirports {
+    let entries: [AirportReference]
+    let exits: [AirportReference]
+}
+
 enum CustomsFeeRules {
-    /// Counts customs events at the airport that owns the fee schedule.
-    /// Arrival at that airport is an entry, departure from it is an exit.
-    static func controls(
-        at airportICAO: String,
+    static func controlAirports(
         routes: [[AirportReference]]
-    ) -> CustomsControlCounts {
-        let normalizedICAO = airportICAO.uppercased()
-        var entry = 0
-        var exit = 0
+    ) -> CustomsControlAirports {
+        var entries: [AirportReference] = []
+        var exits: [AirportReference] = []
 
         for route in routes {
             for (origin, destination) in zip(route, route.dropFirst())
@@ -276,14 +278,28 @@ enum CustomsFeeRules {
                 from: origin,
                 to: destination
             ) {
-                if destination.icao.uppercased() == normalizedICAO {
-                    entry += 1
-                }
-                if origin.icao.uppercased() == normalizedICAO {
-                    exit += 1
-                }
+                exits.append(origin)
+                entries.append(destination)
             }
         }
-        return CustomsControlCounts(entry: entry, exit: exit)
+        return CustomsControlAirports(entries: entries, exits: exits)
+    }
+
+    /// Counts customs events at the airport that owns the fee schedule.
+    /// Arrival at that airport is an entry, departure from it is an exit.
+    static func controls(
+        at airportICAO: String,
+        routes: [[AirportReference]]
+    ) -> CustomsControlCounts {
+        let normalizedICAO = airportICAO.uppercased()
+        let airports = controlAirports(routes: routes)
+        return CustomsControlCounts(
+            entry: airports.entries.filter {
+                $0.icao.uppercased() == normalizedICAO
+            }.count,
+            exit: airports.exits.filter {
+                $0.icao.uppercased() == normalizedICAO
+            }.count
+        )
     }
 }

@@ -66,6 +66,22 @@ private struct FlybriefPlannedSegment {
     let travelMinutes: Int
 }
 
+private struct AncillaryFeeQuote {
+    var knownTotalEUR = 0.0
+    var unknownICAOs: [String] = []
+    var eventCount = 0
+
+    var hasUnknownFees: Bool { !unknownICAOs.isEmpty }
+
+    static func + (lhs: Self, rhs: Self) -> Self {
+        Self(
+            knownTotalEUR: lhs.knownTotalEUR + rhs.knownTotalEUR,
+            unknownICAOs: lhs.unknownICAOs + rhs.unknownICAOs,
+            eventCount: lhs.eventCount + rhs.eventCount
+        )
+    }
+}
+
 struct DestinationPage: View {
     let destination: Destination
     let availableDestinations: [Destination]
@@ -137,10 +153,11 @@ struct DestinationPage: View {
     @State private var outboundReserveNotConsumed = false
     @State private var reserveToggleMustNotEnableRefuel = false
     @State private var refuelAtDestination = false
-    @State private var includeLandingFeesInTotal = false
+    @State private var includeLandingFeesInTotal = true
     @State private var includeOvernightParkingFee = false
     @State private var includeCustomsEntryFee = false
     @State private var includeCustomsExitFee = false
+    @State private var includeHandlingFee = false
     @State private var ancillaryFeeContextSignature = ""
     @State private var isLiveWeatherLoading = false
     @State private var flybriefExportError: String?
@@ -519,25 +536,21 @@ struct DestinationPage: View {
         )
     }
 
-    private var automaticCustomsControls: CustomsControlCounts {
+    private var customsControlAirports: CustomsControlAirports {
         var routes: [[AirportReference]] = [outboundRouteRiskWaypoints]
         if !isOneWay { routes.append(returnRouteRiskWaypoints) }
-        return CustomsFeeRules.controls(
-            at: ancillaryFeeAirport.icao,
-            routes: routes
+        return CustomsFeeRules.controlAirports(routes: routes)
+    }
+
+    private var automaticCustomsControls: CustomsControlCounts {
+        CustomsControlCounts(
+            entry: customsControlAirports.entries.count,
+            exit: customsControlAirports.exits.count
         )
     }
 
     private var chargedOvernightParkingCount: Int {
         includeOvernightParkingFee ? max(1, automaticOvernightParkingCount) : 0
-    }
-
-    private var chargedCustomsEntryCount: Int {
-        includeCustomsEntryFee ? max(1, automaticCustomsControls.entry) : 0
-    }
-
-    private var chargedCustomsExitCount: Int {
-        includeCustomsExitFee ? max(1, automaticCustomsControls.exit) : 0
     }
 
     private var overnightParkingFeeEUR: Double? {
@@ -553,27 +566,88 @@ struct DestinationPage: View {
         )
     }
 
-    private func customsClearanceFeeEUR(count: Int) -> Double? {
-        AirportLandingFeeCalculator.ancillaryFeeEUR(
-            profile: ancillaryFeeProfile,
-            amountText: ancillaryFeeProfile.customsClearancePerControlEUR,
-            count: count,
-            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+    private var overnightParkingFeeQuote: AncillaryFeeQuote {
+        guard includeOvernightParkingFee,
+              chargedOvernightParkingCount > 0
+        else { return AncillaryFeeQuote() }
+        guard let overnightParkingFeeEUR else {
+            return AncillaryFeeQuote(
+                unknownICAOs: [ancillaryFeeAirport.icao],
+                eventCount: chargedOvernightParkingCount
+            )
+        }
+        return AncillaryFeeQuote(
+            knownTotalEUR: overnightParkingFeeEUR,
+            eventCount: chargedOvernightParkingCount
         )
     }
 
-    private var customsEntryFeeEUR: Double? {
-        customsClearanceFeeEUR(count: chargedCustomsEntryCount)
+    private func fixedAncillaryFeeQuote(
+        at airports: [AirportReference],
+        amount: (AirportLandingFeeProfile) -> String?
+    ) -> AncillaryFeeQuote {
+        airports.reduce(into: AncillaryFeeQuote()) { result, airport in
+            let profile = AirportLandingFeeStore.profile(for: airport.icao)
+            result.eventCount += 1
+            if let fee = AirportLandingFeeCalculator.ancillaryFeeEUR(
+                profile: profile,
+                amountText: amount(profile),
+                count: 1,
+                chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+            ) {
+                result.knownTotalEUR += fee
+            } else {
+                result.unknownICAOs.append(airport.icao)
+            }
+        }
     }
 
-    private var customsExitFeeEUR: Double? {
-        customsClearanceFeeEUR(count: chargedCustomsExitCount)
+    private var customsEntryFeeQuote: AncillaryFeeQuote {
+        guard includeCustomsEntryFee else { return AncillaryFeeQuote() }
+        let airports = customsControlAirports.entries
+        return fixedAncillaryFeeQuote(
+            at: airports.isEmpty ? [ancillaryFeeAirport] : airports,
+            amount: { $0.customsClearancePerControlEUR }
+        )
+    }
+
+    private var customsExitFeeQuote: AncillaryFeeQuote {
+        guard includeCustomsExitFee else { return AncillaryFeeQuote() }
+        let airports = customsControlAirports.exits
+        return fixedAncillaryFeeQuote(
+            at: airports.isEmpty ? [planningOrigin] : airports,
+            amount: { $0.customsClearancePerControlEUR }
+        )
+    }
+
+    private var handlingAirports: [AirportReference] {
+        var result = Array(outboundRouteRiskWaypoints.dropFirst())
+        if !isOneWay {
+            result.append(contentsOf: returnRouteRiskWaypoints.dropFirst())
+        }
+        return result
+    }
+
+    private var handlingFeeQuote: AncillaryFeeQuote {
+        guard includeHandlingFee else { return AncillaryFeeQuote() }
+        return fixedAncillaryFeeQuote(
+            at: handlingAirports,
+            amount: { $0.handlingPerMovementEUR }
+        )
+    }
+
+    private var customsAndHandlingFeeQuote: AncillaryFeeQuote {
+        customsEntryFeeQuote + customsExitFeeQuote + handlingFeeQuote
     }
 
     private var includedAncillaryAirportFeesEUR: Double {
-        (overnightParkingFeeEUR ?? 0)
-            + (customsEntryFeeEUR ?? 0)
-            + (customsExitFeeEUR ?? 0)
+        overnightParkingFeeQuote.knownTotalEUR
+            + customsAndHandlingFeeQuote.knownTotalEUR
+    }
+
+    private var hasUnknownAncillaryAirportFees: Bool {
+        overnightParkingFeeQuote.hasUnknownFees
+            || customsAndHandlingFeeQuote.hasUnknownFees
     }
 
     private var ancillaryFeeContext: String {
@@ -583,6 +657,8 @@ struct DestinationPage: View {
             String(Int(returnDepartureInstantForWeather.timeIntervalSince1970 / 60)),
             String(automaticCustomsControls.entry),
             String(automaticCustomsControls.exit),
+            customsControlAirports.exits.map(\.icao).joined(separator: ","),
+            customsControlAirports.entries.map(\.icao).joined(separator: ","),
             flightPlanningMode.rawValue,
             isOneWay.description
         ].joined(separator: "|")
@@ -594,23 +670,6 @@ struct DestinationPage: View {
         includeOvernightParkingFee = automaticOvernightParkingCount > 0
         includeCustomsEntryFee = automaticCustomsControls.entry > 0
         includeCustomsExitFee = automaticCustomsControls.exit > 0
-    }
-
-    private func ancillaryFeeLabel(
-        title: String,
-        count: Int,
-        fee: Double?
-    ) -> String {
-        guard count > 0 else { return title }
-        guard let fee else { return "\(title) \(count)× ?" }
-        let value = fee
-            .rounded(.toNearestOrAwayFromZero)
-            .formatted(
-                .currency(code: "EUR")
-                    .locale(Locale(identifier: "de_DE"))
-                    .precision(.fractionLength(0))
-            )
-        return "\(title) \(count)× · \(value)"
     }
 
     private func landingFeeQuote(
@@ -633,30 +692,6 @@ struct DestinationPage: View {
             landingVoucherBookEnabled: landingVoucherBookEnabled,
             chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
         )
-    }
-
-    private var usesSwissLandingFees: Bool {
-        let outbound = outboundSelectedStopAirports + [firstLegDestination]
-        let inbound = isOneWay
-            ? []
-            : returnSelectedStopAirports + [secondLegDestination]
-        return (outbound + inbound + [ancillaryFeeAirport]).contains {
-            AirportLandingFeeStore.profile(for: $0.icao)
-                .effectiveCurrencyCode == "CHF"
-        }
-    }
-
-    private var exchangeRateLabel: String {
-        if let quote = exchangeRateModel.chfToEUR {
-            let rate = quote.euroPerCHF.formatted(
-                .number.locale(Locale(identifier: "de_DE"))
-                    .precision(.fractionLength(4))
-            )
-            return "EZB \(quote.localizedReferenceDate) · 1 CHF = \(rate) EUR · aufgerundet"
-        }
-        return exchangeRateModel.isLoading
-            ? "Aktueller CHF-Kurs wird geladen …"
-            : "CHF-Kurs nicht verfügbar · Gebühren unbekannt"
     }
 
     private var outboundRouteRiskWaypoints: [AirportReference] {
@@ -3597,57 +3632,36 @@ struct DestinationPage: View {
                         Text("CHARTERKALKULATION")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundStyle(FlybookColor.navy)
+                    }
 
-                        Spacer()
-
+                    HStack(spacing: 8) {
                         Toggle(
-                            "Landegebühren einrechnen",
+                            "Landegebühr",
                             isOn: $includeLandingFeesInTotal
                         )
                         .toggleStyle(.checkbox)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(FlybookColor.navy)
-                    }
-
-                    HStack(spacing: 12) {
                         Toggle(
-                            ancillaryFeeLabel(
-                                title: "Parken über Nacht",
-                                count: chargedOvernightParkingCount,
-                                fee: overnightParkingFeeEUR
-                            ),
+                            "Übernachtungsgebühr",
                             isOn: $includeOvernightParkingFee
                         )
                         .toggleStyle(.checkbox)
                         Toggle(
-                            ancillaryFeeLabel(
-                                title: "Zoll Einreise",
-                                count: chargedCustomsEntryCount,
-                                fee: customsEntryFeeEUR
-                            ),
+                            "Zoll Einreise",
                             isOn: $includeCustomsEntryFee
                         )
                         .toggleStyle(.checkbox)
                         Toggle(
-                            ancillaryFeeLabel(
-                                title: "Zoll Ausreise",
-                                count: chargedCustomsExitCount,
-                                fee: customsExitFeeEUR
-                            ),
+                            "Zoll Ausreise",
                             isOn: $includeCustomsExitFee
                         )
                         .toggleStyle(.checkbox)
-                        if usesSwissLandingFees {
-                            Spacer()
-                            Text(exchangeRateLabel)
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(FlybookColor.muted)
-                                .lineLimit(1)
-                        }
+                        Toggle("Handling", isOn: $includeHandlingFee)
+                            .toggleStyle(.checkbox)
                     }
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(FlybookColor.navy)
-                    .disabled(!includeLandingFeesInTotal)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
 
                     HStack {
                         HStack(spacing: 6) {
@@ -3799,6 +3813,21 @@ struct DestinationPage: View {
                     lossEUR: refuelLossEUR
                 )
 
+                AncillaryCalculationRow(
+                    title: "PARKEN",
+                    quote: overnightParkingFeeQuote,
+                    isEnabled: includeOvernightParkingFee
+                )
+
+                AncillaryCalculationRow(
+                    title: "ZOLL / HANDLING",
+                    quote: customsAndHandlingFeeQuote,
+                    isEnabled:
+                        includeCustomsEntryFee
+                        || includeCustomsExitFee
+                        || includeHandlingFee
+                )
+
                 CalculationTotalRow(
                     includesReturn: !isOneWay,
                     outboundReserveNotConsumed:
@@ -3854,6 +3883,8 @@ struct DestinationPage: View {
                         includeLandingFeesInTotal,
                     ancillaryAirportFeesEUR:
                         includedAncillaryAirportFeesEUR,
+                    hasUnknownAncillaryFees:
+                        hasUnknownAncillaryAirportFees,
                     refuelLossEUR: refuelLossEUR,
                     startingFuelLiters: startingFuelLiters,
                     refuelEnabled: refuelAtDestination,
@@ -8259,9 +8290,6 @@ private struct FlightPlanningLine<
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text("Gewählte Höhe:")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(FlybookColor.muted)
                     Text(altitudeLabel(flightAltitudeFeet))
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(
@@ -8275,9 +8303,12 @@ private struct FlightPlanningLine<
                         .foregroundStyle(FlybookColor.muted)
                 }
                 .padding(.horizontal, 6)
-                .frame(width: 160, height: 23)
+                .frame(width: 88, height: 23)
             }
             .menuStyle(.borderlessButton)
+            .accessibilityLabel(
+                "Gewählte Höhe \(altitudeLabel(flightAltitudeFeet))"
+            )
             .background(
                 RoundedRectangle(cornerRadius: 5)
                     .fill(Color(nsColor: .controlBackgroundColor))
@@ -9043,6 +9074,65 @@ private struct DestinationRefuelCalculationRow: View {
     }
 }
 
+private struct AncillaryCalculationRow: View {
+    let title: String
+    let quote: AncillaryFeeQuote
+    let isEnabled: Bool
+
+    private var valueText: String {
+        guard isEnabled, quote.eventCount > 0 else { return "—" }
+        let known = quote.knownTotalEUR
+            .rounded(.toNearestOrAwayFromZero)
+            .formatted(
+                .currency(code: "EUR")
+                    .locale(Locale(identifier: "de_DE"))
+                    .precision(.fractionLength(0))
+            )
+        if quote.hasUnknownFees {
+            return quote.knownTotalEUR > 0 ? "\(known) + ?" : "?"
+        }
+        return known
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+                .lineLimit(1)
+                .minimumScaleFactor(0.68)
+                .frame(width: CalculationGrid.labelWidth, alignment: .leading)
+
+            ForEach(0..<3, id: \.self) { _ in
+                Color.clear
+                    .frame(width: CalculationGrid.columnWidth, height: 1)
+            }
+
+            Text(valueText)
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                .foregroundStyle(
+                    quote.hasUnknownFees && isEnabled
+                        ? Color.orange
+                        : FlybookColor.navy
+                )
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+                .frame(
+                    width: CalculationGrid.boxContentWidth,
+                    height: 24,
+                    alignment: .trailing
+                )
+                .padding(CalculationGrid.boxHorizontalPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.gray.opacity(0.08))
+                )
+        }
+        .opacity(isEnabled ? 1 : 0.45)
+        .frame(height: 28)
+    }
+}
+
 private struct CalculationTotalRow: View {
     let includesReturn: Bool
     let outboundReserveNotConsumed: Bool
@@ -9080,6 +9170,7 @@ private struct CalculationTotalRow: View {
     let returnLandingFeeQuote: AirportLandingFeeQuote
     let includeLandingFees: Bool
     let ancillaryAirportFeesEUR: Double
+    let hasUnknownAncillaryFees: Bool
     let refuelLossEUR: Double?
     let startingFuelLiters: Double
     let refuelEnabled: Bool
@@ -9219,12 +9310,18 @@ private struct CalculationTotalRow: View {
     }
 
     private var combinedTotalDetail: String {
-        guard includeLandingFees else { return "Nur Charter" }
-        return hasUnknownLandingFees
-            ? "? Gebühr nicht enthalten"
-            : ancillaryAirportFeesEUR > 0
+        let hasUnknownFees =
+            (includeLandingFees && hasUnknownLandingFees)
+            || hasUnknownAncillaryFees
+        if hasUnknownFees {
+            return "? Gebühr nicht enthalten"
+        }
+        if includeLandingFees || ancillaryAirportFeesEUR > 0 {
+            return ancillaryAirportFeesEUR > 0
                 ? "Charter + Flugplatzgebühren"
                 : "Charter + Landegebühren"
+        }
+        return "Nur Charter"
     }
 
     private var totalFuelColor: Color {

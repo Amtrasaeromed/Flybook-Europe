@@ -74,6 +74,14 @@ Charter-Rundung, Rabatte und Kraftstoffzuzahlung gegen den Referenzkraftstoff
 der Heimatbasis. Die sichtbare Charter- und Reservierungsrechnung benutzen
 denselben kommerziellen Rundungspfad.
 
+Die Charterkalkulation führt Landegebühr, Übernachtungsgebühr, Zoll Einreise,
+Zoll Ausreise und Handling als fünf unabhängige Schalter. Landegebühren sind
+standardmäßig aktiv; Übernachtung und Zoll werden aus dem Flugplan vorbelegt.
+Parken sowie Zoll/Handling erscheinen als eigene Tabellenzeilen unter Tanken.
+Zollkosten werden dem tatsächlichen Ausreise- und Einreiseflugplatz am
+Grenzsegment zugeordnet; unbekannte Tarife bleiben sichtbar als `?` und werden
+nicht in die Gesamtsumme erfunden.
+
 ## Start und Prüfung
 
 `Flybook Europe starten.command` doppelklicken oder `Package.swift` in Xcode

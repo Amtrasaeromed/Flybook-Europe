@@ -1674,6 +1674,7 @@ struct AirportLandingFeeProfile: Codable, Equatable {
     var overnightParkingPerNightEUR: String?
     var overnightParkingBands: [AirportAncillaryFeeBand]?
     var customsClearancePerControlEUR: String?
+    var handlingPerMovementEUR: String?
     var customsOutsideOfficeHoursSurchargeEUR: String?
     var winterServiceSurchargeEUR: String?
     var winterServiceStartMonth: Int?
@@ -2593,6 +2594,10 @@ struct AirportSetupView: View {
                 ancillaryFeeField(
                     "Zollabfertigung · je Kontrolle",
                     value: optionalFeeBinding(\.customsClearancePerControlEUR)
+                )
+                ancillaryFeeField(
+                    "Handling · je Bewegung",
+                    value: optionalFeeBinding(\.handlingPerMovementEUR)
                 )
                 ancillaryFeeField(
                     "Zoll außerhalb Bürozeit · Zuschlag",

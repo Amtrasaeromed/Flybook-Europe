@@ -51,6 +51,12 @@
   mehr statt; ohne direkten Wert bleibt die Ceiling leer.
 - Das validierte eigene Nebel-/Tiefwolken-Risikomodell bleibt ausschließlich
   in der farbcodierten 5-Tages-Wetteranzeige aktiv.
+- Die gewählte Flughöhe wird im Flugplan-Picker wieder als konkreter Wert
+  angezeigt. Die Charterkalkulation besitzt fünf unabhängige Gebührenhaken
+  für Landung, Übernachtung, Zoll Einreise, Zoll Ausreise und Handling.
+  Parken sowie Zoll/Handling stehen als Tabellenzeilen unter Tanken; Zoll wird
+  am tatsächlichen Grenzsegment dem Ausreise- beziehungsweise Einreiseplatz
+  zugeordnet. Die Außenmaße der Kalkulations- und Zielblöcke bleiben gleich.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.

@@ -24,7 +24,7 @@ final class CharterMathTests: XCTestCase {
         )
     }
 
-    func testAncillaryAirportFeesAreOnlyIncludedWithLandingFeeSwitch() {
+    func testAncillaryAirportFeesAreIndependentFromLandingFeeSwitch() {
         XCTAssertEqual(
             CharterMath.combinedTotalCost(
                 charterCostEUR: 500,
@@ -32,7 +32,7 @@ final class CharterMathTests: XCTestCase {
                 includeLandingFees: false,
                 ancillaryAirportFeesEUR: 34
             ),
-            500
+            534
         )
         XCTAssertEqual(
             CharterMath.combinedTotalCost(
@@ -92,6 +92,28 @@ final class CharterMathTests: XCTestCase {
                 to: switzerland
             )
         )
+    }
+
+    func testCustomsControlAirportsFollowTheActualBoundarySegment() {
+        let edfz = AirportReference(
+            icao: "EDFZ", name: "Mainz", latitude: 0, longitude: 0,
+            elevationFeet: 0, timeZone: .current, country: "DE"
+        )
+        let edtg = AirportReference(
+            icao: "EDTG", name: "Bremgarten", latitude: 0, longitude: 0,
+            elevationFeet: 0, timeZone: .current, country: "DE"
+        )
+        let lsgn = AirportReference(
+            icao: "LSGN", name: "Neuchâtel", latitude: 0, longitude: 0,
+            elevationFeet: 0, timeZone: .current, country: "CH"
+        )
+
+        let controls = CustomsFeeRules.controlAirports(
+            routes: [[edfz, edtg, lsgn]]
+        )
+
+        XCTAssertEqual(controls.exits.map(\.icao), ["EDTG"])
+        XCTAssertEqual(controls.entries.map(\.icao), ["LSGN"])
     }
 
     func testCustomsFeesSeparateEntryAndExitAtChargedAirport() {
