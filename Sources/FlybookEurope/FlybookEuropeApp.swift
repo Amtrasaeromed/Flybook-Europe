@@ -372,17 +372,6 @@ struct FlybookEuropeApp: App {
             }
 
             Button {
-                showsETOPSSetup = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .frame(width: 28, height: 36)
-            }
-            .frame(height: 36)
-            .help("Allgemeines Setup")
-            .sheet(isPresented: $showsETOPSSetup) {
-                ETOPSSetupView()
-            }
-            Button {
                 showsBaseSetup = true
             } label: {
                 Image(systemName: "building.2")
@@ -414,6 +403,17 @@ struct FlybookEuropeApp: App {
             .help("Flugzeugkonfiguration")
             .sheet(isPresented: $showsAircraftSetup) {
                 AircraftSetupView()
+            }
+            Button {
+                showsETOPSSetup = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .frame(width: 28, height: 36)
+            }
+            .frame(height: 36)
+            .help("Allgemeines Setup")
+            .sheet(isPresented: $showsETOPSSetup) {
+                ETOPSSetupView()
             }
 
         }

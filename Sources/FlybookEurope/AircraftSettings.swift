@@ -6,6 +6,13 @@ enum AircraftFuelType: String, CaseIterable, Identifiable {
     case ul94 = "UL94"
     case mogas = "MOGAS"
     var id: String { rawValue }
+
+    var densityKilogramsPerLiter: Double {
+        switch self {
+        case .avgas, .ul91, .ul94: return 0.72
+        case .mogas: return 0.75
+        }
+    }
 }
 
 struct AircraftType: RawRepresentable, Hashable, Identifiable {
@@ -227,6 +234,89 @@ enum AircraftSettingsKey {
 }
 
 enum AircraftProfileStore {
+    static func copyProfile(
+        from source: AircraftType,
+        to destination: AircraftType
+    ) {
+        let defaults = UserDefaults.standard
+        defaults.set(
+            assignedBase(for: source).rawValue,
+            forKey: destination.assignedBaseKey
+        )
+        defaults.set(hourlyRate(for: source), forKey: destination.hourlyRateKey)
+        defaults.set(
+            fuelConsumption(for: source),
+            forKey: destination.fuelConsumptionKey
+        )
+        defaults.set(
+            fixedFuelConsumptionIsEnabled(for: source),
+            forKey: destination.fixedFuelConsumptionEnabledKey
+        )
+        defaults.set(usableFuel(for: source), forKey: destination.usableFuelKey)
+        defaults.set(mtowKilograms(for: source), forKey: destination.mtowKey)
+        defaults.set(
+            noiseLevelDBA(for: source) ?? 0,
+            forKey: destination.noiseLevelDBAKey
+        )
+        defaults.set(
+            hasIncreasedNoiseProtection(for: source),
+            forKey: destination.increasedNoiseProtectionKey
+        )
+        defaults.set(
+            preferredFuel(for: source).rawValue,
+            forKey: destination.preferredFuelKey
+        )
+        for fuel in AircraftFuelType.allCases {
+            defaults.set(
+                isApproved(fuel, for: source),
+                forKey: destination.approvedFuelKey(fuel)
+            )
+        }
+
+        let climb = climbPerformance(for: source)
+        defaults.set(climb.speedKIAS, forKey: destination.climbSpeedKey)
+        let climbRows: [(Int, Double, Double)] = [
+            (1_000, climb.timeAt1000FeetMinutes, climb.distanceAt1000FeetNM),
+            (3_000, climb.timeAt3000FeetMinutes, climb.distanceAt3000FeetNM),
+            (5_000, climb.timeAt5000FeetMinutes, climb.distanceAt5000FeetNM),
+            (7_000, climb.timeAt7000FeetMinutes, climb.distanceAt7000FeetNM),
+            (10_000, climb.timeAt10000FeetMinutes, climb.distanceAt10000FeetNM)
+        ]
+        for (altitude, minutes, distance) in climbRows {
+            defaults.set(minutes, forKey: destination.climbTimeKey(altitude))
+            defaults.set(distance, forKey: destination.climbDistanceKey(altitude))
+        }
+
+        let selectedPower = cruisePowerPercent(for: source)
+        defaults.set(selectedPower, forKey: destination.cruisePowerKey)
+        for power in [55, 65, 75, 85] {
+            let cruise = cruisePerformance(for: source, powerPercent: power)
+            let rows: [(Int, Double, Double)] = [
+                (1_000, cruise.tasAt1000Feet, cruise.fuelAt1000FeetPerHour),
+                (3_000, cruise.tasAt3000Feet, cruise.fuelAt3000FeetPerHour),
+                (5_000, cruise.tasAt5000Feet, cruise.fuelAt5000FeetPerHour),
+                (7_000, cruise.tasAt7000Feet, cruise.fuelAt7000FeetPerHour),
+                (10_000, cruise.tasAt10000Feet, cruise.fuelAt10000FeetPerHour)
+            ]
+            for (altitude, tas, fuelFlow) in rows {
+                defaults.set(
+                    tas,
+                    forKey: destination.cruiseTASKey(
+                        power: power,
+                        altitude: altitude
+                    )
+                )
+                defaults.set(
+                    fuelFlow,
+                    forKey: destination.cruiseFuelKey(
+                        power: power,
+                        altitude: altitude
+                    )
+                )
+            }
+        }
+    }
+
     /// Imports the DEZHS POH climb chart once for the existing aircraft profile.
     /// Values are cumulative from 0 ft pressure altitude and are read from the
     /// wind-calm, 750 kg chart. Per operator choice, Vy remains 65 KIAS at all
@@ -725,6 +815,11 @@ struct AircraftSetupView: View {
                 }
                 .buttonStyle(.bordered)
 
+                Button("Profil kopieren", systemImage: "doc.on.doc") {
+                    copySelectedProfile()
+                }
+                .buttonStyle(.bordered)
+
                 Button("Als Standard") {
                     defaultAircraftRaw =
                         selectedAircraft.rawValue
@@ -754,6 +849,19 @@ struct AircraftSetupView: View {
             AircraftRegistry.rename(selectedAircraft, to: aircraftName)
         }
         aircraftName = selectedAircraft.displayName
+        registryRevision = UUID()
+    }
+
+    private func copySelectedProfile() {
+        let source = selectedAircraft
+        guard let copy = AircraftRegistry.add(
+            named: source.displayName + " Kopie"
+        ) else { return }
+        AircraftProfileStore.copyProfile(from: source, to: copy)
+        selectedAircraft = copy
+        aircraftName = copy.displayName
+        defaultAircraftRaw = copy.rawValue
+        createsAircraft = false
         registryRevision = UUID()
     }
 }

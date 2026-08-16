@@ -47,6 +47,17 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("FLUGZEIT"))
         XCTAssertTrue(text.contains("0:17"))
         XCTAssertTrue(text.contains("8 L"))
+        XCTAssertTrue(text.contains("FL30 240/09"))
+        XCTAssertTrue(text.contains("FL60 250/12"))
+        XCTAssertTrue(text.contains("FL90 260/18"))
+        XCTAssertTrue(text.contains("T/O Roll"))
+        XCTAssertTrue(text.contains("250m (22%)"))
+        XCTAssertTrue(text.contains("430m (38%)"))
+        XCTAssertTrue(text.contains("750kg"))
+        XCTAssertTrue(text.contains("LDG Roll"))
+        XCTAssertTrue(text.contains("210m (23%)"))
+        XCTAssertTrue(text.contains("500m (53%)"))
+        XCTAssertTrue(text.contains("733kg"))
         XCTAssertTrue(text.contains("Erstellt:"))
         XCTAssertTrue(text.contains("TEILSTRECKE 1/3"))
         XCTAssertTrue(text.contains("EDXE"))
@@ -200,6 +211,7 @@ final class FlybriefPDFTests: XCTestCase {
                 )
             },
             routeWeatherSummary: "Routenwetter marginal",
+            altitudeWindsText: "FL30 240/09 · FL60 250/12 · FL90 260/18",
             departure: departure,
             arrival: arrival,
             segments: segments,
@@ -248,7 +260,23 @@ final class FlybriefPDFTests: XCTestCase {
             operatingLevel: .good,
             referenceRunway: runway == "07" ? "07/25" : "06/24",
             activeRunway: runway,
-            runwayPerformanceText: "Takeoff Roll 250 m · über 50 ft 430 m · 750 kg",
+            runwayPerformance: role == "Abflug"
+                ? FlybriefRunwayPerformanceSnapshot(
+                    label: "T/O",
+                    rollMeters: 250,
+                    rollPercentage: 22,
+                    over50FeetMeters: 430,
+                    over50FeetPercentage: 38,
+                    weightKilograms: 750
+                )
+                : FlybriefRunwayPerformanceSnapshot(
+                    label: "LDG",
+                    rollMeters: 210,
+                    rollPercentage: 23,
+                    over50FeetMeters: 500,
+                    over50FeetPercentage: 53,
+                    weightKilograms: 733
+                ),
             weather: FlybriefWeatherSnapshot(
                 category: "VFR",
                 categoryLevel: .good,

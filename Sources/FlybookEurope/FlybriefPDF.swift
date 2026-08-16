@@ -47,6 +47,7 @@ struct FlybriefLegSnapshot: Identifiable {
     let etopsLevel: FlybriefAlertLevel
     let routeWeather: [FlybriefRouteWeatherPoint]
     let routeWeatherSummary: String
+    let altitudeWindsText: String
     let departure: FlybriefEndpointSnapshot
     let arrival: FlybriefEndpointSnapshot
     let segments: [FlybriefSegmentSnapshot]
@@ -77,10 +78,19 @@ struct FlybriefEndpointSnapshot {
     let operatingLevel: FlybriefAlertLevel
     let referenceRunway: String
     let activeRunway: String
-    let runwayPerformanceText: String?
+    let runwayPerformance: FlybriefRunwayPerformanceSnapshot?
     let weather: FlybriefWeatherSnapshot
     let runwayWind: FlybriefRunwayWindSnapshot?
     let sunText: String
+}
+
+struct FlybriefRunwayPerformanceSnapshot {
+    let label: String
+    let rollMeters: Int
+    let rollPercentage: Int?
+    let over50FeetMeters: Int
+    let over50FeetPercentage: Int?
+    let weightKilograms: Int
 }
 
 struct FlybriefWeatherSnapshot {
@@ -757,10 +767,16 @@ private struct FlybriefLegCard: View {
 
                 Spacer()
 
-                RouteWeatherStrip(
-                    points: leg.routeWeather,
-                    summary: leg.routeWeatherSummary
-                )
+                VStack(alignment: .leading, spacing: 1.5) {
+                    RouteWeatherStrip(
+                        points: leg.routeWeather,
+                        summary: leg.routeWeatherSummary
+                    )
+                    Text(leg.altitudeWindsText)
+                        .font(.system(size: 6.7, weight: .bold, design: .monospaced))
+                        .foregroundStyle(FlybookColor.muted)
+                        .lineLimit(1)
+                }
             }
 
             routeMetrics
@@ -1158,10 +1174,22 @@ private struct FlybriefEndpointCard: View {
                 }
             }
 
-            if let runwayPerformanceText = endpoint.runwayPerformanceText {
-                Text(runwayPerformanceText)
+            if let performance = endpoint.runwayPerformance {
+                HStack(spacing: 2) {
+                    Text(performance.label + " Roll")
+                    performanceValue(
+                        meters: performance.rollMeters,
+                        percentage: performance.rollPercentage
+                    )
+                    Text("/ 50ft:")
+                    performanceValue(
+                        meters: performance.over50FeetMeters,
+                        percentage: performance.over50FeetPercentage,
+                        isFiftyFeet: true
+                    )
+                    Text("/ \(performance.weightKilograms)kg")
+                }
                     .font(.system(size: dense ? 6.2 : 7.4, weight: .bold, design: .monospaced))
-                    .foregroundStyle(FlybookColor.navy)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
             }
@@ -1233,6 +1261,28 @@ private struct FlybriefEndpointCard: View {
             RoundedRectangle(cornerRadius: 7)
                 .stroke(FlybookColor.line, lineWidth: 1)
         )
+    }
+
+    private func performanceValue(
+        meters: Int,
+        percentage: Int?,
+        isFiftyFeet: Bool = false
+    ) -> some View {
+        Text(
+            "\(meters)m"
+                + (percentage.map { " (\($0)%)" } ?? "")
+        )
+        .foregroundStyle(performanceColor(percentage, isFiftyFeet: isFiftyFeet))
+    }
+
+    private func performanceColor(_ percentage: Int?, isFiftyFeet: Bool) -> Color {
+        guard let percentage else { return FlybookColor.navy }
+        if isFiftyFeet {
+            return percentage >= 100 ? .red : FlybookColor.navy
+        }
+        if percentage >= 75 { return .red }
+        if percentage >= 50 { return .orange }
+        return FlybookColor.navy
     }
 
     private func statusPill(

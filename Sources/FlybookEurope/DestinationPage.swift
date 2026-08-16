@@ -2155,6 +2155,9 @@ struct DestinationPage: View {
             altitudeFeet: outboundFlightAltitudeFeet,
             bestLevelFeet: outboundRouteWindModel.bestLevelFeet,
             routeWind: outboundRouteWindModel.wind,
+            altitudeWindsText: flybriefAltitudeWinds(
+                from: outboundRouteWindModel
+            ),
             routeAssessments: outboundRouteRiskModel.assessments,
             takeoffWeightKilograms: outboundTakeoffWeightKilograms,
             stopForecasts: stopForecasts
@@ -2189,6 +2192,9 @@ struct DestinationPage: View {
             altitudeFeet: returnFlightAltitudeFeet,
             bestLevelFeet: returnRouteWindModel.bestLevelFeet,
             routeWind: returnRouteWindModel.wind,
+            altitudeWindsText: flybriefAltitudeWinds(
+                from: returnRouteWindModel
+            ),
             routeAssessments: returnRouteRiskModel.assessments,
             takeoffWeightKilograms: returnTakeoffWeightKilograms,
             stopForecasts: stopForecasts
@@ -2214,6 +2220,7 @@ struct DestinationPage: View {
         altitudeFeet: Int,
         bestLevelFeet: Int?,
         routeWind: RouteWind?,
+        altitudeWindsText: String,
         routeAssessments: [RouteWeatherSegmentAssessment],
         takeoffWeightKilograms: Double,
         stopForecasts: [String: EDFZForecast]
@@ -2275,6 +2282,20 @@ struct DestinationPage: View {
         let etopsMinutes = plannedSegments.map(\.travelMinutes).max()
             ?? selectedLegMinutes
         let etops = flybriefETOPS(minutes: etopsMinutes)
+        let actualFuelBurnLiters = CharterMath.actualFuelBurnLiters(
+            minutes: blockMinutes,
+            consumptionLitersPerHour: AircraftProfileStore.fuelConsumption(
+                for: selectedAircraft,
+                atPressureAltitudeFeet: Double(altitudeFeet)
+            )
+        )
+        let fuelDensity = AircraftProfileStore.preferredFuel(
+            for: selectedAircraft
+        ).densityKilogramsPerLiter
+        let landingWeightKilograms = max(
+            1,
+            takeoffWeightKilograms - actualFuelBurnLiters * fuelDensity
+        )
         let departure = flybriefEndpoint(
             role: "Abflug",
             airport: origin,
@@ -2291,7 +2312,7 @@ struct DestinationPage: View {
             operation: .arrival,
             sample: arrivalSample,
             legOriginICAO: origin.icao,
-            weightKilograms: takeoffWeightKilograms
+            weightKilograms: landingWeightKilograms
         )
         let segments = flybriefSegments(
             legID: id,
@@ -2325,6 +2346,7 @@ struct DestinationPage: View {
             routeWeather: routeWeather,
             routeWeatherSummary: worstAssessment?.explanation
                 ?? "Keine ausreichenden Routendaten",
+            altitudeWindsText: altitudeWindsText,
             departure: departure,
             arrival: arrival,
             segments: segments,
@@ -2663,6 +2685,12 @@ struct DestinationPage: View {
             airport: airport,
             instant: instant
         )
+        let airportInformation = availableDestinations.first {
+            $0.icao == airport.icao
+        }
+        let availableRunwayMeters = operation == .departure
+            ? airportInformation?.runwayM
+            : airportInformation?.runwayLDAM
         return FlybriefEndpointSnapshot(
             role: role,
             icao: airport.icao,
@@ -2676,12 +2704,13 @@ struct DestinationPage: View {
             operatingLevel: flybriefOperatingStatus(status).1,
             referenceRunway: airport.referenceRunway ?? "",
             activeRunway: activeRunway,
-            runwayPerformanceText: flybriefRunwayPerformanceText(
+            runwayPerformance: flybriefRunwayPerformance(
                 operation: operation,
                 elevationFeet: airport.elevationFeet,
                 sample: sample,
                 components: components,
-                weightKilograms: weightKilograms
+                weightKilograms: weightKilograms,
+                availableRunwayMeters: availableRunwayMeters
             ),
             weather: weather,
             runwayWind: components.flatMap { value in
@@ -2701,13 +2730,14 @@ struct DestinationPage: View {
         )
     }
 
-    private func flybriefRunwayPerformanceText(
+    private func flybriefRunwayPerformance(
         operation: AirportOperationKind,
         elevationFeet: Double,
         sample: EDFZWeatherSample?,
         components: RunwayWindComponents?,
-        weightKilograms: Double?
-    ) -> String? {
+        weightKilograms: Double?,
+        availableRunwayMeters: Int?
+    ) -> FlybriefRunwayPerformanceSnapshot? {
         guard let profile = RunwayPerformance.profile(for: selectedAircraft),
               let weightKilograms,
               let densityAltitude = RunwayPerformance.densityAltitudeFeet(
@@ -2721,7 +2751,7 @@ struct DestinationPage: View {
         let label: String
         switch operation {
         case .departure:
-            label = "Takeoff"
+            label = "T/O"
             result = RunwayPerformance.takeoff(
                 profile: profile,
                 weightKilograms: weightKilograms,
@@ -2729,7 +2759,7 @@ struct DestinationPage: View {
                 headwindKnots: headwind
             )
         case .arrival:
-            label = "Landing"
+            label = "LDG"
             result = RunwayPerformance.landing(
                 profile: profile,
                 weightKilograms: weightKilograms,
@@ -2740,12 +2770,21 @@ struct DestinationPage: View {
         let adjustedResult = result.addingSafetyMargin(
             percent: runwayPerformanceSafetyMarginPercent
         )
-        return String(
-            format: "%@ Roll %d m · über 50 ft %d m · %.0f kg",
-            label,
-            adjustedResult.rollMeters,
-            adjustedResult.over50FeetMeters,
-            weightKilograms
+        let rollPercentage = availableRunwayMeters.flatMap {
+            adjustedResult.runwayPercentage(availableMeters: $0)
+        }
+        let over50FeetPercentage = availableRunwayMeters.map {
+            Int(ceil(
+                Double(adjustedResult.over50FeetMeters) / Double($0) * 100
+            ))
+        }
+        return FlybriefRunwayPerformanceSnapshot(
+            label: label,
+            rollMeters: adjustedResult.rollMeters,
+            rollPercentage: rollPercentage,
+            over50FeetMeters: adjustedResult.over50FeetMeters,
+            over50FeetPercentage: over50FeetPercentage,
+            weightKilograms: Int(weightKilograms.rounded())
         )
     }
 
@@ -2834,6 +2873,28 @@ struct DestinationPage: View {
 
     private func flybriefRoundedWindDirection(_ degrees: Double) -> Int {
         Int((WindMath.normalized(degrees) / 5).rounded() * 5) % 360
+    }
+
+    private func flybriefAltitudeWinds(
+        from model: RouteWindViewModel
+    ) -> String {
+        [3_000, 6_000, 9_000].map { altitudeFeet in
+            let flightLevel = altitudeFeet / 100
+            guard let wind = model.wind(atAltitudeFeet: altitudeFeet) else {
+                return String(format: "FL%02d –", flightLevel)
+            }
+            let direction = Int(
+                (WindMath.normalized(wind.directionDegrees) / 10).rounded()
+                    * 10
+            ) % 360
+            return String(
+                format: "FL%02d %03d/%02.0f",
+                flightLevel,
+                direction,
+                wind.speedKnots.rounded()
+            )
+        }
+        .joined(separator: " · ")
     }
 
     private func flybriefOpeningHoursText(
@@ -3344,23 +3405,23 @@ struct DestinationPage: View {
         // Ein gemeinsamer Task hält alle Karten einer Planung konsistent.
         // Doppelte Flugplätze werden vom Service zu einem Download gebündelt.
         async let outboundOrigin: Void = outboundEDFZWeatherModel.load(
-            plannedDate: outboundFlightDate,
+            plannedDate: outboundStartInstant,
             airport: planningOrigin,
             forceRefresh: forceRefresh
         )
         async let outboundDestination: Void =
             destinationAirportWeatherModel.load(
-                plannedDate: outboundFlightDate,
+                plannedDate: outboundArrivalInstantForWeather,
                 airport: firstLegDestination,
                 forceRefresh: forceRefresh
             )
         async let secondOrigin: Void = destinationReturnWeatherModel.load(
-            plannedDate: returnFlightDate,
+            plannedDate: returnDepartureInstantForWeather,
             airport: secondLegOrigin,
             forceRefresh: forceRefresh
         )
         async let secondDestination: Void = returnEDFZWeatherModel.load(
-            plannedDate: returnFlightDate,
+            plannedDate: returnArrivalInstant,
             airport: secondLegDestination,
             forceRefresh: forceRefresh
         )
@@ -3381,7 +3442,7 @@ struct DestinationPage: View {
     ) async {
         guard flightPlanningMode == .multiStop else { return }
         await intermediateWeatherModel.load(
-            plannedDate: outboundFlightDate,
+            plannedDate: outboundArrivalInstantForWeather,
             airport: intermediateAirport,
             forceRefresh: forceRefresh
         )
@@ -3743,6 +3804,10 @@ struct DestinationPage: View {
                     returnTakeoffWeightKilograms:
                         $returnTakeoffWeightKilograms,
                     aircraft: selectedAircraft,
+                    outboundFuelConsumptionPerHour:
+                        outboundFuelConsumptionPerHour,
+                    returnFuelConsumptionPerHour:
+                        returnFuelConsumptionPerHour,
                     runwayPerformanceSafetyMarginPercent:
                         runwayPerformanceSafetyMarginPercent,
                     outboundAltitudeOptions:
@@ -6127,6 +6192,8 @@ private struct FlightTimePlanningRows: View {
     @Binding var outboundTakeoffWeightKilograms: Double
     @Binding var returnTakeoffWeightKilograms: Double
     let aircraft: AircraftType
+    let outboundFuelConsumptionPerHour: Double
+    let returnFuelConsumptionPerHour: Double
     let runwayPerformanceSafetyMarginPercent: Int
 
     let outboundAltitudeOptions: [Int]
@@ -6812,6 +6879,7 @@ private struct FlightTimePlanningRows: View {
                     $outboundFlightAltitudeFeet,
                 takeoffWeightKilograms: $outboundTakeoffWeightKilograms,
                 aircraft: aircraft,
+                fuelConsumptionPerHour: outboundFuelConsumptionPerHour,
                 runwayPerformanceSafetyMarginPercent:
                     runwayPerformanceSafetyMarginPercent,
                 altitudeOptions: outboundAltitudeOptions,
@@ -6994,6 +7062,7 @@ private struct FlightTimePlanningRows: View {
                     $returnFlightAltitudeFeet,
                 takeoffWeightKilograms: $returnTakeoffWeightKilograms,
                 aircraft: aircraft,
+                fuelConsumptionPerHour: returnFuelConsumptionPerHour,
                 runwayPerformanceSafetyMarginPercent:
                     runwayPerformanceSafetyMarginPercent,
                 altitudeOptions: returnAltitudeOptions,
@@ -7723,6 +7792,7 @@ private struct FlightPlanningLine<
     @Binding var flightAltitudeFeet: Int
     @Binding var takeoffWeightKilograms: Double
     let aircraft: AircraftType
+    let fuelConsumptionPerHour: Double
     let runwayPerformanceSafetyMarginPercent: Int
     let altitudeOptions: [Int]
     let travelMinutes: Int
@@ -7916,7 +7986,7 @@ private struct FlightPlanningLine<
                 .foregroundStyle(takeoffWeightColor)
             }
             .foregroundStyle(FlybookColor.navy)
-            .frame(width: 96, alignment: .leading)
+            .frame(width: 122, alignment: .leading)
 
             Group {
                 if let leadingAirportSelection {
@@ -7941,9 +8011,9 @@ private struct FlightPlanningLine<
                     )
                 }
             }
-            .frame(width: 218)
+            .frame(width: 180)
 
-            Color.clear.frame(width: 10, height: 1)
+            Color.clear.frame(width: 18, height: 1)
 
             Group {
                 if let trailingAirportSelection {
@@ -7968,7 +8038,7 @@ private struct FlightPlanningLine<
                     )
                 }
             }
-            .frame(width: 218)
+            .frame(width: 180)
 
             VStack(spacing: 2) {
                 Text("ETOPS-PIPI")
@@ -7980,7 +8050,7 @@ private struct FlightPlanningLine<
                     .overlay(Circle().stroke(FlybookColor.navy.opacity(0.35), lineWidth: 1))
                     .frame(width: 16, height: 16)
             }
-            .frame(width: 80, height: 42)
+            .frame(width: 122, height: 42)
         }
         .overlay(alignment: .topLeading) {
             RouteRiskDots(assessments: routeAssessments)
@@ -8021,7 +8091,7 @@ private struct FlightPlanningLine<
                     airports: airportOptions,
                     markersByICAO: [:],
                     includesVirtualOption: false,
-                    width: 190,
+                    width: 152,
                     height: 28,
                     fontSize: 14
                 )
@@ -8038,7 +8108,7 @@ private struct FlightPlanningLine<
                     .frame(width: 22, height: 28, alignment: .center)
                 }
             }
-            .frame(width: 216, height: 28)
+            .frame(width: 178, height: 28)
             .padding(.top, 4)
 
             RunwayRecommendationButton(
@@ -8083,23 +8153,52 @@ private struct FlightPlanningLine<
             ? airportInformation?.runwayM
             : airportInformation?.runwayLDAM
         if let result {
-            let percentage = available.flatMap {
+            let rollPercentage = available.flatMap {
                 result.runwayPercentage(availableMeters: $0)
             }
-            Text(
-                (isDeparture ? "Takeoff Roll: " : "Landing Roll: ")
-                    + "\(result.rollMeters) m"
-                    + (percentage.map { " (\($0)%)" } ?? "")
-            )
-            .font(.system(size: 9, weight: .bold, design: .rounded))
-            .foregroundStyle(performanceColor(percentage))
+            let fiftyFeetPercentage = available.map {
+                Int(ceil(
+                    Double(result.over50FeetMeters) / Double($0) * 100
+                ))
+            }
+            HStack(spacing: 2) {
+                Text(isDeparture ? "T/O Roll" : "LDG Roll")
+                performanceValue(
+                    meters: result.rollMeters,
+                    percentage: rollPercentage
+                )
+                Text("· 50ft")
+                performanceValue(
+                    meters: result.over50FeetMeters,
+                    percentage: fiftyFeetPercentage,
+                    isFiftyFeet: true
+                )
+            }
+            .font(.system(size: 8.2, weight: .bold, design: .rounded))
             .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .minimumScaleFactor(0.62)
         } else {
             Text(isDeparture ? "Takeoff Roll: –" : "Landing Roll: –")
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
         }
+    }
+
+    private func performanceValue(
+        meters: Int,
+        percentage: Int?,
+        isFiftyFeet: Bool = false
+    ) -> some View {
+        Text(
+            "\(meters)m"
+                + (percentage.map { " (\($0)%)" } ?? "")
+        )
+        .foregroundStyle(performanceColor(percentage, isFiftyFeet: isFiftyFeet))
+        .padding(.horizontal, 2)
+        .padding(.vertical, 1)
+        .background(
+            Capsule().fill(performanceBackground(percentage, isFiftyFeet: isFiftyFeet))
+        )
     }
 
     private func runwayPerformanceResult(
@@ -8123,7 +8222,7 @@ private struct FlightPlanningLine<
             )
             : RunwayPerformance.landing(
                 profile: profile,
-                weightKilograms: takeoffWeightKilograms,
+                weightKilograms: landingWeightKilograms,
                 densityAltitudeFeet: densityAltitude,
                 headwindKnots: headwind
             )
@@ -8132,11 +8231,34 @@ private struct FlightPlanningLine<
         )
     }
 
-    private func performanceColor(_ percentage: Int?) -> Color {
+    private func performanceColor(_ percentage: Int?, isFiftyFeet: Bool) -> Color {
         guard let percentage else { return FlybookColor.navy }
-        if percentage > 100 { return .red }
-        if percentage >= 75 { return .orange }
+        if isFiftyFeet {
+            return percentage >= 100 ? .red : FlybookColor.navy
+        }
+        if percentage >= 75 { return .red }
+        if percentage >= 50 { return .orange }
         return FlybookColor.navy
+    }
+
+    private func performanceBackground(_ percentage: Int?, isFiftyFeet: Bool) -> Color {
+        guard let percentage else { return .clear }
+        if isFiftyFeet {
+            return percentage >= 100 ? Color.red.opacity(0.14) : .clear
+        }
+        if percentage >= 75 { return Color.red.opacity(0.14) }
+        if percentage >= 50 { return Color.orange.opacity(0.20) }
+        return .clear
+    }
+
+    private var landingWeightKilograms: Double {
+        let burnedLiters = CharterMath.actualFuelBurnLiters(
+            minutes: blockMinutesWithoutPauses,
+            consumptionLitersPerHour: fuelConsumptionPerHour
+        )
+        let density = AircraftProfileStore.preferredFuel(for: aircraft)
+            .densityKilogramsPerLiter
+        return max(1, takeoffWeightKilograms - burnedLiters * density)
     }
 
     @ViewBuilder
@@ -8220,14 +8342,14 @@ private struct FlightPlanningLine<
                     dateStepButton(systemName: "plus", days: 1)
                 }
             }
-            .frame(width: 128, height: 43)
+            .frame(width: 122, height: 43)
 
-            leading.frame(width: 174, height: 43)
+            leading.frame(width: 180, height: 43)
             Image(systemName: "arrow.right")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(FlybookColor.muted)
                 .frame(width: 18, height: 43)
-            trailing.frame(width: 174, height: 43)
+            trailing.frame(width: 180, height: 43)
             TravelDurationBadge(
                 minutes: travelMinutes,
                 blockMinutes: blockMinutesWithoutPauses,
@@ -8236,7 +8358,7 @@ private struct FlightPlanningLine<
                 pauseMinutesPerStop: tankStopMinutes
             )
                 .frame(width: 74, height: 43)
-                .frame(width: 128)
+                .frame(width: 122)
         }
     }
 
@@ -8304,17 +8426,17 @@ private struct FlightPlanningLine<
                     }
                 }
                 .buttonStyle(.bordered)
-                .frame(width: 128, alignment: .top)
+                .frame(width: 122, alignment: .top)
 
                 HStack(alignment: .top, spacing: 0) {
                     HStack(spacing: 0) {
                         PlanningWeatherCard(weather: leadingWeather, civilDawnText: leadingCivilDawnText, sunriseText: leadingSunriseText, sunsetText: leadingSunsetText, civilDuskText: leadingCivilDuskText)
-                            .frame(width: 174, height: 184)
+                            .frame(width: 180, height: 184)
                         Color.clear.frame(width: 18, height: 1)
                         PlanningWeatherCard(weather: trailingWeather, civilDawnText: trailingCivilDawnText, sunriseText: trailingSunriseText, sunsetText: trailingSunsetText, civilDuskText: trailingCivilDuskText)
-                            .frame(width: 174, height: 184)
+                            .frame(width: 180, height: 184)
                     }
-                    .frame(width: 366, height: 184, alignment: .top)
+                    .frame(width: 378, height: 184, alignment: .top)
 
                     VStack(spacing: 7) {
                         TrackMilesEditor(trackMiles: $trackMiles)
@@ -8322,9 +8444,9 @@ private struct FlightPlanningLine<
                             .frame(width: 120, height: 84)
                         stopAirportFilterBar
                     }
-                    .frame(width: 128, height: 184, alignment: .top)
+                    .frame(width: 122, height: 184, alignment: .top)
                 }
-                .frame(width: 494, height: 184, alignment: .top)
+                .frame(width: 500, height: 184, alignment: .top)
             }
             .frame(width: 622, height: 184, alignment: .topLeading)
 

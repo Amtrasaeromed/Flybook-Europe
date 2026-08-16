@@ -350,6 +350,17 @@ actor EDFZWeatherService {
            let cached = previousForecast,
            Date().timeIntervalSince(cached.retrievedAt)
                 < cacheLifetime(for: cached) {
+            if cached.sample(nearestTo: plannedDate)?.ceilingFeetAGL == nil {
+                let enriched = await applyingDirectCeiling(
+                    to: cached,
+                    plannedDate: plannedDate,
+                    airport: airport
+                )
+                forecastCache[cacheKey] = (Date(), enriched)
+                forecastDiskCache[cacheKey] = enriched
+                saveForecastDiskCache()
+                return enriched
+            }
             return cached
         }
         // Mehrere ViewModels zeigen oft denselben Platz (z. B. EDFZ auf Hin-
@@ -418,12 +429,13 @@ actor EDFZWeatherService {
             longitude: airport.longitude,
             validTime: plannedDate
         )
+        guard let direct else { return forecast }
         guard let target = forecast.sample(nearestTo: plannedDate) else {
             return forecast
         }
         let samples = forecast.samples.map { sample in
             guard sample.validTime == target.validTime else { return sample }
-            let ceiling = direct?.feetAGL
+            let ceiling = direct.feetAGL
             return EDFZWeatherSample(
                 validTime: sample.validTime,
                 windDirectionDegrees: sample.windDirectionDegrees,
@@ -437,7 +449,7 @@ actor EDFZWeatherService {
                 totalCloudCoverPercent: sample.totalCloudCoverPercent,
                 lowestCloudBaseFeetAGL: ceiling,
                 ceilingFeetAGL: ceiling,
-                ceilingSource: direct?.source ?? .unavailable,
+                ceilingSource: direct.source,
                 category: flightCategory(
                     visibilityMeters: sample.visibilityMeters,
                     ceilingFeet: ceiling

@@ -152,4 +152,8 @@ final class RouteWindViewModel: ObservableObject {
         }
         wind = selected
     }
+
+    func wind(atAltitudeFeet altitudeFeet: Int) -> RouteWind? {
+        windsByAltitude[altitudeFeet]
+    }
 }

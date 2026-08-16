@@ -90,8 +90,6 @@ enum AviationWeatherText {
         let cloudText: String
         if let base {
             cloudText = "\(cloud) \(base)"
-        } else if showsCloudBase {
-            cloudText = "\(cloud) Höhe ?"
         } else {
             cloudText = cloud
         }

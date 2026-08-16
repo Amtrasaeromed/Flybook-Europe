@@ -14,7 +14,7 @@ final class AviationWeatherTextTests: XCTestCase {
         )
     }
 
-    func testCloudLayerNeverSilentlyOmitsUnknownHeight() {
+    func testCloudLayerDoesNotInventUnknownHeight() {
         XCTAssertEqual(
             AviationWeatherText.cloudAndVisibility(
                 lowCloudCoverPercent: 70,
@@ -22,7 +22,7 @@ final class AviationWeatherTextTests: XCTestCase {
                 visibilityMeters: 10_000,
                 unitSystem: .eu
             ),
-            "BKN Höhe ? / 10km+"
+            "BKN / 10km+"
         )
     }
 }

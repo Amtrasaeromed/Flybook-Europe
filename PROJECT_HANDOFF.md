@@ -16,6 +16,18 @@
   Ausgangswert. Für A211/DEUKS/DEZHS werden Start- und Landestrecken aus den
   offiziellen POH-Ausgangswerten mit Dichtehöhe, Gewicht und Pistenwind
   berechnet; der Flybrief enthält Roll- und 50-ft-Strecke.
+- Flughafenwahl, Runwayempfehlung, Rollstrecke, Uhrzeit und Wind stehen im
+  Planungsfeld für Abflug und Ankunft auf exakt denselben vertikalen
+  Mittelachsen. Roll- und 50-ft-Strecke zeigen jeweils ihre Auslastung. Die
+  Rollstrecke ist von 50 bis 74 Prozent orange und ab 75 Prozent rot; die
+  50-ft-Strecke wird ausschließlich ab 100 Prozent rot. Beim Start gilt die
+  physische Pistenlänge, bei der Landung die LDA.
+- Der Flybrief schreibt die Performance kompakt als `T/O Roll`, `50ft` und
+  Gewicht beziehungsweise analog als `LDG Roll`. Das Landing Weight zieht den
+  tatsächlich
+  verflogenen Blockkraftstoff ohne Reserve mit der Dichte der im Flugzeugprofil
+  bevorzugten Sorte vom TOW ab. Auch dort stehen die getrennten Roll-/50-ft-
+  Prozentwerte mit derselben getrennten Roll-/50-ft-Warnlogik.
 - Im aktiven Nutzerprofil ist unter Flugkalkulation eine Sicherheitsmarge von
   0 bis 50 Prozent in 5-Prozent-Schritten hinterlegt. Sie erhöht Roll- und
   50-ft-Strecke für Start und Landung und damit auch die Pistenprozentwerte.
@@ -93,12 +105,22 @@
   sicherheitsrelevanten Angaben werden Multi-Stop-Hauptflüge nicht mehr auf
   eine gemeinsame Wetterseite zusammengepresst.
 - Wolkenangaben im Flybrief enthalten bei SCT/BKN/OVC stets die verfügbare
-  direkte Ceiling-/Wolkenbasis; fehlt der Fremdquelle der Höhenwert, wird dies
-  ausdrücklich mit `Höhe ?` kenntlich gemacht. Im Alternate-Memo stehen Wind
-  und Runway exakt untereinander, die rechnerisch bevorzugte Pistenrichtung
+  direkte Ceiling-/Wolkenbasis. Frische Cachetreffer ohne Höhenwert werden mit
+  dem direkten DWD-ICON-Ceiling-Feld nachangereichert; ein fehlgeschlagener
+  Direktabruf löscht keinen bereits vorhandenen externen Basiswert mehr. Im
+  Alternate-Memo stehen Wind und Runway exakt untereinander, die rechnerisch
+  bevorzugte Pistenrichtung
   ist blau markiert und der bis zum Alternate benötigte Kraftstoff wird mit
   dem höhenabhängigen Profilverbrauch sicherheitsseitig auf volle Liter
   aufgerundet.
+- Direkt unter dem farbcodierten Streckenwetter nennt der Flybrief die drei
+  kompakten Entscheidungshilfen `FL30`, `FL60` und `FL90`; Windrichtungen sind
+  auf zehn Grad gerundet, Geschwindigkeiten auf volle Knoten und Böen entfallen.
+- In der Flugzeugkonfiguration erzeugt `Profil kopieren` ein neues editierbares
+  Profil und übernimmt alle Basis-, Kosten-, Gewichts-, Lärm-, Kraftstoff-,
+  Climb- und Cruise-Werte des Ausgangsflugzeugs.
+- Das Zahnrad für das allgemeine Setup steht als letztes Symbol ganz rechts in
+  der Hauptnavigation.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.
