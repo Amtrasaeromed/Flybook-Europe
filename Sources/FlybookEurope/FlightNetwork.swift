@@ -6,6 +6,13 @@ import Foundation
 /// Sitzung begrenzt lediglich parallele Verbindungen, damit bei schwachem
 /// Empfang kein Anfragestapel einen einzelnen Anbieter ueberlastet.
 enum FlightNetwork {
+    static var userAgent: String {
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "development"
+        return "FlybookEurope/\(version) "
+            + "(+https://github.com/Amtrasaeromed/Flybook-Europe)"
+    }
     private static let gate = FlightRequestGate(maximumConcurrentRequests: 4)
     private static let openMeteoGate = OpenMeteoCircuitBreaker.shared
     private static let metNorwayCache = METNorwayResponseCache.shared
@@ -172,7 +179,7 @@ private actor METNorwayResponseCache {
         let task = Task<Data, Error> {
             var request = URLRequest(url: url)
             request.setValue(
-                "FlybookEurope/1.0 (+https://github.com/Amtrasaeromed/Flybook-Europe)",
+                FlightNetwork.userAgent,
                 forHTTPHeaderField: "User-Agent"
             )
             if let lastModified = previous?.lastModified {

@@ -18,7 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / "Sources" / "FlybookEurope" / "Resources"
-USER_AGENT = "FlybookEurope/1.0 release-audit contact: local-app"
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+USER_AGENT = f"FlybookEurope/{VERSION} release-audit contact: local-app"
 CONTEXT = ssl.create_default_context()
 
 

@@ -90,10 +90,7 @@ actor ExchangeRateService {
         do {
             var request = URLRequest(url: Self.endpoint)
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            request.setValue(
-                "FlybookEurope/1.0 (+https://github.com/Amtrasaeromed/Flybook-Europe)",
-                forHTTPHeaderField: "User-Agent"
-            )
+            request.setValue(FlightNetwork.userAgent, forHTTPHeaderField: "User-Agent")
             let (data, response) = try await FlightNetwork.data(
                 for: request,
                 priority: .normal

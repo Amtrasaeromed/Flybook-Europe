@@ -105,10 +105,7 @@ actor DWDMOSMIXService {
             throw MOSMIXError.invalidData
         }
         var request = URLRequest(url: url)
-        request.setValue(
-            "FlybookEurope/1.0 (+https://github.com/Amtrasaeromed/Flybook-Europe)",
-            forHTTPHeaderField: "User-Agent"
-        )
+        request.setValue(FlightNetwork.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await FlightNetwork.data(
             for: request,
             priority: .low

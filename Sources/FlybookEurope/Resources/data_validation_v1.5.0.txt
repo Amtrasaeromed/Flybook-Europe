@@ -1,0 +1,18 @@
+Flybook Europe data validation v1.5.0
+checked_at=2026-08-17
+airports=144
+destination_detail_rows=106
+techstop_detail_rows=37
+feature_rows=1008
+features_per_airport=7
+service_rows=794
+fuel_rows=475
+fuel_price_rows=102
+duplicate_keys=0
+orphan_foreign_keys=0
+missing_runway_width=0
+missing_lda=0
+lda_above_runway_length=0
+missing_or_invalid_timezones=0
+max_edfz_distance_deviation_nm=1.92
+result=PASS

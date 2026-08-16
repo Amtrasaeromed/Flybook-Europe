@@ -9,6 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ROOT / "Sources" / "FlybookEurope"
+IPAD_ROOT = ROOT / "Flybook-iPad" / "Flybook-iPad"
+IPAD_PROJECT = (
+    ROOT / "Flybook-iPad" / "Flybook-iPad.xcodeproj" / "project.pbxproj"
+)
 
 
 def text(name: str) -> str:
@@ -38,6 +42,10 @@ def main() -> int:
     all_swift = "\n".join(
         path.read_text(encoding="utf-8") for path in SOURCES.glob("*.swift")
     )
+    ipad_swift = "\n".join(
+        path.read_text(encoding="utf-8") for path in IPAD_ROOT.rglob("*.swift")
+    )
+    ipad_project = IPAD_PROJECT.read_text(encoding="utf-8")
 
     checks = {
         "kein Vollwetterabruf beim Start": ".prefetch(destinations: store.destinations)" not in app,
@@ -132,7 +140,26 @@ def main() -> int:
             "CheckedContinuation<Void, Never>" in network
             and "Task.sleep" not in network
         ),
-        "kein URLSession.shared in Fachservices": "URLSession.shared" not in all_swift,
+        "kein URLSession.shared in Fachservices": (
+            "URLSession.shared" not in all_swift
+            and "URLSession.shared" not in ipad_swift
+        ),
+        "iPad-Korridorwetter nutzt gemeinsamen Open-Meteo-Schutz": (
+            "FlightNetwork.openMeteoData(" in ipad_swift
+            and "priority: .low" in ipad_swift
+        ),
+        "Mac und iPad verwenden dieselben Airport-Masterdaten": (
+            all(
+                f"../Sources/FlybookEurope/Resources/{name}" in ipad_project
+                for name in (
+                    "airports.csv",
+                    "features.csv",
+                    "fuels.csv",
+                    "fuel_prices.csv",
+                )
+            )
+            and not any((IPAD_ROOT / "Resources").glob("*.csv"))
+        ),
         "30-Minuten-Fachcaches vorhanden": all_swift.count("30 * 60") >= 4,
     }
 

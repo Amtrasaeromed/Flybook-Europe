@@ -12,7 +12,6 @@ import argparse
 import csv
 import html
 import re
-import shutil
 import ssl
 import time
 import urllib.error
@@ -24,11 +23,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / "Sources" / "FlybookEurope" / "Resources"
-IPAD_RESOURCES = ROOT / "Flybook-iPad" / "Flybook-iPad" / "Resources"
 AUDIT_PATH = ROOT / "AEROPS_AUDIT_2026-08-16.csv"
 CHECKED_AT = "2026-08-16"
 BASE_URL = "https://gat.aerops.com/prices/calculator"
-USER_AGENT = "FlybookEurope/1.47 AeroPS-audit"
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+USER_AGENT = f"FlybookEurope/{VERSION} AeroPS-audit"
 CONTEXT = ssl.create_default_context()
 PRICE_PATTERN = re.compile(
     r'<span\s+class="fw-bold">\s*([^<:]+):\s*</span>\s*'
@@ -321,8 +320,6 @@ def merge_confirmed(results: list[AuditResult]) -> tuple[int, int]:
     ]
     write_table(fuel_path, fuel_fields, fuel_rows)
     write_table(price_path, price_fields, price_rows)
-    for name in ("airports.csv", "features.csv", "fuels.csv", "fuel_prices.csv"):
-        shutil.copyfile(RESOURCES / name, IPAD_RESOURCES / name)
     return fuel_changes, price_changes
 
 

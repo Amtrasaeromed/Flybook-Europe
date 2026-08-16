@@ -1,4 +1,4 @@
-# Flybook Europe Native v1.47.0
+# Flybook Europe Native v1.5.0
 
 Native macOS-App zur Zielauswahl, Flugzeit-, Kraftstoff- und Charterkalkulation
 für VFR-Reisen. Die App bleibt ein Planungswerkzeug und ersetzt weder AIP,
@@ -60,8 +60,10 @@ NOTAM, PPR, Flugwetterbriefing noch die operative Flugleistungsrechnung.
   nicht als punktgenaue Planungs-Ceiling ausgegeben.
 - Die direkte GRIB-Punktabfrage auf macOS nutzt `grib_get` aus ecCodes
   (`/opt/homebrew/bin` oder `/usr/local/bin`). Fehlt der Decoder, zeigt das
-  Planungsfeld bewusst keine geschätzte Ceiling. iPadOS verwendet ebenfalls
-  keine Ersatzschätzung; das 5-Tages-Risikomodell bleibt dort separat aktiv.
+  Planungsfeld bewusst keine selbst geschätzte Ceiling. Bei BKN/OVC darf als
+  transparent gekennzeichnete externe Ersatzquelle DWD MOSMIX einspringen;
+  bleibt auch dort die Basis unbekannt, erscheint `Basis n/v`. Das
+  5-Tages-Risikomodell bleibt davon auf macOS und iPadOS strikt getrennt.
 - Langfristprognose, Streckenrisiko und Föhnprüfung sind nachrangig und zeitlich
   gestaffelt, damit schwache Mobilverbindungen nicht mit Anfragepaketen
   überlastet werden.
@@ -141,7 +143,7 @@ python3 Scripts/aerops_fuel_sync.py
 python3 Scripts/aerops_fuel_sync.py --apply
 ```
 
-Der geprüfte Stand ist in `INTEGRITAET_v1.47.0.md` dokumentiert.
+Der geprüfte Stand ist in `INTEGRITAET_v1.5.0.md` dokumentiert.
 
 ## iPad-Migration
 

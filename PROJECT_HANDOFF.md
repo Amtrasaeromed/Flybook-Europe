@@ -1,4 +1,4 @@
-# Flybook Europe – Übergabe v1.47.0
+# Flybook Europe – Übergabe v1.5.0
 
 ## Sofortübergabe (17. August 2026)
 
@@ -6,7 +6,7 @@
 - Branch: `codex/ipad-migration`
 - Git-Stand: alle Änderungen auf `codex/ipad-migration` versioniert und für
   die Übergabe an einen weiteren Account vorbereitet
-- Version: `1.47.0`
+- Version: `1.5.0`
 - Die macOS-App wurde erfolgreich mit
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
@@ -39,7 +39,12 @@
 - Im aktiven Nutzerprofil ist unter Flugkalkulation eine Sicherheitsmarge von
   0 bis 50 Prozent in 5-Prozent-Schritten hinterlegt. Sie erhöht Roll- und
   50-ft-Strecke für Start und Landung und damit auch die Pistenprozentwerte.
-- Daten-, Quellen-, Datenfluss-, Persistenz- und Rechenaudit sind grün.
+- Daten-, Laufzeitquellen-, Datenfluss-, Persistenz- und Rechenaudit sind grün.
+  Alle 15 produktiven Onlinezugänge waren erreichbar. Der zusätzliche
+  Herkunftslink-Audit prüfte 591 redaktionelle Belege: 498 erreichbar, 28
+  geschützt/gedrosselt und 65 historisch veraltet oder technisch nicht
+  erreichbar. Diese Links werden nicht zur Laufzeit abgerufen und bleiben bis
+  zu einer verifizierten Ersatzquelle unverändert.
 - Der Destination Finder behält Ziele bei unvollständigem Streckenwetter als
   Treffer und kennzeichnet sie als nicht vollständig geprüft. Alpenföhn wird
   entlang der relevanten West-, Zentral- und Ostachsen bewertet.
@@ -65,8 +70,9 @@
   EUR-Preise übernommen. Mehrdeutige Doppelpreise und 0-EUR-Platzhalter
   bleiben ausschließlich im Audit. Das reproduzierbare Werkzeug liegt unter
   `Scripts/aerops_fuel_sync.py`.
-- Die vier gemeinsam geführten Airport-/Feature-/Fuel-Ressourcen sind zwischen
-  macOS und iPad bytegenau synchronisiert.
+- macOS und iPad binden dieselben vier Airport-/Feature-/Fuel-Masterdateien
+  direkt aus `Sources/FlybookEurope/Resources` ein; redundante iPad-Kopien
+  existieren nicht mehr.
 - Die Flugplanfelder sind verbreitert; der Betriebszeitstatus sitzt außen links
   am Abflug- und außen rechts am Ankunftsfeld. Best Level, gewählte Höhe und
   Streckenwind beginnen als entzerrte Fußzeile am linken Rand.
@@ -144,7 +150,7 @@
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und verwendet bei
   BKN/OVC deshalb die gekennzeichnete DWD-MOSMIX-Ersatzquelle; eine fehlende
   Basis wird als `Basis n/v` ausgewiesen.
-  Der signaturfreie iPad-Gerätebuild wurde erfolgreich geprüft.
+  Der signaturfreie iPad-Release-Simulatorbuild wurde erfolgreich geprüft.
 
 ## Noch offen / nächste Aufgabe
 
@@ -162,10 +168,10 @@ Diesen Text als erste Aufgabe verwenden:
 > Arbeite im bestehenden Projekt `/Users/stephan/Documents/ChatGPT/Flybook`
 > weiter. Lies zuerst `PROJECT_HANDOFF.md` und `README.md`, prüfe danach
 > `git status` und den aktuellen Branch. Bewahre alle vorhandenen Änderungen.
-> Flybook v1.47.0 wurde zuletzt erfolgreich gebaut und gestartet. Setze meine
+> Flybook v1.5.0 wurde zuletzt erfolgreich gebaut und gestartet. Setze meine
 > nächste konkrete Anforderung direkt um. Der AeroPS-Abgleich für alle Airports
 > ist abgeschlossen; verwende für Wiederholungen das dokumentierte Skript und
-> halte Mac- und iPad-Ressourcen synchron. Verifiziere anschließend Swift-Tests
+> verwende die gemeinsamen Mac-/iPad-Masterdaten. Verifiziere anschließend Swift-Tests
 > und Release-Audits aus dem README.
 
 ## Produktstand

@@ -226,7 +226,10 @@ actor IPadRouteWeatherRiskService {
             ].joined(separator: ","))
         ]
         guard let url = components?.url else { throw RiskError.noData }
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await FlightNetwork.openMeteoData(
+            from: url,
+            priority: .low
+        )
         guard let http = response as? HTTPURLResponse,
               (200..<300).contains(http.statusCode)
         else { throw RiskError.noData }
