@@ -381,26 +381,21 @@ struct FuelPlanCalculatorView: View {
     private var summary: some View {
         HStack(spacing: 10) {
             summaryBox(
-                title: "MINDESTBESTAND START",
+                title: "MINDESTBESTAND START / MINIMUM T/O",
                 value: liters(result.minimumStartingFuelLiters),
                 warning: result.hasStartingFuelShortfall
             )
             summaryBox(
-                title: "MINDEST-AUFFÜLLMENGE",
+                title: "MINIMUM REFUEL",
                 value: refuelAfterLegIndex == nil
                     ? "–"
                     : liters(result.minimumRefuelLiters),
                 warning: result.hasRefuelShortfall
             )
             summaryBox(
-                title: "RESERVE AM ENDZIEL",
+                title: "RESERVE",
                 value: liters(result.finalReserveLiters),
                 warning: result.hasFinalReserveShortfall
-            )
-            summaryBox(
-                title: "TANKKAPAZITÄT",
-                value: liters(result.usableFuelLiters),
-                warning: result.hasCapacityViolation || result.hasOverfill
             )
         }
     }
