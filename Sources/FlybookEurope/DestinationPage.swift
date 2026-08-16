@@ -5482,6 +5482,7 @@ private struct PlanningWeather {
     let lowCloudCoverPercent: Double?
     let lowestCloudBaseFeet: Double?
     let ceilingFeet: Double?
+    let ceilingSource: PlanningCeilingSource?
     let category: FlightCategory
     let runway: String?
     let runwayCrosswindWarning: RunwayCrosswindWarning
@@ -5506,6 +5507,7 @@ private struct PlanningWeather {
         lowCloudCoverPercent = sample?.lowCloudCoverPercent
         lowestCloudBaseFeet = sample?.lowestCloudBaseFeetAGL
         ceilingFeet = sample?.ceilingFeetAGL
+        ceilingSource = sample?.ceilingSource
         category = sample?.category ?? .unavailable
         self.foehnWarning = foehnWarning
         if let runwayICAO,
@@ -5554,6 +5556,7 @@ private struct PlanningWeather {
         lowCloudCoverPercent = day?.lowCloudCoverPercent
         lowestCloudBaseFeet = day?.lowestCloudBaseFeetAGL
         ceilingFeet = day?.ceilingFeetAGL
+        ceilingSource = nil
         category = day?.category ?? .unavailable
         foehnWarning = nil
         runway = nil
@@ -5642,10 +5645,7 @@ private struct PlanningWeatherCard: View {
                 .minimumScaleFactor(0.78)
                 .frame(width: 158, height: 18, alignment: .center)
                 .help(
-                    "ICON zeigt den modellierten niedrigen "
-                    + "Wolkenanteil. METAR zeigt dessen "
-                    + "Übertragung in Achtel-Bedeckung; "
-                    + "BKN/OVC definieren eine Ceiling."
+                    planningCloudHelp
                 )
 
             TimeContextInfo(weather: weather)
@@ -5867,6 +5867,22 @@ private struct PlanningWeatherCard: View {
             break
         }
         return nil
+    }
+
+    private var planningCloudHelp: String {
+        switch weather.ceilingSource {
+        case .dwdICOND2, .dwdICONEU:
+            return (weather.ceilingSource?.rawValue ?? "DWD ICON")
+                + ": direkte Modell-Ceiling über Grund. "
+                + "Wolkenanteil und Sichtweite stammen aus der externen "
+                + "Punktprognose."
+        case .unavailable:
+            return "Keine direkte DWD-Ceiling verfügbar; es wird keine "
+                + "Wolkenbasis geschätzt. Die Flugwetterkategorie nutzt "
+                + "in diesem Fall nur die externe Sichtweite."
+        case nil:
+            return "Wolken- und Sichtangaben der externen Punktprognose."
+        }
     }
 }
 

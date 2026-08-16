@@ -45,9 +45,16 @@
 - Die Flugplanfelder sind verbreitert; der Betriebszeitstatus sitzt außen links
   am Abflug- und außen rechts am Ankunftsfeld. Best Level, gewählte Höhe und
   Streckenwind beginnen als entzerrte Fußzeile am linken Rand.
-- ICON-Ceilings werden aus dem vertikalen Druckflächen-Wolkenprofil ermittelt.
-  Die frühere Temperatur-Taupunkt-Faustformel wird nicht mehr als Ceiling und
-  damit nicht mehr als IFR-Auslöser verwendet.
+- Das Planungsfeld verwendet für den konkreten An-/Abflugzeitpunkt das direkte
+  DWD-GRIB-Feld `CEILING`: ICON-D2 bis 48 Stunden, danach ICON-EU bis fünf
+  Tage. Es findet dort keine Temperatur-/Taupunkt- oder Wolkenprofil-Schätzung
+  mehr statt; ohne direkten Wert bleibt die Ceiling leer.
+- Das validierte eigene Nebel-/Tiefwolken-Risikomodell bleibt ausschließlich
+  in der farbcodierten 5-Tages-Wetteranzeige aktiv.
+- Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
+  komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
+  Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.
+  Der signaturfreie iPad-Gerätebuild wurde erfolgreich geprüft.
 
 ## Noch offen / nächste Aufgabe
 

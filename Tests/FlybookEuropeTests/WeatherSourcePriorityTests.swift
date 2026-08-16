@@ -39,9 +39,14 @@ final class WeatherSourcePriorityTests: XCTestCase {
                 forceRefresh: true
             )
             XCTAssertFalse(forecast.samples.isEmpty, airport.icao)
-            XCTAssertNotNil(
+            let sample = try XCTUnwrap(
                 forecast.sample(nearestTo: target),
                 "Keine zeitlich passende Prognose für \(airport.icao)"
+            )
+            XCTAssertTrue(
+                sample.ceilingSource == .dwdICOND2
+                    || sample.ceilingSource == .dwdICONEU,
+                "Keine direkte DWD-Ceiling für \(airport.icao)"
             )
         }
 

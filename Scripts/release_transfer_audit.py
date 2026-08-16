@@ -24,6 +24,9 @@ def main() -> int:
     wind_service = text("RouteWindService.swift")
     risk = text("RouteWeatherRisk.swift")
     network = text("FlightNetwork.swift")
+    planning_weather = text("EDFZWeatherService.swift")
+    direct_ceiling = text("DWDICONCeilingService.swift")
+    five_day_weather = text("WeatherService.swift")
     optimized_refresh = page[
         page.index("private func refreshDataOptimizedWeather"):
         page.index("private func refreshPlanningAirportWeather")
@@ -78,6 +81,24 @@ def main() -> int:
             and "withThrowingTaskGroup" not in wind_service
         ),
         "Korridorwetter ohne 16-Tage-Payload": 'forecast_days", value: "16"' not in risk,
+        "Planungs-Ceiling kommt direkt aus DWD ICON-D2 oder ICON-EU": (
+            "icon-d2/grib" not in direct_ceiling
+            and 'modelDirectory = "icon-d2"' in direct_ceiling
+            and 'modelDirectory = "icon-eu"' in direct_ceiling
+            and "_2d_ceiling.grib2.bz2" in direct_ceiling
+            and "_CEILING.grib2.bz2" in direct_ceiling
+            and "DWDICONCeilingService.shared.ceiling" in planning_weather
+        ),
+        "Planungsfeld erfindet keine lokale Ceiling": (
+            "ICONCloudProfile" not in planning_weather
+            and "estimatedCloudBaseFeet" not in planning_weather
+            and "ceilingFeet: nil" in planning_weather
+        ),
+        "validiertes 5-Tages-Nebelrisiko bleibt getrennt": (
+            "FogRiskModel.calculate" in five_day_weather
+            and "estimatedCloudBaseFeet" in five_day_weather
+            and "estimateCeiling" in five_day_weather
+        ),
         "Update bleibt datenoptimiert": (
             "refreshPlanningAirportWeather(forceRefresh: true)" in optimized_refresh
             and "AlternateWeatherUpdater.refresh(" in optimized_refresh

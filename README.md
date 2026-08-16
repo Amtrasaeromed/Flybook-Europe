@@ -49,10 +49,19 @@ NOTAM, PPR, Flugwetterbriefing noch die operative Flugleistungsrechnung.
   ICON-D2/ICON-EU-Wind wird auf allen gelieferten Druckflächen verwendet;
   fehlende Zwischenhöhen werden vektoriell zwischen benachbarten
   Modellflächen interpoliert.
-- Die Flugwetter-Ceiling wird aus dem vertikalen ICON-Wolkenprofil auf den
-  Druckflächen abgeleitet. Der Temperatur-Taupunkt-Abstand bleibt ein
-  Feuchtehinweis, wird aber nicht als modellierte Ceiling oder IFR-Auslöser
-  ausgegeben.
+- Das Planungsfeld liest die Flugwetter-Ceiling für den konkreten An-/Abflug
+  direkt aus dem DWD-GRIB-Feld `CEILING`: bevorzugt ICON-D2 (bis 48 Stunden),
+  danach ICON-EU (bis fünf Tage). Der Wert ist bereits eine Modellhöhe über
+  Grund und wird nicht aus Temperatur, Taupunkt oder Wolkenanteilen geschätzt.
+  Fehlt das direkte Feld, bleibt die Ceiling leer und die Kategorie wird nur
+  aus der externen Sichtweite bestimmt.
+- Das separat validierte Nebel-/Tiefwolken-Risikomodell der 5-Tages-Anzeige
+  verwendet weiterhin mehrere Wetterfaktoren und seine Farbcodierung; es wird
+  nicht als punktgenaue Planungs-Ceiling ausgegeben.
+- Die direkte GRIB-Punktabfrage auf macOS nutzt `grib_get` aus ecCodes
+  (`/opt/homebrew/bin` oder `/usr/local/bin`). Fehlt der Decoder, zeigt das
+  Planungsfeld bewusst keine geschätzte Ceiling. iPadOS verwendet ebenfalls
+  keine Ersatzschätzung; das 5-Tages-Risikomodell bleibt dort separat aktiv.
 - Langfristprognose, Streckenrisiko und Föhnprüfung sind nachrangig und zeitlich
   gestaffelt, damit schwache Mobilverbindungen nicht mit Anfragepaketen
   überlastet werden.

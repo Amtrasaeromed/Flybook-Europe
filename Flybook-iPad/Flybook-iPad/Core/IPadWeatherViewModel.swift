@@ -87,6 +87,7 @@ final class IPadWeatherViewModel: ObservableObject {
         case .iconSeamless(.genericForecast): return "ICON-SEAMLESS · RESERVE"
         case .bestMatch: return "BEST MATCH · FALLBACK"
         case .metNorway: return "MET NORWAY · FALLBACK"
+        case .mosmix: return "DWD MOSMIX · FALLBACK"
         }
     }
 
@@ -122,6 +123,12 @@ final class IPadWeatherViewModel: ObservableObject {
                   let visibility = sample.visibilityMeters,
                   let lowCloud = sample.lowCloudCoverPercent
             else { return nil }
+            // Diese Näherung gehört ausschließlich zum validierten
+            // 5-Tages-Nebel-/Tiefwolken-Risikomodell. Sie wird weder als
+            // Planungs-Ceiling angezeigt noch zur Flugkategorie erklärt.
+            let riskCeiling = lowCloud >= 62.5
+                ? max(0, temperature - dewPoint) * 400
+                : 10_000
             return FogRiskModel.calculate(
                 FogRiskInput(
                     temperatureC: temperature,
@@ -129,7 +136,7 @@ final class IPadWeatherViewModel: ObservableObject {
                     windKt: wind,
                     visibilityKm: visibility / 1_000,
                     lowCloudPercent: lowCloud,
-                    ceilingFt: sample.ceilingFeetAGL ?? 10_000,
+                    ceilingFt: riskCeiling,
                     totalCloudPercent: sample.totalCloudCoverPercent ?? 0
                 )
             )?.score

@@ -63,14 +63,6 @@ def runtime_checks() -> list[str]:
         "wind_speed_10m",
         "wind_direction_10m",
         "wind_gusts_10m",
-        *[
-            variable
-            for level in (1000, 975, 950, 925, 900, 850, 800, 700)
-            for variable in (
-                f"cloud_cover_{level}hPa",
-                f"geopotential_height_{level}hPa",
-            )
-        ],
     ]
 
     def validates_route_wind_profile(content_type: str, body: bytes) -> bool:
@@ -92,6 +84,18 @@ def runtime_checks() -> list[str]:
         )
 
     checks = [
+        (
+            "DWD ICON-D2 direkte Ceiling",
+            "https://opendata.dwd.de/weather/nwp/icon-d2/grib/12/ceiling/",
+            lambda content_type, body: b"regular-lat-lon" in body.lower()
+            and b"_2d_ceiling.grib2.bz2" in body.lower(),
+        ),
+        (
+            "DWD ICON-EU direkte Ceiling",
+            "https://opendata.dwd.de/weather/nwp/icon-eu/grib/12/ceiling/",
+            lambda content_type, body: b"regular-lat-lon" in body.lower()
+            and b"_ceiling.grib2.bz2" in body.lower(),
+        ),
         (
             "Open-Meteo ICON-D2 Vertikalwind",
             "https://api.open-meteo.com/v1/dwd-icon?latitude=49.9675&longitude=8.1472"
