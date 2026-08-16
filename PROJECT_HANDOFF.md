@@ -1,6 +1,6 @@
 # Flybook Europe – Übergabe v1.47.0
 
-## Sofortübergabe (15. August 2026)
+## Sofortübergabe (16. August 2026)
 
 - Arbeitsverzeichnis: `/Users/stephan/Documents/ChatGPT/Flybook`
 - Branch: `codex/ipad-migration`
@@ -10,7 +10,11 @@
 - Die macOS-App wurde erfolgreich mit
   `./Flybook\ Europe\ starten.command` gebaut, lokal signiert, unter
   `~/Applications/Flybook Europe.app` aktualisiert und geöffnet.
-- Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich.
+- Der letzte Build und die vollständige Swift-Test-Suite waren erfolgreich:
+  176 Tests, 0 Fehler, 2 bewusst deaktivierte Live-Quellentests.
+- Der deterministische Daten-, Datenfluss- und Persistenzaudit ist grün. Der
+  Live-Quellenaudit benötigt freien Netzwerkzugriff und war in der lokalen
+  Sandbox nicht ausführbar.
 - Der Destination Finder behält Ziele bei unvollständigem Streckenwetter als
   Treffer und kennzeichnet sie als nicht vollständig geprüft. Alpenföhn wird
   entlang der relevanten West-, Zentral- und Ostachsen bewertet.
@@ -19,6 +23,29 @@
   eindeutig belegte Angebote bleiben als `?` gekennzeichnet.
 - Tourismusmerkmale sowie die POE-/Zolltauglichkeit der Schweizer und
   britischen Ziele wurden redaktionell nachgeschärft.
+- EDTM, EDQH, EDTG und EDTS sind als süddeutsche TechStops ergänzt. EDTS-Fuel
+  ist als ausschließlich PPR verfügbar gekennzeichnet.
+- Neuchâtel, Buochs, Reichenbach und Bremgarten besitzen die neu erfassten
+  Lande-, Park- und Zollgebühren. Schweizer Beträge werden mit Tageskurs in
+  EUR umgerechnet und auf volle Euro aufgerundet.
+- Flugzeugprofile enthalten nun einen verpflichtenden Lärmwert in dB(A).
+  Fehlt er, zeigt eine dB-abhängige Gebührenberechnung konsequent `?`.
+  Für die AQUILA A211 ist der publizierte Wert 65,1 dB(A) vorbelegt.
+- Die konkreten AeroPS-Platzrechner funktionieren ohne Login. Für EDTG sind
+  AVGAS 100LL 2,99 EUR/l, SuperPlus 2,36 EUR/l und Jet A-1 2,49 EUR/l mit
+  Stand 16.08.2026 hinterlegt.
+
+## Noch offen / nächste Aufgabe
+
+- Den AeroPS-Abgleich für **alle 144 Airports** fortführen. Die URL ist jeweils
+  `https://gat.aerops.com/prices/calculator/ICAO` (ohne abschließenden Slash),
+  zum Beispiel `.../EDTG` oder `.../EDTF`.
+- AeroPS als zusätzliche Quelle verwenden: bestätigte Kraftstoffarten und
+  sichtbare Preise übernehmen; ein fehlender AeroPS-Datensatz ist niemals
+  allein ein Beleg für `Nein`. Betreiber-/AIP-Quellen bleiben führend.
+- AVGAS, UL91 und MOGAS/Super98 platzweise verifizieren. Nur eindeutig
+  bestätigte Werte werden `Ja`, unklare bleiben `?`, eindeutig ausgeschlossene
+  werden `Nein`. Mac- und iPad-Ressourcen synchron halten.
 
 ## Einstieg für den nächsten Account
 
@@ -28,14 +55,17 @@ Diesen Text als erste Aufgabe verwenden:
 > weiter. Lies zuerst `PROJECT_HANDOFF.md` und `README.md`, prüfe danach
 > `git status` und den aktuellen Branch. Bewahre alle vorhandenen Änderungen.
 > Flybook v1.47.0 wurde zuletzt erfolgreich gebaut und gestartet. Setze meine
-> nächste konkrete Anforderung direkt um und verifiziere sie mit den passenden
-> Swift-Tests beziehungsweise den Release-Audits aus dem README.
+> nächste konkrete Anforderung direkt um. Als erste Aufgabe führe den in
+> `PROJECT_HANDOFF.md` beschriebenen AeroPS-Abgleich für alle Airports fort.
+> Verwende die konkreten URLs ohne abschließenden Slash, halte Mac- und
+> iPad-Ressourcen synchron und verifiziere anschließend Swift-Tests und
+> Release-Audits aus dem README.
 
 ## Produktstand
 
 - Native SwiftUI-/SwiftPM-App für macOS 13 oder neuer
 - Bundle-ID `de.flybook.europe`
-- 140 Flugplätze, 106 Ziele, 33 TechStops
+- 144 Flugplätze, 106 Ziele, 37 TechStops
 - Flugzeugprofile DEUKS, DETIK und benutzerdefinierte Flugzeuge
 - dauerhafte Profile für Stephan und Maria
 

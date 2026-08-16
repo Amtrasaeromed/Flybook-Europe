@@ -2,6 +2,140 @@ import XCTest
 @testable import FlybookEurope
 
 final class AirportOperatingHoursTests: XCTestCase {
+    func testEDTFPublishedHoursAndPPRAreTreatedAsClosed() {
+        let airport = reference(
+            "EDTF", latitude: 48.0228, longitude: 7.8325
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T05:30:00Z", .edtf),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T06:30:00Z", .edtf),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T18:30:00Z", .edtf),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-12T06:30:00Z", .edtf),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-12T07:30:00Z", .edtf),
+            .confirmedOpen
+        )
+    }
+
+    func testEDTGHoursAndWeekendDepartureBan() {
+        let airport = reference(
+            "EDTG", latitude: 47.903167, longitude: 7.617833
+        )
+        XCTAssertTrue(AirportOpeningHoursStore.hasProfile(for: "EDTG"))
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: ISO8601DateFormatter().date(
+                    from: "2026-08-10T07:00:00Z"
+                ),
+                operation: .arrival
+            ),
+            .closedOrPPR
+        )
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: ISO8601DateFormatter().date(
+                    from: "2026-08-10T08:00:00Z"
+                ),
+                operation: .arrival
+            ),
+            .open
+        )
+
+        let summerBan = ISO8601DateFormatter().date(
+            from: "2026-08-15T11:30:00Z"
+        )
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: summerBan,
+                operation: .departure
+            ),
+            .closedOrPPR
+        )
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: summerBan,
+                operation: .arrival
+            ),
+            .open
+        )
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: ISO8601DateFormatter().date(
+                    from: "2026-08-15T12:30:00Z"
+                ),
+                operation: .departure
+            ),
+            .open
+        )
+
+        let winterBan = ISO8601DateFormatter().date(
+            from: "2026-01-10T12:30:00Z"
+        )
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: winterBan,
+                operation: .departure
+            ),
+            .closedOrPPR
+        )
+        XCTAssertEqual(
+            AirportOperatingHoursEvaluator.status(
+                airport: airport,
+                at: winterBan,
+                operation: .arrival
+            ),
+            .open
+        )
+    }
+
+    func testEDTSUnattendedHoursAreOpenAndPPRHoursAreClosed() {
+        let airport = reference(
+            "EDTS", latitude: 48.065556, longitude: 8.571389
+        )
+        XCTAssertTrue(AirportOpeningHoursStore.hasProfile(for: "EDTS"))
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T06:30:00Z", .edts),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T07:30:00Z", .edts),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-08-10T18:30:00Z", .edts),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-12T09:00:00Z", .edts),
+            .confirmedClosed
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-12T11:00:00Z", .edts),
+            .confirmedOpen
+        )
+        XCTAssertEqual(
+            assessment(airport, "2026-01-10T09:00:00Z", .edts),
+            .confirmedOpen
+        )
+    }
+
     func testEDFERegularHoursAndPPRBoundary() throws {
         let airport = reference(
             "EDFE", latitude: 49.9608, longitude: 8.6436

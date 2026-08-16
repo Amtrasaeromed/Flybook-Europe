@@ -24,7 +24,7 @@ private struct CSVTable {
 @MainActor
 final class DestinationStore: ObservableObject {
     private static let schemaVersion = "1.2"
-    private static let expectedDestinationCount = 140
+    private static let expectedDestinationCount = 144
     private static let bundledSeedPrices: [String: FuelPriceRecord] = [
         "EDFZ": FuelPriceRecord(
             avgas: 3.03,
@@ -200,7 +200,7 @@ final class DestinationStore: ObservableObject {
                     ul91PricePerLiterEUR: price("UL91", rows: airportPrices),
                     mogasPricePerLiterEUR: price("MOGAS_SUPER", rows: airportPrices),
                     fuelPriceReportedAt: priceReportedAt(rows: airportPrices),
-                    ppr: nonEmpty(
+                    ppr: joinedUnique(
                         airport["ppr_status", default: ""],
                         airport["ppr_ga_access", default: ""],
                         techstopRow["ppr_operational_notes", default: ""]
@@ -216,8 +216,36 @@ final class DestinationStore: ObservableObject {
                         airport["transfer_minutes", default: ""]
                     )) ?? 0,
                     bikeDirect: serviceAvailability("bicycle", rows: airportServices),
+                    bikeInformation: serviceInformation(
+                        "bicycle",
+                        rows: airportServices
+                    ),
+                    bikeHalfDayPrice: optionalDouble(serviceValue(
+                        "bicycle",
+                        field: "half_day_price",
+                        rows: airportServices
+                    )),
+                    bikeFullDayPrice: optionalDouble(serviceValue(
+                        "bicycle",
+                        field: "full_day_price",
+                        rows: airportServices
+                    )),
+                    bikeDepositPrice: optionalDouble(serviceValue(
+                        "bicycle",
+                        field: "deposit_price",
+                        rows: airportServices
+                    )),
+                    bikePriceCurrency: serviceValue(
+                        "bicycle",
+                        field: "price_currency",
+                        rows: airportServices
+                    ),
                     rentalCarDirect: serviceAvailability("rental_car", rows: airportServices),
                     railDirect: serviceAvailability("rail_transit", rows: airportServices),
+                    railInformation: serviceInformation(
+                        "rail_transit",
+                        rows: airportServices
+                    ),
                     busDirect: serviceAvailability("bus_transit", rows: airportServices),
                     app2DriveDirect: serviceAvailability("app2drive", rows: airportServices),
                     restaurantDirect: serviceAvailability("restaurant", rows: airportServices),
@@ -264,6 +292,7 @@ final class DestinationStore: ObservableObject {
                         services: airportServices
                     ),
                     airportNote: airportNote(airport: airport, techstop: techstopRow),
+                    airportFeeNote: airport["fee_note", default: ""],
                     status: nonEmpty(
                         airport["verification_status", default: ""],
                         destinationRow["tourism_confidence", default: ""],
@@ -297,7 +326,12 @@ final class DestinationStore: ObservableObject {
             }
 
             if !parsed.contains(where: { $0.icao == "EDFZ" }) {
-                parsed.append(mainzDestination)
+                parsed.append(mainzDestination(
+                    app2Drive: serviceAvailability(
+                        "app2drive",
+                        rows: servicesByAirport["EDFZ", default: []]
+                    )
+                ))
             }
 
             destinations = parsed.sorted { first, second in
@@ -323,7 +357,7 @@ final class DestinationStore: ObservableObject {
     }
 
     private func readTable(_ name: String) throws -> CSVTable {
-        guard let url = Bundle.module.url(forResource: name, withExtension: "csv") else {
+        guard let url = FlybookResources.bundle.url(forResource: name, withExtension: "csv") else {
             throw DataLoadError.missingFile("\(name).csv")
         }
         let text = try String(contentsOf: url, encoding: .utf8)
@@ -410,26 +444,28 @@ final class DestinationStore: ObservableObject {
         fuelRows: [[String: String]],
         priceRows: [[String: String]]
     ) -> String {
-        if price(type, rows: priceRows) != nil { return "Ja" }
-
-        guard let row = fuelRows.first(where: { $0["fuel_type"] == type }) else {
-            return "?"
-        }
-        let raw = row["availability_raw", default: ""]
+        let row = latestFuelRow(type, rows: fuelRows)
+        let raw = row?["availability_raw", default: ""]
+            ?? ""
+        let normalized = raw
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        if raw == "nein"
-            || raw.hasPrefix("nein ")
-            || raw.contains("nicht verfugbar")
-            || raw == "no"
+        if isAffirmative(raw) && normalized.contains("ppr") {
+            return "Ja – nur PPR"
+        }
+        if price(type, rows: priceRows) != nil { return "Ja" }
+        guard row != nil else { return "?" }
+        if normalized == "nein"
+            || normalized.hasPrefix("nein ")
+            || normalized.contains("nicht verfugbar")
+            || normalized == "no"
         {
             return "Nein"
         }
-        if raw == "ja"
-            || raw.hasPrefix("ja ")
-            || raw == "yes"
-            || raw == "available"
-            || raw == "verfügbar"
+        if isAffirmative(raw)
+            || normalized == "yes"
+            || normalized == "available"
+            || normalized == "verfugbar"
         {
             return "Ja"
         }
@@ -437,19 +473,65 @@ final class DestinationStore: ObservableObject {
     }
 
     private func price(_ type: String, rows: [[String: String]]) -> Double? {
-        rows.first(where: { $0["fuel_type"] == type }).flatMap {
+        rows
+            .filter { $0["fuel_type"] == type }
+            .max {
+                $0["price_checked_at", default: ""]
+                    < $1["price_checked_at", default: ""]
+            }
+            .flatMap {
             optionalDouble($0["price_eur_per_litre", default: ""])
         }
     }
 
+    private func latestFuelRow(
+        _ type: String,
+        rows: [[String: String]]
+    ) -> [String: String]? {
+        rows
+            .filter { $0["fuel_type"] == type }
+            .max {
+                $0["data_checked_at", default: ""]
+                    < $1["data_checked_at", default: ""]
+            }
+    }
+
     private func fuelDetails(rows: [[String: String]]) -> String {
-        rows.compactMap { row in
+        let latestRows = Dictionary(
+            grouping: rows,
+            by: { $0["fuel_type", default: ""] }
+        )
+            .values
+            .compactMap { groupedRows in
+                groupedRows.max {
+                    $0["data_checked_at", default: ""]
+                        < $1["data_checked_at", default: ""]
+                }
+            }
+        let pistonTypes: Set<String> = ["AVGAS", "UL91", "MOGAS_SUPER"]
+        let hasPistonFuel = latestRows.contains { row in
+            pistonTypes.contains(row["fuel_type", default: ""].uppercased())
+                && isAffirmative(row["availability_raw", default: ""])
+        }
+
+        return latestRows
+            .sorted {
+                $0["fuel_type", default: ""] < $1["fuel_type", default: ""]
+            }
+            .compactMap { row in
+            let fuelType = row["fuel_type", default: ""]
+                .uppercased()
+            guard !hasPistonFuel
+                    || (fuelType != "JET_A1" && fuelType != "JETA1")
+            else {
+                return nil
+            }
             let availability = row["availability_raw", default: ""]
                 .folding(
                     options: [.diacriticInsensitive, .caseInsensitive],
                     locale: .current
                 )
-            guard availability == "ja"
+            guard isAffirmative(availability)
                     || availability == "yes"
                     || availability == "available"
             else { return nil }
@@ -458,7 +540,10 @@ final class DestinationStore: ObservableObject {
                 row["fuel_type", default: ""]
             )
             let facility = row["other_fuels_raw", default: ""]
-            return facility.isEmpty ? grade : "\(grade): \(facility)"
+            let detail = facility.isEmpty ? grade : "\(grade): \(facility)"
+            return availability.contains("ppr")
+                ? "\(detail) (nur PPR)"
+                : detail
         }
         .joined(separator: "\n")
     }
@@ -470,7 +555,7 @@ final class DestinationStore: ObservableObject {
     }
 
     private func serviceAvailability(_ type: String, rows: [[String: String]]) -> String {
-        guard let rawValue = rows.first(where: { $0["service_type"] == type })?["availability_raw"]?
+        guard let rawValue = latestServiceRow(type, rows: rows)?["availability_raw"]?
             .trimmingCharacters(in: .whitespacesAndNewlines),
               !rawValue.isEmpty
         else { return "?" }
@@ -497,6 +582,21 @@ final class DestinationStore: ObservableObject {
         return "? – \(rawValue)"
     }
 
+    private func latestServiceRow(
+        _ type: String,
+        rows: [[String: String]]
+    ) -> [String: String]? {
+        rows
+            .filter { $0["service_type"] == type }
+            .max { lhs, rhs in
+                let lhsDate = lhs["data_checked_at", default: ""]
+                let rhsDate = rhs["data_checked_at", default: ""]
+                if lhsDate != rhsDate { return lhsDate < rhsDate }
+                return lhs["service_id", default: ""]
+                    < rhs["service_id", default: ""]
+            }
+    }
+
     private func portOfEntryStatus(airport: [String: String]) -> String {
         let text = [
             airport["operating_notes", default: ""],
@@ -512,7 +612,25 @@ final class DestinationStore: ObservableObject {
         field: String,
         rows: [[String: String]]
     ) -> String {
-        rows.first(where: { $0["service_type"] == type })?[field] ?? ""
+        latestServiceRow(type, rows: rows)?[field] ?? ""
+    }
+
+    private func serviceInformation(
+        _ type: String,
+        rows: [[String: String]]
+    ) -> String {
+        guard let row = latestServiceRow(type, rows: rows) else { return "" }
+        return [
+            row["description", default: ""],
+            row["location", default: ""],
+            row["opening_hours", default: ""],
+            row["notes", default: ""]
+        ]
+        .filter { !$0.isEmpty }
+        .reduce(into: [String]()) { result, value in
+            if !result.contains(value) { result.append(value) }
+        }
+        .joined(separator: " · ")
     }
 
     private func highlights(
@@ -613,6 +731,16 @@ final class DestinationStore: ObservableObject {
         }) ?? ""
     }
 
+    private func joinedUnique(_ values: String...) -> String {
+        values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .reduce(into: [String]()) { result, value in
+                if !result.contains(value) { result.append(value) }
+            }
+            .joined(separator: " · ")
+    }
+
     private func optionalDouble(_ value: String) -> Double? {
         let normalized = value
             .replacingOccurrences(of: "€", with: "")
@@ -694,7 +822,7 @@ final class DestinationStore: ObservableObject {
         }
     }
 
-    private var mainzDestination: Destination {
+    private func mainzDestination(app2Drive: String) -> Destination {
         Destination(
             icao: "EDFZ",
             name: "Mainz-Finthen",
@@ -727,7 +855,7 @@ final class DestinationStore: ObservableObject {
             rentalCarDirect: "Nein",
             railDirect: "?",
             busDirect: "?",
-            app2DriveDirect: "Nein",
+            app2DriveDirect: app2Drive,
             restaurantDirect: "",
             restaurantName: "",
             restaurantDescription: "",
@@ -749,7 +877,7 @@ final class DestinationStore: ObservableObject {
     }
 
     private func loadExtras() -> [String: DestinationExtra] {
-        guard let url = Bundle.module.url(forResource: "destination_data", withExtension: "json"),
+        guard let url = FlybookResources.bundle.url(forResource: "destination_data", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let result = try? JSONDecoder().decode([String: DestinationExtra].self, from: data)
         else { return [:] }

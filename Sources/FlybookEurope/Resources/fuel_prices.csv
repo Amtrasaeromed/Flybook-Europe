@@ -27,3 +27,29 @@ schema_version,price_id,airport_id,fuel_type,fuel_label_raw,price_eur_per_litre,
 1.2,EDLM:AVGAS:20260813,EDLM,AVGAS,AVGAS 100LL,3.14,"AVGAS 100LL 3,14 €/l brutto und 2,64 €/l netto; aktueller Nutzerabgleich mit Betreiberseite am 13.08.2026; unverbindliche Preisempfehlung",2026-08-13,https://xn--flugplatz-loemhle-g3b.de/tanken/
 1.2,EDLM:MOGAS_SUPER:20260813,EDLM,MOGAS_SUPER,Super Plus,2.61,"Super Plus 2,61 €/l brutto und 2,19 €/l netto; aktueller Nutzerabgleich mit Betreiberseite am 13.08.2026; unverbindliche Preisempfehlung",2026-08-13,https://xn--flugplatz-loemhle-g3b.de/tanken/
 1.2,LSGN:AVGAS:20260815,LSGN,AVGAS,AVGAS 100LL,3.20,"AVGAS 100LL 3,20 EUR/l laut Betreiber, Stand Juli 2026",2026-08-15,https://www.neuchatel-airport.ch/airport-fees/?lang=de
+1.2,EDTM:AVGAS:20260815,EDTM,AVGAS,AVGAS 100LL,3.06,"Preis gültig ab 1. Juli 2026 laut Betreiber",2026-08-15,https://www.regio-airport-mengen.de/piloteninfo/tankstelle/
+1.2,EDTM:MOGAS_SUPER:20260815,EDTM,MOGAS_SUPER,Super Plus,2.69,"Preis gültig ab 1. Juli 2026 laut Betreiber",2026-08-15,https://www.regio-airport-mengen.de/piloteninfo/tankstelle/
+1.2,EDQH:AVGAS:20260815,EDQH,AVGAS,AVGAS 100LL,2.52,"Bruttopreis gültig ab 1. Januar 2026 laut Betreiber",2026-08-15,https://flugplatz-herzogenaurach.de/en/fuel-prices-from-january-1st-2024/
+1.2,EDQH:MOGAS_SUPER:20260815,EDQH,MOGAS_SUPER,Super 98 EN228,2.31,"Bruttopreis gültig ab 1. Januar 2026 laut Betreiber",2026-08-15,https://flugplatz-herzogenaurach.de/en/fuel-prices-from-january-1st-2024/
+1.2,EDWF:MOGAS_SUPER:20260816,EDWF,MOGAS_SUPER,Super 95,2.59,"Super 95 2,59 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://flugplatz-leer-papenburg.de/aktuelles/
+1.2,EDWC:MOGAS_SUPER:20260816,EDWC,MOGAS_SUPER,Super Plus,2.49,"Super Plus 2,49 €/l brutto; Preisstand ab 09.04.2026",2026-08-16,https://www.edwc.de/index.php
+1.2,EDAZ:MOGAS_SUPER:20260816,EDAZ,MOGAS_SUPER,Super Plus Aviation,2.81,"Super Plus Aviation 2,81 €/l brutto; gültig ab 01.08.2026",2026-08-16,https://www.flugplatz-schoenhagen.aero/en/pilots/the-airport/fuel-prices
+1.2,EDWI:MOGAS_SUPER:20260816,EDWI,MOGAS_SUPER,Super Plus alkoholfrei,2.36,"Super Plus mit Additiven und alkoholfrei 2,36 €/l brutto; gültig ab 30.06.2026",2026-08-16,https://www.edwi.info/piloten/tankstelle.html
+1.2,EDRK:MOGAS_SUPER:20260816,EDRK,MOGAS_SUPER,Super Plus,2.81,"Super Plus 2,81 €/l brutto; gültig ab 01.08.2026",2026-08-16,https://www.flugplatz-koblenz-winningen.de/index.php/de/
+1.2,EDVI:MOGAS_SUPER:20260816,EDVI,MOGAS_SUPER,Super Plus 98,2.59,"Super Plus 98 2,59 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://flugplatz-hx.de/index.html
+1.2,EDGS:MOGAS_SUPER:20260816,EDGS,MOGAS_SUPER,Super Plus,2.81,"Super Plus 2,2011 € plus BEHG 0,1602 € jeweils netto; zusammen 2,81 €/l brutto; gültig ab 01.08.2026",2026-08-16,https://www.siegerland-airport.de/fuer-piloten/tankstelle-kraftstoffpreise/
+1.2,EDFM:MOGAS_SUPER:20260816,EDFM,MOGAS_SUPER,MOGAS,2.40,"MOGAS 2,40 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://www.flugplatz-mannheim.de/city-airport-mannheim/
+1.2,EDML:MOGAS_SUPER:20260816,EDML,MOGAS_SUPER,Super Plus 98 E0,2.69,"Super Plus 98 E0 2,69 €/l brutto; Stand 06.05.2026",2026-08-16,https://der-fliegerclub.de/flugplatz/edml/
+1.2,EDLD:MOGAS_SUPER:20260816,EDLD,MOGAS_SUPER,Super Plus,2.55,"Super Plus 2,55 €/l brutto; Preisstand 24.07.2026",2026-08-16,https://schwarze-heide.com/fuer-piloten/titelform/
+1.2,EDPA:MOGAS_SUPER:20260816,EDPA,MOGAS_SUPER,Super Plus,2.39,"Super Plus 2,39 €/l brutto; gemeldeter Stand 13.06.2026",2026-08-16,https://spritpreisliste.de/airports/EDPA
+1.2,EDLE:MOGAS_SUPER:20260816,EDLE,MOGAS_SUPER,Super Plus,2.59,"Super Plus 2,59 €/l brutto; Preisstand 02.07.2026",2026-08-16,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
+1.2,EDLH:MOGAS_SUPER:20260816,EDLH,MOGAS_SUPER,Super Plus,2.45,"Super Plus extern 2,45 €/l brutto; Stand 22.07.2026 22:15",2026-08-16,https://www.flugplatz-hamm.de/lsc20/flugplatz/tanken
+1.2,EDMB:MOGAS_SUPER:20260816,EDMB,MOGAS_SUPER,Super Plus,2.35,"Super Plus 2,35 €/l brutto; Preis gültig seit 21.03.2026",2026-08-16,https://edmb.de/gaststatte/
+1.2,EDXE:MOGAS_SUPER:20260816,EDXE,MOGAS_SUPER,Super Plus,2.45,"Super Plus 2,45 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://edxe.de/hp/flugplatz/ausflugslokal-und-hotel-gets
+1.2,EDLM:MOGAS_SUPER:20260816,EDLM,MOGAS_SUPER,Super Plus,2.61,"Super Plus 2,61 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://xn--flugplatz-loemhle-g3b.de/tanken/
+1.2,EDTM:MOGAS_SUPER:20260816,EDTM,MOGAS_SUPER,Super Plus,2.69,"Super Plus 2,69 €/l brutto; gültig ab 01.07.2026",2026-08-16,https://www.regio-airport-mengen.de/piloteninfo/tankstelle/
+1.2,EDQH:MOGAS_SUPER:20260816,EDQH,MOGAS_SUPER,Super 98 EN228,2.31,"Super 98 EN228 2,31 €/l brutto; gültig ab 01.01.2026",2026-08-16,https://flugplatz-herzogenaurach.de/?lang=en
+1.2,EDRY:MOGAS_SUPER:20260816,EDRY,MOGAS_SUPER,MOGAS,2.89,"MOGAS 2,89 €/l brutto; gültig ab 01.07.2026",2026-08-16,https://flugplatz-speyer.de/infos-entgelte/
+1.2,EDTG:AVGAS:20260816,EDTG,AVGAS,AVGAS 100LL,2.99,"AVGAS 100LL 2,99 €/l laut AeroPS-Platzrechner",2026-08-16,https://gat.aerops.com/prices/calculator/EDTG
+1.2,EDTG:MOGAS_SUPER:20260816,EDTG,MOGAS_SUPER,SuperPlus,2.36,"SuperPlus 2,36 €/l laut AeroPS-Platzrechner",2026-08-16,https://gat.aerops.com/prices/calculator/EDTG
+1.2,EDTG:JET_A1:20260816,EDTG,JET_A1,Jet A-1,2.49,"Jet A-1 2,49 €/l laut AeroPS-Platzrechner",2026-08-16,https://gat.aerops.com/prices/calculator/EDTG

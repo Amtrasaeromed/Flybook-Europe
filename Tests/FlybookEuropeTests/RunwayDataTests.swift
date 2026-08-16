@@ -7,10 +7,10 @@ final class RunwayDataTests: XCTestCase {
         let store = DestinationStore()
 
         XCTAssertNil(store.loadError)
-        XCTAssertEqual(store.destinations.count, 141)
+        XCTAssertEqual(store.destinations.count, 145)
         XCTAssertEqual(
             store.destinations.filter { $0.icao != "EDFZ" }.count,
-            140
+            144
         )
 
         for destination in store.destinations {
@@ -68,12 +68,28 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(neuchatel.avgas, "Ja")
         XCTAssertTrue(neuchatel.features.contains(.lakeNature))
         XCTAssertTrue(neuchatel.bikeDirect.hasPrefix("Ja"))
+        XCTAssertEqual(neuchatel.bikeHalfDayPrice, 10)
+        XCTAssertEqual(neuchatel.bikeFullDayPrice, 15)
+        XCTAssertEqual(neuchatel.bikeDepositPrice, 20)
+        XCTAssertEqual(neuchatel.bikePriceCurrency, "CHF")
+        XCTAssertTrue(neuchatel.bikeInformation.contains("Pointe-du-Grain"))
+        XCTAssertTrue(neuchatel.railDirect.contains("Littorail"))
+        XCTAssertTrue(neuchatel.railDirect.contains("200 m"))
+        XCTAssertTrue(neuchatel.railInformation.contains("15 Minuten"))
 
         let buochs = try XCTUnwrap(byICAO["LSZC"])
         XCTAssertEqual(buochs.runwayM, 2_000)
         XCTAssertEqual(buochs.runwayLDAM, 1_940)
         XCTAssertEqual(buochs.avgas, "Nein")
         XCTAssertTrue(buochs.features.isSuperset(of: [.lakeNature, .mountainHiking]))
+        XCTAssertTrue(buochs.ppr.contains("3 Stunden"))
+        XCTAssertTrue(buochs.ppr.contains("24 Stunden"))
+        XCTAssertTrue(buochs.airportNote.contains("ARR Y"))
+        XCTAssertTrue(buochs.airportNote.contains("CAT 3–5"))
+        XCTAssertTrue(buochs.fuelDetails.contains("Jet-A1"))
+        XCTAssertTrue(buochs.fuelDetails.contains("CHF 2.34"))
+        XCTAssertTrue(buochs.airportFeeNote.contains("CHF 38.70"))
+        XCTAssertTrue(buochs.airportFeeNote.contains("CHF 70.00"))
 
         let mollis = try XCTUnwrap(byICAO["LSZM"])
         XCTAssertEqual(mollis.referenceRunway, "01/19")
@@ -98,13 +114,49 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertTrue(reichenbach.features.isSuperset(of: [.lakeNature, .mountainHiking]))
     }
 
+    func testNewSouthernTechStopsAreLoadedWithConfirmedMogas() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map {
+                ($0.icao, $0)
+            }
+        )
+        let mengen = try XCTUnwrap(byICAO["EDTM"])
+        XCTAssertTrue(mengen.features.contains(.techStop))
+        XCTAssertEqual(mengen.referenceRunway, "07/25")
+        XCTAssertEqual(mengen.runwayM, 1_566)
+        XCTAssertEqual(mengen.mogas, "Ja")
+
+        let herzogenaurach = try XCTUnwrap(byICAO["EDQH"])
+        XCTAssertTrue(herzogenaurach.features.contains(.techStop))
+        XCTAssertEqual(herzogenaurach.referenceRunway, "08/26")
+        XCTAssertEqual(herzogenaurach.runwayM, 700)
+        XCTAssertEqual(herzogenaurach.mogas, "Ja")
+
+        let bremgarten = try XCTUnwrap(byICAO["EDTG"])
+        XCTAssertTrue(bremgarten.features.contains(.techStop))
+        XCTAssertEqual(bremgarten.referenceRunway, "05/23")
+        XCTAssertEqual(bremgarten.runwayM, 1_650)
+        XCTAssertEqual(bremgarten.mogas, "Ja")
+        XCTAssertEqual(bremgarten.avgas, "Ja")
+        XCTAssertEqual(bremgarten.portOfEntry, "Ja")
+
+        let schwenningen = try XCTUnwrap(byICAO["EDTS"])
+        XCTAssertTrue(schwenningen.features.contains(.techStop))
+        XCTAssertEqual(schwenningen.referenceRunway, "04/22")
+        XCTAssertEqual(schwenningen.runwayM, 804)
+        XCTAssertEqual(schwenningen.runwayLDAM, 631)
+        XCTAssertEqual(schwenningen.mogas, "Ja – nur PPR")
+        XCTAssertEqual(schwenningen.avgas, "Ja – nur PPR")
+        XCTAssertTrue(schwenningen.fuelDetails.contains("nur PPR"))
+    }
+
     func testAllSwissFinderDestinationsExposeAuditedPOEStatus() throws {
         let byICAO = Dictionary(
             uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
         )
         let swissICAOs = [
             "LSGL", "LSGS", "LSGT", "LSZL", "LSZR", "LSGN",
-            "LSZC", "LSZM", "LSZA", "LSGY", "LSGR"
+            "LSZC", "LSZM", "LSZA", "LSGY"
         ]
 
         for icao in swissICAOs {
@@ -114,6 +166,12 @@ final class RunwayDataTests: XCTestCase {
                 "POE fehlt für \(icao)"
             )
         }
+
+        let reichenbach = try XCTUnwrap(byICAO["LSGR"])
+        XCTAssertEqual(reichenbach.portOfEntry, "Nein")
+        XCTAssertTrue(reichenbach.airportNote.contains("Homebase Reichenbach"))
+        XCTAssertTrue(reichenbach.airportNote.contains("1 Std. vor Abflug"))
+        XCTAssertTrue(reichenbach.airportNote.contains("2 Std. vor Landung"))
     }
 
     func testUKMergePackAirportsExposePOEAndConservativeFuelStatus() throws {
@@ -390,6 +448,30 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(byICAO["EDVE"]).busDirect.hasPrefix("?"))
     }
 
+    func testEveryAirportHasFinalApp2DriveYesOrNoStatus() {
+        let destinations = DestinationStore().destinations
+        let app2DriveAirports: Set<String> = [
+            "EDAH", "EDAX", "EDAY", "EDAZ", "EDFE", "EDFM", "EDFZ",
+            "EDGE", "EDGS", "EDKA", "EDKB", "EDLD", "EDLE", "EDLM",
+            "EDLN", "EDLS", "EDMA", "EDMV", "EDQH", "EDRK", "EDRY",
+            "EDTD", "EDTF", "EDTY", "EDVE", "EDVK", "EDVM", "EDWF",
+            "EDWI", "EDXO", "EDXW", "LJPZ", "LOAN"
+        ]
+
+        XCTAssertEqual(destinations.count, 145)
+        XCTAssertEqual(app2DriveAirports.count, 33)
+        for destination in destinations {
+            let expected = app2DriveAirports.contains(destination.icao)
+                ? "Ja"
+                : "Nein"
+            XCTAssertTrue(
+                destination.app2DriveDirect.hasPrefix(expected),
+                "App2Drive-Status für \(destination.icao) ist nicht \(expected): "
+                    + destination.app2DriveDirect
+            )
+        }
+    }
+
     func testBreakfastAndCityAreFinderFilters() {
         XCTAssertTrue(DestinationFeature.finderCases.contains(.breakfast))
         XCTAssertTrue(DestinationFeature.finderCases.contains(.city))
@@ -425,6 +507,61 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertTrue(ameland.fuelDetails.contains("AVGAS 100LL"))
         XCTAssertTrue(ameland.fuelDetails.contains("MOGAS Euro 98"))
         XCTAssertTrue(ameland.fuelDetails.contains("12000 l"))
+    }
+
+    func testEveryTechStopHasAuditedMogasAndRestaurantInformation() {
+        let techStops = DestinationStore().destinations.filter {
+            $0.features.contains(.techStop)
+        }
+
+        XCTAssertEqual(techStops.count, 39)
+        for destination in techStops {
+            XCTAssertFalse(
+                destination.mogas.isEmpty,
+                "MOGAS-Status fehlt für \(destination.icao)"
+            )
+            XCTAssertFalse(
+                destination.restaurantDirect.isEmpty,
+                "Restaurantstatus fehlt für \(destination.icao)"
+            )
+            XCTAssertFalse(
+                destination.restaurantName.isEmpty,
+                "Restaurantname oder Negativhinweis fehlt für \(destination.icao)"
+            )
+            XCTAssertFalse(
+                destination.restaurantOpeningHours.isEmpty,
+                "Restaurantzeiten oder Prüfhilfe fehlen für \(destination.icao)"
+            )
+            XCTAssertEqual(destination.restaurantDataCheckedAt, "2026-08-16")
+        }
+    }
+
+    func testCurrentPublishedTechStopMogasPricesAreLoaded() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
+        )
+        let expectedPrices: [String: Double] = [
+            "EDAZ": 2.81,
+            "EDGS": 2.81,
+            "EDLH": 2.45,
+            "EDMB": 2.35,
+            "EDPA": 2.39,
+            "EDRK": 2.81,
+            "EDRY": 2.89,
+            "EDXE": 2.45
+        ]
+
+        for (icao, expectedPrice) in expectedPrices {
+            let destination = try XCTUnwrap(byICAO[icao])
+            XCTAssertEqual(destination.mogas, "Ja")
+            XCTAssertEqual(
+                try XCTUnwrap(destination.mogasPricePerLiterEUR),
+                expectedPrice,
+                accuracy: 0.001,
+                "Veralteter MOGAS-Preis für \(icao)"
+            )
+            XCTAssertEqual(destination.fuelPriceReportedAt, "Stand 2026-08-16")
+        }
     }
 
     func testUserVisibleAirportInformationExcludesTurbineFuel() {

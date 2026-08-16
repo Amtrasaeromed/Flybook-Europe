@@ -360,3 +360,49 @@ enum MultiStopTimeResolver {
         ) ?? automatic
     }
 }
+
+enum MultiStopTimeLinker {
+    static func arrivalText(
+        departureText: String,
+        date: Date,
+        departureTimeZone: TimeZone,
+        arrivalTimeZone: TimeZone,
+        travelMinutes: Int
+    ) -> String? {
+        guard let departure = FlightDateTime.instant(
+            date: date,
+            timeText: departureText,
+            timeZone: departureTimeZone
+        ) else {
+            return nil
+        }
+        return FlightDateTime.clock(
+            instant: departure.addingTimeInterval(
+                TimeInterval(max(0, travelMinutes) * 60)
+            ),
+            timeZone: arrivalTimeZone
+        )
+    }
+
+    static func departureText(
+        arrivalText: String,
+        date: Date,
+        departureTimeZone: TimeZone,
+        arrivalTimeZone: TimeZone,
+        travelMinutes: Int
+    ) -> String? {
+        guard let arrival = FlightDateTime.instant(
+            date: date,
+            timeText: arrivalText,
+            timeZone: arrivalTimeZone
+        ) else {
+            return nil
+        }
+        return FlightDateTime.clock(
+            instant: arrival.addingTimeInterval(
+                TimeInterval(-max(0, travelMinutes) * 60)
+            ),
+            timeZone: departureTimeZone
+        )
+    }
+}

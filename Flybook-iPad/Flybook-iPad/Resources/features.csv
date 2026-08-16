@@ -888,3 +888,17 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EDRY:lake,EDRY,lake,Nein,,,,,,,,,,,,,,2026-08-09
 1.2,EDRY:mountain,EDRY,mountain,Nein,,,,,,,,,,,,,,2026-08-09
 1.2,EDRY:wellness,EDRY,wellness,Nein,,,,,,,,,,,,,,2026-08-09
+1.2,EDTG:techstop,EDTG,techstop,Ja,Bremgarten / Gewerbepark Breisgau,,,,,,,,,,,,https://www.gewerbepark-breisgau.de/unser-flugplatz/,2026-08-16
+1.2,EDTS:techstop,EDTS,techstop,Ja,Schwenningen am Neckar,,,,,,,,,,,,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16
+1.2,EDTG:breakfast,EDTG,breakfast,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:city,EDTG,city,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:beach,EDTG,beach,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:lake,EDTG,lake,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:mountain,EDTG,mountain,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:wellness,EDTG,wellness,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:breakfast,EDTS,breakfast,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:city,EDTS,city,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:beach,EDTS,beach,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:lake,EDTS,lake,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:mountain,EDTS,mountain,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:wellness,EDTS,wellness,Nein,,,,,,,,,,,,,,2026-08-16

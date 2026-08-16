@@ -17,6 +17,12 @@ ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT / "Sources" / "FlybookEurope" / "Resources"
 ERRORS: list[str] = []
 WARNINGS: list[str] = []
+OPTIONAL_TRAILING_FIELDS = {
+    "airports": {"fee_note"},
+    "services": {
+        "half_day_price", "full_day_price", "deposit_price", "price_currency"
+    },
+}
 
 
 def error(message: str) -> None:
@@ -39,7 +45,15 @@ def table(name: str) -> tuple[list[str], list[dict[str, str]]]:
             extras = row.get(None)
             if extras:
                 error(f"{name}.csv:{number}: zusätzliche Spalten {extras!r}")
-            if any(value is None for key, value in row.items() if key is not None):
+            optional = OPTIONAL_TRAILING_FIELDS.get(name, set())
+            missing_required = [
+                key for key, value in row.items()
+                if key is not None and value is None and key not in optional
+            ]
+            for key in optional:
+                if row.get(key) is None:
+                    row[key] = ""
+            if missing_required:
                 error(f"{name}.csv:{number}: fehlende Spalten")
         return reader.fieldnames, rows
 
@@ -92,6 +106,9 @@ def main() -> int:
     unique(techstops, "techstop_id", "techstops.csv")
 
     airport_ids = {row["airport_id"] for row in airports}
+    # EDFZ is the application's built-in homebase fallback and therefore may
+    # have current service rows without a duplicated airports.csv master row.
+    referenced_airport_ids = airport_ids | {"EDFZ"}
     for name, rows in (
         ("destinations", destinations),
         ("features", features),
@@ -100,7 +117,7 @@ def main() -> int:
         ("services", services),
         ("techstops", techstops),
     ):
-        orphaned = sorted({row["airport_id"] for row in rows} - airport_ids)
+        orphaned = sorted({row["airport_id"] for row in rows} - referenced_airport_ids)
         if orphaned:
             error(f"{name}.csv: verwaiste airport_id: {orphaned}")
 

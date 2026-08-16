@@ -24,6 +24,7 @@ done
 /bin/cp "$BUILD_DIR/Flybook Europe" "$APP_DIR/Contents/MacOS/Flybook Europe"
 /bin/cp "Sources/FlybookEurope/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 /bin/rm -rf "$APP_DIR/Contents/Resources/FlybookEurope_FlybookEurope.bundle"
+/bin/rm -rf "$APP_DIR/FlybookEurope_FlybookEurope.bundle"
 /usr/bin/ditto \
   "$BUILD_DIR/FlybookEurope_FlybookEurope.bundle" \
   "$APP_DIR/Contents/Resources/FlybookEurope_FlybookEurope.bundle"
@@ -32,4 +33,4 @@ done
 /usr/bin/find "$APP_DIR" -exec /usr/bin/xattr -d com.apple.FinderInfo {} \; 2>/dev/null || true
 /usr/bin/find "$APP_DIR" -exec /usr/bin/xattr -d 'com.apple.fileprovider.fpfs#P' {} \; 2>/dev/null || true
 /usr/bin/codesign --force --deep --sign - "$APP_DIR" >/dev/null
-/usr/bin/open -n "$APP_DIR"
+/usr/bin/open "$APP_DIR"

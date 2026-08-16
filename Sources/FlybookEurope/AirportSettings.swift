@@ -29,6 +29,8 @@ struct AirportOpeningPeriod: Codable, Equatable {
     var secondFixedUntilUTC: String?
     var secondSunsetOffsetMinutes: Int?
     var secondLatestUTC: String?
+    var departureClosedFromUTC: String?
+    var departureClosedUntilUTC: String?
 }
 
 struct AirportSeasonHours: Codable, Equatable {
@@ -176,6 +178,67 @@ struct AirportOpeningHoursProfile: Codable, Equatable {
         ),
         winter: AirportSeasonHours(outsideHoursPPR: true)
     )
+
+    static let edtm: AirportOpeningHoursProfile = {
+        let summerPeriod = AirportOpeningPeriod(
+            fromUTC: "07:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "18:00"
+        )
+        let winterPeriod = AirportOpeningPeriod(
+            fromUTC: "08:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "19:00"
+        )
+        return AirportOpeningHoursProfile(
+            summer: AirportSeasonHours(
+                monday: summerPeriod, tuesday: summerPeriod,
+                wednesday: summerPeriod, thursday: summerPeriod,
+                friday: summerPeriod, saturday: summerPeriod,
+                sunday: summerPeriod, holiday: summerPeriod,
+                outsideHoursPPR: true
+            ),
+            winter: AirportSeasonHours(
+                monday: winterPeriod, tuesday: winterPeriod,
+                wednesday: winterPeriod, thursday: winterPeriod,
+                friday: winterPeriod, saturday: winterPeriod,
+                sunday: winterPeriod, holiday: winterPeriod,
+                outsideHoursPPR: true
+            )
+        )
+    }()
+
+    static let edqh: AirportOpeningHoursProfile = {
+        let summerPeriod = AirportOpeningPeriod(
+            fromUTC: "07:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "18:30"
+        )
+        let winterPeriod = AirportOpeningPeriod(
+            fromUTC: "08:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30
+        )
+        return AirportOpeningHoursProfile(
+            summer: AirportSeasonHours(
+                monday: summerPeriod, tuesday: summerPeriod,
+                wednesday: summerPeriod, thursday: summerPeriod,
+                friday: summerPeriod, saturday: summerPeriod,
+                sunday: summerPeriod, holiday: summerPeriod,
+                outsideHoursPPR: true
+            ),
+            winter: AirportSeasonHours(
+                monday: winterPeriod, tuesday: winterPeriod,
+                wednesday: winterPeriod, thursday: winterPeriod,
+                friday: winterPeriod, saturday: winterPeriod,
+                sunday: winterPeriod, holiday: winterPeriod,
+                outsideHoursPPR: true
+            )
+        )
+    }()
 
     static let edka: AirportOpeningHoursProfile = {
         let summer = AirportOpeningPeriod(
@@ -555,6 +618,107 @@ struct AirportOpeningHoursProfile: Codable, Equatable {
         )
     }()
 
+    static let edtf: AirportOpeningHoursProfile = {
+        let summer = AirportOpeningPeriod(
+            fromUTC: "06:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "18:00"
+        )
+        let winter = AirportOpeningPeriod(
+            fromUTC: "07:00",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30
+        )
+        func season(_ period: AirportOpeningPeriod) -> AirportSeasonHours {
+            AirportSeasonHours(
+                monday: period, tuesday: period, wednesday: period,
+                thursday: period, friday: period, saturday: period,
+                sunday: period, holiday: period, outsideHoursPPR: true
+            )
+        }
+        return AirportOpeningHoursProfile(
+            summer: season(summer),
+            winter: season(winter)
+        )
+    }()
+
+    static let edtg: AirportOpeningHoursProfile = {
+        let summerWeekday = AirportOpeningPeriod(
+            fromUTC: "07:30",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "18:00"
+        )
+        let summerWeekendHoliday = AirportOpeningPeriod(
+            fromUTC: "07:30",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "17:00",
+            departureClosedFromUTC: "11:00",
+            departureClosedUntilUTC: "12:00"
+        )
+        let winterWeekday = AirportOpeningPeriod(
+            fromUTC: "08:30",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30
+        )
+        let winterWeekendHoliday = AirportOpeningPeriod(
+            fromUTC: "08:30",
+            closingReference: .sunset,
+            sunsetOffsetMinutes: 30,
+            latestUTC: "18:00",
+            departureClosedFromUTC: "12:00",
+            departureClosedUntilUTC: "13:00"
+        )
+        return AirportOpeningHoursProfile(
+            summer: AirportSeasonHours(
+                monday: summerWeekday, tuesday: summerWeekday,
+                wednesday: summerWeekday, thursday: summerWeekday,
+                friday: summerWeekday, saturday: summerWeekendHoliday,
+                sunday: summerWeekendHoliday, holiday: summerWeekendHoliday,
+                outsideHoursPPR: true
+            ),
+            winter: AirportSeasonHours(
+                monday: winterWeekday, tuesday: winterWeekday,
+                wednesday: winterWeekday, thursday: winterWeekday,
+                friday: winterWeekday, saturday: winterWeekendHoliday,
+                sunday: winterWeekendHoliday, holiday: winterWeekendHoliday,
+                outsideHoursPPR: true
+            )
+        )
+    }()
+
+    static let edts: AirportOpeningHoursProfile = {
+        let summer = AirportOpeningPeriod(
+            fromUTC: "07:00",
+            closingReference: .sunset,
+            latestUTC: "18:00"
+        )
+        let winterWeekday = AirportOpeningPeriod(
+            fromUTC: "10:00",
+            closingReference: .sunset
+        )
+        let winterWeekendHoliday = AirportOpeningPeriod(
+            fromUTC: "08:00",
+            closingReference: .sunset
+        )
+        return AirportOpeningHoursProfile(
+            summer: AirportSeasonHours(
+                monday: summer, tuesday: summer, wednesday: summer,
+                thursday: summer, friday: summer, saturday: summer,
+                sunday: summer, holiday: summer, outsideHoursPPR: true
+            ),
+            winter: AirportSeasonHours(
+                monday: winterWeekday, tuesday: winterWeekday,
+                wednesday: winterWeekday, thursday: winterWeekday,
+                friday: winterWeekday, saturday: winterWeekendHoliday,
+                sunday: winterWeekendHoliday, holiday: winterWeekendHoliday,
+                outsideHoursPPR: true
+            )
+        )
+    }()
+
     static let edfe: AirportOpeningHoursProfile = {
         let summer = AirportOpeningPeriod(
             fromUTC: "06:00",
@@ -844,11 +1008,16 @@ enum AirportOpeningHoursStore {
             if normalized == "EDXE", profile.isCompletelyEmpty { return .edxe }
             if normalized == "EDLM", profile.isCompletelyEmpty { return .edlm }
             if normalized == "EDLS", profile.isCompletelyEmpty { return .edls }
+            if normalized == "EDTF", profile.isCompletelyEmpty { return .edtf }
+            if normalized == "EDTG", profile.isCompletelyEmpty { return .edtg }
+            if normalized == "EDTS", profile.isCompletelyEmpty { return .edts }
             if normalized == "EDFE", profile.isCompletelyEmpty { return .edfe }
             if normalized == "EDFM", profile.isCompletelyEmpty { return .edfm }
             if normalized == "EDRY", profile.isCompletelyEmpty { return .edry }
             if normalized == "EDRK", profile.isCompletelyEmpty { return .edrk }
             if normalized == "EDGS", profile.isCompletelyEmpty { return .edgs }
+            if normalized == "EDTM", profile.isCompletelyEmpty { return .edtm }
+            if normalized == "EDQH", profile.isCompletelyEmpty { return .edqh }
             return profile
         }
         if normalized == "EDFZ" { return .edfz }
@@ -865,11 +1034,16 @@ enum AirportOpeningHoursStore {
         if normalized == "EDXE" { return .edxe }
         if normalized == "EDLM" { return .edlm }
         if normalized == "EDLS" { return .edls }
+        if normalized == "EDTF" { return .edtf }
+        if normalized == "EDTG" { return .edtg }
+        if normalized == "EDTS" { return .edts }
         if normalized == "EDFE" { return .edfe }
         if normalized == "EDFM" { return .edfm }
         if normalized == "EDRY" { return .edry }
         if normalized == "EDRK" { return .edrk }
         if normalized == "EDGS" { return .edgs }
+        if normalized == "EDTM" { return .edtm }
+        if normalized == "EDQH" { return .edqh }
         return AirportOpeningHoursProfile()
     }
 
@@ -893,11 +1067,16 @@ enum AirportOpeningHoursStore {
             || normalized == "EDXE"
             || normalized == "EDLM"
             || normalized == "EDLS"
+            || normalized == "EDTF"
+            || normalized == "EDTG"
+            || normalized == "EDTS"
             || normalized == "EDFE"
             || normalized == "EDFM"
             || normalized == "EDRY"
             || normalized == "EDRK"
             || normalized == "EDGS"
+            || normalized == "EDTM"
+            || normalized == "EDQH"
             || allProfiles()[normalized] != nil
     }
 
@@ -1227,7 +1406,36 @@ enum AirportOperatingHoursEvaluator {
            opening < closing {
             result.append((opening, closing))
         }
-        return result.sorted { $0.0 < $1.0 }
+        let sorted = result.sorted { $0.0 < $1.0 }
+        guard operation == .departure,
+              let blockedFromText = period.departureClosedFromUTC,
+              let blockedUntilText = period.departureClosedUntilUTC,
+              let blockedFrom = utcInstant(
+                  blockedFromText,
+                  on: instant,
+                  localTimeZone: airport.timeZone
+              ),
+              let blockedUntil = utcInstant(
+                  blockedUntilText,
+                  on: instant,
+                  localTimeZone: airport.timeZone
+              ),
+              blockedFrom < blockedUntil
+        else { return sorted }
+
+        return sorted.flatMap { window -> [(opening: Date, closing: Date)] in
+            if blockedUntil <= window.0 || blockedFrom >= window.1 {
+                return [window]
+            }
+            var pieces: [(opening: Date, closing: Date)] = []
+            if window.0 < blockedFrom {
+                pieces.append((window.0, min(blockedFrom, window.1)))
+            }
+            if blockedUntil < window.1 {
+                pieces.append((max(blockedUntil, window.0), window.1))
+            }
+            return pieces.filter { $0.opening < $0.closing }
+        }
     }
 
     private static func selectedPeriod(
@@ -1434,6 +1642,18 @@ struct AirportLandingFeeBand: Codable, Equatable, Identifiable {
     var enhancedNoiseProtectionEUR = ""
 }
 
+struct AirportAncillaryFeeBand: Codable, Equatable, Identifiable {
+    var id: String { weightBand }
+    var weightBand: String
+    var amountEUR: String
+}
+
+struct AirportNoiseFeeBand: Codable, Equatable, Identifiable {
+    var id: String { "\(upperNoiseDBA)-\(amountEUR)" }
+    var upperNoiseDBA: Double
+    var amountEUR: String
+}
+
 struct AirportLandingFeeProfile: Codable, Equatable {
     var bands: [AirportLandingFeeBand] = [
         AirportLandingFeeBand(weightBand: "bis 750 kg"),
@@ -1441,6 +1661,29 @@ struct AirportLandingFeeProfile: Codable, Equatable {
         AirportLandingFeeBand(weightBand: "1.001–1.200 kg"),
         AirportLandingFeeBand(weightBand: "1.201–1.400 kg")
     ]
+    var weekendBands: [AirportLandingFeeBand]?
+    var weekendTimeZoneIdentifier: String?
+    /// Optional chapter-10 base tariff. When present, a real dB(A) value from
+    /// the aircraft profile is mandatory; the generic enhanced column is not
+    /// used as a silent estimate.
+    var noiseBands: [AirportNoiseFeeBand]?
+    var weekendNoiseBands: [AirportNoiseFeeBand]?
+    var noiseWeightSurchargeBands: [AirportAncillaryFeeBand]?
+    var basicTrainingLandingFeeEUR: String?
+    var commercialSurchargeEUR: String?
+    var overnightParkingPerNightEUR: String?
+    var overnightParkingBands: [AirportAncillaryFeeBand]?
+    var customsClearancePerControlEUR: String?
+    var customsOutsideOfficeHoursSurchargeEUR: String?
+    var winterServiceSurchargeEUR: String?
+    var winterServiceStartMonth: Int?
+    var winterServiceEndMonth: Int?
+    /// Original tariff currency. Older profiles without this field are EUR.
+    var currencyCode: String?
+
+    var effectiveCurrencyCode: String {
+        currencyCode?.uppercased() ?? "EUR"
+    }
 
     static let edfz = AirportLandingFeeProfile(bands: [
         AirportLandingFeeBand(
@@ -1496,6 +1739,206 @@ struct AirportLandingFeeProfile: Codable, Equatable {
         )
     ])
 
+    static let edtg = AirportLandingFeeProfile(
+        bands: edtgBands(weekend: false),
+        weekendBands: edtgBands(weekend: true),
+        weekendTimeZoneIdentifier: "Europe/Berlin",
+        noiseBands: edtgNoiseBands(weekend: false),
+        weekendNoiseBands: edtgNoiseBands(weekend: true),
+        noiseWeightSurchargeBands: [
+            AirportAncillaryFeeBand(weightBand: "bis 500 kg", amountEUR: "1,49"),
+            AirportAncillaryFeeBand(weightBand: "501–600 kg", amountEUR: "2,98"),
+            AirportAncillaryFeeBand(weightBand: "601–1.000 kg", amountEUR: "5,95"),
+            AirportAncillaryFeeBand(weightBand: "1.001–1.200 kg", amountEUR: "10,41"),
+            AirportAncillaryFeeBand(weightBand: "1.201–1.400 kg", amountEUR: "14,88"),
+            AirportAncillaryFeeBand(weightBand: "1.401–2.000 kg", amountEUR: "19,34"),
+            AirportAncillaryFeeBand(weightBand: "2.001–3.000 kg", amountEUR: "23,80"),
+            AirportAncillaryFeeBand(weightBand: "3.001–4.000 kg", amountEUR: "28,26"),
+            AirportAncillaryFeeBand(weightBand: "4.001–5.000 kg", amountEUR: "32,73"),
+            AirportAncillaryFeeBand(weightBand: "5.001–6.000 kg", amountEUR: "37,19"),
+            AirportAncillaryFeeBand(weightBand: "6.001–7.000 kg", amountEUR: "41,65"),
+            AirportAncillaryFeeBand(weightBand: "7.001–8.000 kg", amountEUR: "46,11"),
+            AirportAncillaryFeeBand(weightBand: "8.001–9.000 kg", amountEUR: "50,58"),
+            AirportAncillaryFeeBand(weightBand: "9.001–10.000 kg", amountEUR: "55,04")
+        ],
+        overnightParkingBands: [
+            AirportAncillaryFeeBand(weightBand: "bis 500 kg", amountEUR: "10,23"),
+            AirportAncillaryFeeBand(weightBand: "501–600 kg", amountEUR: "11,42"),
+            AirportAncillaryFeeBand(weightBand: "601–1.000 kg", amountEUR: "12,73"),
+            AirportAncillaryFeeBand(weightBand: "1.001–1.200 kg", amountEUR: "25,35"),
+            AirportAncillaryFeeBand(weightBand: "1.201–1.400 kg", amountEUR: "50,69"),
+            AirportAncillaryFeeBand(weightBand: "1.401–2.000 kg", amountEUR: "88,66"),
+            AirportAncillaryFeeBand(weightBand: "2.001–3.000 kg", amountEUR: "126,62"),
+            AirportAncillaryFeeBand(weightBand: "3.001–4.000 kg", amountEUR: "164,58"),
+            AirportAncillaryFeeBand(weightBand: "4.001–5.000 kg", amountEUR: "202,66"),
+            AirportAncillaryFeeBand(weightBand: "5.001–6.000 kg", amountEUR: "240,62"),
+            AirportAncillaryFeeBand(weightBand: "6.001–7.000 kg", amountEUR: "278,58"),
+            AirportAncillaryFeeBand(weightBand: "7.001–8.000 kg", amountEUR: "316,54"),
+            AirportAncillaryFeeBand(weightBand: "8.001–9.000 kg", amountEUR: "354,50"),
+            AirportAncillaryFeeBand(weightBand: "9.001–10.000 kg", amountEUR: "392,46")
+        ],
+        customsClearancePerControlEUR: "10,12"
+    )
+
+    private static func edtgNoiseBands(
+        weekend: Bool
+    ) -> [AirportNoiseFeeBand] {
+        let weekday: [(Double, String)] = [
+            (59.9, "8,69"),
+            (62.9, "9,76"),
+            (65.9, "10,83"),
+            (68.9, "21,54"),
+            (71.9, "21,54"),
+            (74.9, "43,08"),
+            (77.9, "75,21"),
+            (80.9, "107,46"),
+            (83.9, "139,71"),
+            (999, "171,96")
+        ]
+        let weekendRows: [(Double, String)] = [
+            (59.9, "10,83"),
+            (62.9, "12,14"),
+            (65.9, "13,45"),
+            (68.9, "26,89"),
+            (71.9, "26,89"),
+            (74.9, "53,79"),
+            (77.9, "94,01"),
+            (80.9, "134,35"),
+            (83.9, "174,69"),
+            (999, "214,91")
+        ]
+        return (weekend ? weekendRows : weekday).map {
+            AirportNoiseFeeBand(upperNoiseDBA: $0.0, amountEUR: $0.1)
+        }
+    }
+
+    private static func edtgBands(
+        weekend: Bool
+    ) -> [AirportLandingFeeBand] {
+        let weekdayRows: [(String, String, String, String)] = [
+            ("bis 500 kg", "34,87", "12,26", "12,32"),
+            ("501–600 kg", "34,87", "14,04", "13,81"),
+            ("601–1.000 kg", "69,73", "15,71", "16,78"),
+            ("1.001–1.200 kg", "121,98", "17,49", "21,24"),
+            ("1.201–1.400 kg", "174,34", "34,87", "25,71"),
+            ("1.401–2.000 kg", "226,58", "34,87", "30,17"),
+            ("2.001–3.000 kg", "278,82", "69,73", "34,63"),
+            ("3.001–4.000 kg", "332,25", "121,98", "39,09"),
+            ("4.001–5.000 kg", "383,30", "174,34", "43,56"),
+            ("5.001–6.000 kg", "435,66", "226,58", "48,02"),
+            ("6.001–7.000 kg", "487,90", "278,82", "52,48"),
+            ("7.001–8.000 kg", "540,14", "331,06", "56,94"),
+            ("8.001–9.000 kg", "592,38", "383,30", "61,41"),
+            ("9.001–10.000 kg", "644,62", "435,66", "65,87")
+        ]
+        let weekendRows: [(String, String, String, String)] = [
+            ("bis 500 kg", "43,67", "15,35", "14,94"),
+            ("501–600 kg", "43,67", "17,49", "16,43"),
+            ("601–1.000 kg", "87,23", "19,64", "19,40"),
+            ("1.001–1.200 kg", "152,56", "21,90", "23,86"),
+            ("1.201–1.400 kg", "217,89", "43,67", "28,33"),
+            ("1.401–2.000 kg", "283,22", "43,67", "32,79"),
+            ("2.001–3.000 kg", "348,55", "87,23", "37,25"),
+            ("3.001–4.000 kg", "413,88", "152,56", "41,71"),
+            ("4.001–5.000 kg", "479,21", "217,89", "46,18"),
+            ("5.001–6.000 kg", "544,54", "283,22", "50,64"),
+            ("6.001–7.000 kg", "609,88", "348,55", "55,10"),
+            ("7.001–8.000 kg", "675,21", "413,88", "59,56"),
+            ("8.001–9.000 kg", "740,54", "479,21", "64,03"),
+            ("9.001–10.000 kg", "805,87", "544,54", "68,49")
+        ]
+        return (weekend ? weekendRows : weekdayRows).map {
+            AirportLandingFeeBand(
+                weightBand: $0.0,
+                withoutNoiseProtectionEUR: $0.1,
+                normalNoiseProtectionEUR: $0.2,
+                enhancedNoiseProtectionEUR: $0.3
+            )
+        }
+    }
+
+    static let lsgn = AirportLandingFeeProfile(
+        bands: [
+            AirportLandingFeeBand(
+                weightBand: "bis 700 kg",
+                withoutNoiseProtectionEUR: "23",
+                normalNoiseProtectionEUR: "23",
+                enhancedNoiseProtectionEUR: "23"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "701–1.000 kg",
+                withoutNoiseProtectionEUR: "25",
+                normalNoiseProtectionEUR: "25",
+                enhancedNoiseProtectionEUR: "25"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "1.001–1.500 kg",
+                withoutNoiseProtectionEUR: "31",
+                normalNoiseProtectionEUR: "31",
+                enhancedNoiseProtectionEUR: "31"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "1.501–2.000 kg",
+                withoutNoiseProtectionEUR: "39",
+                normalNoiseProtectionEUR: "39",
+                enhancedNoiseProtectionEUR: "39"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "2.001–3.000 kg",
+                withoutNoiseProtectionEUR: "59",
+                normalNoiseProtectionEUR: "59",
+                enhancedNoiseProtectionEUR: "59"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "3.001–4.000 kg",
+                withoutNoiseProtectionEUR: "90",
+                normalNoiseProtectionEUR: "90",
+                enhancedNoiseProtectionEUR: "90"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "bis 999.999 kg",
+                withoutNoiseProtectionEUR: "110",
+                normalNoiseProtectionEUR: "110",
+                enhancedNoiseProtectionEUR: "110"
+            )
+        ],
+        basicTrainingLandingFeeEUR: "20",
+        commercialSurchargeEUR: "30",
+        overnightParkingPerNightEUR: "19",
+        customsClearancePerControlEUR: "15",
+        customsOutsideOfficeHoursSurchargeEUR: "32",
+        currencyCode: "CHF"
+    )
+
+    static let lsgr = AirportLandingFeeProfile(
+        bands: [
+            AirportLandingFeeBand(
+                weightBand: "bis 999 kg",
+                withoutNoiseProtectionEUR: "25",
+                normalNoiseProtectionEUR: "25",
+                enhancedNoiseProtectionEUR: "25"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "1.000–2.249 kg",
+                withoutNoiseProtectionEUR: "35",
+                normalNoiseProtectionEUR: "35",
+                enhancedNoiseProtectionEUR: "35"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "bis 999.999 kg",
+                withoutNoiseProtectionEUR: "100",
+                normalNoiseProtectionEUR: "100",
+                enhancedNoiseProtectionEUR: "100"
+            )
+        ],
+        overnightParkingPerNightEUR: "10",
+        customsClearancePerControlEUR: "20",
+        winterServiceSurchargeEUR: "20",
+        winterServiceStartMonth: 12,
+        winterServiceEndMonth: 3,
+        currencyCode: "CHF"
+    )
+
     var isCompletelyEmpty: Bool {
         bands.allSatisfy {
             $0.withoutNoiseProtectionEUR.isEmpty
@@ -1513,18 +1956,29 @@ enum AirportLandingFeeStore {
         if let saved = allProfiles()[normalized] {
             if normalized == "EDFZ", saved.isCompletelyEmpty { return .edfz }
             if normalized == "EDKA", saved.isCompletelyEmpty { return .edka }
+            if normalized == "EDTG", saved.isCompletelyEmpty { return .edtg }
+            if normalized == "LSGN", saved.isCompletelyEmpty { return .lsgn }
+            if normalized == "LSGR", saved.isCompletelyEmpty { return .lsgr }
+            var migrated = saved
+            if normalized.hasPrefix("LS"), migrated.currencyCode == nil {
+                migrated.currencyCode = "CHF"
+            }
             if normalized == "EDKA" {
-                var migrated = saved
                 for index in migrated.bands.indices where migrated.bands[index].normalNoiseProtectionEUR.isEmpty {
                     migrated.bands[index].normalNoiseProtectionEUR = migrated.bands[index].withoutNoiseProtectionEUR
                 }
                 return migrated
             }
-            return saved
+            return migrated
         }
         if normalized == "EDFZ" { return .edfz }
         if normalized == "EDKA" { return .edka }
-        return AirportLandingFeeProfile()
+        if normalized == "EDTG" { return .edtg }
+        if normalized == "LSGN" { return .lsgn }
+        if normalized == "LSGR" { return .lsgr }
+        var profile = AirportLandingFeeProfile()
+        if normalized.hasPrefix("LS") { profile.currencyCode = "CHF" }
+        return profile
     }
 
     static func save(_ profile: AirportLandingFeeProfile, for icao: String) {
@@ -1575,13 +2029,101 @@ enum AirportLandingFeeDisplay {
 }
 
 enum AirportLandingFeeCalculator {
+    static func ancillaryFeeEUR(
+        profile: AirportLandingFeeProfile,
+        amountText: String?,
+        weightBands: [AirportAncillaryFeeBand]? = nil,
+        mtowKilograms: Double? = nil,
+        count: Int,
+        chfToEURRate: Double? = nil
+    ) -> Double? {
+        guard count > 0 else { return 0 }
+        let resolvedAmountText: String?
+        if let weightBands, !weightBands.isEmpty {
+            guard let mtowKilograms, mtowKilograms > 0 else { return nil }
+            resolvedAmountText = weightBands
+                .compactMap { band -> (Int, String)? in
+                    guard let upperLimit = upperWeightLimit(
+                        in: band.weightBand
+                    ) else { return nil }
+                    return (upperLimit, band.amountEUR)
+                }
+                .sorted { $0.0 < $1.0 }
+                .first { Double($0.0) >= mtowKilograms }?
+                .1
+        } else {
+            resolvedAmountText = amountText
+        }
+        guard let resolvedAmountText,
+              let amount = decimalEUR(from: resolvedAmountText)
+        else { return nil }
+        guard let singleFeeEUR = convertedEUR(
+            amount,
+            currencyCode: profile.effectiveCurrencyCode,
+            chfToEURRate: chfToEURRate
+        ) else { return nil }
+        return singleFeeEUR * Double(count)
+    }
+
     static func feeEUR(
         profile: AirportLandingFeeProfile,
         mtowKilograms: Double,
-        hasIncreasedNoiseProtection: Bool
+        hasIncreasedNoiseProtection: Bool,
+        noiseLevelDBA: Double? = nil,
+        landingDate: Date? = nil,
+        chfToEURRate: Double? = nil
     ) -> Double? {
         guard mtowKilograms > 0 else { return nil }
-        let matchingBand = profile.bands
+        let weekendTariff = landingDate.map {
+            isWeekendOrHoliday(
+                $0,
+                timeZoneIdentifier: profile.weekendTimeZoneIdentifier
+            )
+        } ?? false
+
+        if hasIncreasedNoiseProtection,
+           let weekdayNoiseBands = profile.noiseBands,
+           !weekdayNoiseBands.isEmpty {
+            guard let noiseLevelDBA,
+                  noiseLevelDBA > 0,
+                  let weightBands = profile.noiseWeightSurchargeBands
+            else { return nil }
+            let noiseBands = weekendTariff
+                ? (profile.weekendNoiseBands ?? weekdayNoiseBands)
+                : weekdayNoiseBands
+            let baseText = noiseBands
+                .sorted(by: { $0.upperNoiseDBA < $1.upperNoiseDBA })
+                .first(where: { $0.upperNoiseDBA >= noiseLevelDBA })?
+                .amountEUR
+            let weightText = weightBands
+                .compactMap({ band -> (Int, String)? in
+                    guard let limit = upperWeightLimit(in: band.weightBand)
+                    else { return nil }
+                    return (limit, band.amountEUR)
+                })
+                .sorted(by: { $0.0 < $1.0 })
+                .first(where: { Double($0.0) >= mtowKilograms })?
+                .1
+            guard let baseText,
+                  let weightText,
+                  let baseAmount = decimalEUR(from: baseText),
+                  let weightAmount = decimalEUR(from: weightText)
+            else { return nil }
+            return convertedEUR(
+                baseAmount + weightAmount,
+                currencyCode: profile.effectiveCurrencyCode,
+                chfToEURRate: chfToEURRate
+            )
+        }
+
+        let tariffBands: [AirportLandingFeeBand]
+        if weekendTariff,
+           let weekendBands = profile.weekendBands {
+            tariffBands = weekendBands
+        } else {
+            tariffBands = profile.bands
+        }
+        let matchingBand = tariffBands
             .compactMap { band -> (upperLimit: Int, band: AirportLandingFeeBand)? in
                 guard let upperLimit = upperWeightLimit(in: band.weightBand) else {
                     return nil
@@ -1596,15 +2138,22 @@ enum AirportLandingFeeCalculator {
         let feeText = hasIncreasedNoiseProtection
             ? matchingBand.enhancedNoiseProtectionEUR
             : matchingBand.normalNoiseProtectionEUR
-        return decimalEUR(from: feeText)
+        guard let nativeAmount = decimalEUR(from: feeText) else { return nil }
+        return convertedEUR(
+            nativeAmount,
+            currencyCode: profile.effectiveCurrencyCode,
+            chfToEURRate: chfToEURRate
+        )
     }
 
     static func quote(
         for airportICAOs: [String],
         mtowKilograms: Double,
         hasIncreasedNoiseProtection: Bool,
+        noiseLevelDBA: Double? = nil,
         landingDate: Date? = nil,
         landingVoucherBookEnabled: Bool = false,
+        chfToEURRate: Double? = nil,
         voucherProvider: (String, Date) -> Bool = {
             LandingVoucherBook.includes($0, on: $1)
         },
@@ -1617,26 +2166,122 @@ enum AirportLandingFeeCalculator {
 
         for rawICAO in airportICAOs {
             let icao = rawICAO.uppercased()
-            if landingVoucherBookEnabled,
-               let landingDate,
-               voucherProvider(icao, landingDate) {
-                continue
-            }
             let profile = profileProvider(icao)
-            if let fee = feeEUR(
-                profile: profile,
-                mtowKilograms: mtowKilograms,
-                hasIncreasedNoiseProtection: hasIncreasedNoiseProtection
-            ) {
-                knownTotalEUR += fee
-            } else {
-                unknownICAOs.append(icao)
+            let landingFeeWaived = landingVoucherBookEnabled
+                && landingDate.map { voucherProvider(icao, $0) } == true
+            var airportTotalEUR = 0.0
+
+            if !landingFeeWaived {
+                guard let fee = feeEUR(
+                    profile: profile,
+                    mtowKilograms: mtowKilograms,
+                    hasIncreasedNoiseProtection: hasIncreasedNoiseProtection,
+                    noiseLevelDBA: noiseLevelDBA,
+                    landingDate: landingDate,
+                    chfToEURRate: chfToEURRate
+                ) else {
+                    unknownICAOs.append(icao)
+                    continue
+                }
+                airportTotalEUR += fee
             }
+
+            if let landingDate,
+               winterServiceSurchargeApplies(
+                    profile: profile,
+                    on: landingDate
+               ) {
+                guard let winterSurcharge = ancillaryFeeEUR(
+                    profile: profile,
+                    amountText: profile.winterServiceSurchargeEUR,
+                    count: 1,
+                    chfToEURRate: chfToEURRate
+                ) else {
+                    unknownICAOs.append(icao)
+                    continue
+                }
+                airportTotalEUR += winterSurcharge
+            }
+
+            knownTotalEUR += airportTotalEUR
         }
 
         return AirportLandingFeeQuote(
             knownTotalEUR: knownTotalEUR,
             unknownICAOs: unknownICAOs
+        )
+    }
+
+    static func winterServiceSurchargeApplies(
+        profile: AirportLandingFeeProfile,
+        on date: Date
+    ) -> Bool {
+        guard profile.winterServiceSurchargeEUR != nil,
+              let startMonth = profile.winterServiceStartMonth,
+              let endMonth = profile.winterServiceEndMonth,
+              (1...12).contains(startMonth),
+              (1...12).contains(endMonth)
+        else { return false }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/Zurich")
+            ?? .current
+        let month = calendar.component(.month, from: date)
+        if startMonth <= endMonth {
+            return (startMonth...endMonth).contains(month)
+        }
+        return month >= startMonth || month <= endMonth
+    }
+
+    private static func isWeekendOrHoliday(
+        _ date: Date,
+        timeZoneIdentifier: String?
+    ) -> Bool {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+            ?? TimeZone(identifier: "Europe/Berlin")
+            ?? .current
+        let weekday = calendar.component(.weekday, from: date)
+        if weekday == 1 || weekday == 7 { return true }
+
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = parts.year,
+              let month = parts.month,
+              let day = parts.day
+        else { return false }
+        let fixedHolidays = [
+            (1, 1), (1, 6), (5, 1), (10, 3), (11, 1),
+            (12, 25), (12, 26)
+        ]
+        if fixedHolidays.contains(where: { $0 == (month, day) }) {
+            return true
+        }
+        guard let easter = easterSunday(year: year, calendar: calendar) else {
+            return false
+        }
+        let offset = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: easter),
+            to: calendar.startOfDay(for: date)
+        ).day
+        return [-2, 1, 39, 50, 60].contains(offset)
+    }
+
+    private static func easterSunday(
+        year: Int,
+        calendar: Calendar
+    ) -> Date? {
+        let a = year % 19, b = year / 100, c = year % 100
+        let d = b / 4, e = b % 4, f = (b + 8) / 25
+        let g = (b - f + 1) / 3
+        let h = (19 * a + b - d - g + 15) % 30
+        let i = c / 4, k = c % 4
+        let l = (32 + 2 * e + 2 * i - h - k) % 7
+        let m = (a + 11 * h + 22 * l) / 451
+        let month = (h + l - 7 * m + 114) / 31
+        let day = (h + l - 7 * m + 114) % 31 + 1
+        return calendar.date(
+            from: DateComponents(year: year, month: month, day: day)
         )
     }
 
@@ -1646,6 +2291,27 @@ enum AirportLandingFeeCalculator {
             .components(separatedBy: CharacterSet.decimalDigits.inverted)
             .compactMap(Int.init)
             .max()
+    }
+
+    private static func convertedEUR(
+        _ amount: Double,
+        currencyCode: String,
+        chfToEURRate: Double?
+    ) -> Double? {
+        switch currencyCode.uppercased() {
+        case "EUR":
+            return amount
+        case "CHF":
+            guard let chfToEURRate,
+                  chfToEURRate.isFinite,
+                  chfToEURRate > 0
+            else { return nil }
+            // Swiss tariff positions are always shown conservatively as full
+            // euros. `ceil` deliberately rounds 31.01 EUR to 32 EUR.
+            return ceil(amount * chfToEURRate)
+        default:
+            return nil
+        }
     }
 
     private static func decimalEUR(from text: String) -> Double? {
@@ -1881,7 +2547,7 @@ struct AirportSetupView: View {
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(FlybookColor.navy)
                 Spacer()
-                Text("EUR je Landung")
+                Text("\(landingFees.effectiveCurrencyCode) je Landung")
                     .font(.caption.bold())
                     .foregroundStyle(FlybookColor.muted)
             }
@@ -1913,6 +2579,29 @@ struct AirportSetupView: View {
                         .frame(width: 190, alignment: .leading)
                     Spacer()
                 }
+            }
+
+            Divider()
+            Text("WEITERE FLUGPLATZGEBÜHREN")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(FlybookColor.muted)
+            HStack(spacing: 24) {
+                ancillaryFeeField(
+                    "Parken über Nacht · je Nacht",
+                    value: optionalFeeBinding(\.overnightParkingPerNightEUR)
+                )
+                ancillaryFeeField(
+                    "Zollabfertigung · je Kontrolle",
+                    value: optionalFeeBinding(\.customsClearancePerControlEUR)
+                )
+                ancillaryFeeField(
+                    "Zoll außerhalb Bürozeit · Zuschlag",
+                    value: optionalFeeBinding(\.customsOutsideOfficeHoursSurchargeEUR)
+                )
+                ancillaryFeeField(
+                    "Winterdienst · je Landung",
+                    value: optionalFeeBinding(\.winterServiceSurchargeEUR)
+                )
             }
 
             Text("Dezimalwerte können mit Komma oder Punkt eingegeben werden.")
@@ -1959,10 +2648,33 @@ struct AirportSetupView: View {
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .frame(width: 92)
-            Text("€")
+            Text(landingFees.effectiveCurrencyCode)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
         }
+    }
+
+    private func ancillaryFeeField(
+        _ title: String,
+        value: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(FlybookColor.navy)
+                .lineLimit(1)
+            feeField(value)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func optionalFeeBinding(
+        _ keyPath: WritableKeyPath<AirportLandingFeeProfile, String?>
+    ) -> Binding<String> {
+        Binding(
+            get: { landingFees[keyPath: keyPath] ?? "" },
+            set: { landingFees[keyPath: keyPath] = $0.isEmpty ? nil : $0 }
+        )
     }
 
     private var openingHeader: some View {

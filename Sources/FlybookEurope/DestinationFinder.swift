@@ -30,6 +30,9 @@ struct DestinationFinderCriteria {
     var requiresBicycleAtAirport = false
     var requiresRentalCarAtAirport = false
     var requiresApp2DriveAtAirport = false
+    var requiresRailAtAirport = false
+    var requiresBusAtAirport = false
+    var requiresAnyMobilityAtAirport = false
     var minimumRunwayLengthMeters = 300
     var allowedCountryCodes: Set<String>? = nil
     var requiredFuelTypes: Set<AircraftFuelType> = []
@@ -47,10 +50,11 @@ struct DestinationFinderCriteria {
     let minimumWeather: DestinationFinderMinimumWeather
     var ignoresMinimumWeather = false
     var usesMinimumWeatherCoverageRule = true
-    let requiresCloudless: Bool
-    var requiresScatteredCloudCoverage = false
+    var requiresBlueSkyCoverage = false
+    var minimumBlueSkyCoverage = 1.0
     let requiresRainFree: Bool
     var requiresRainFreeCoverage = false
+    var minimumRainFreeCoverage = 1.0
     let daylightOnly: Bool
     let daytimeOnly: Bool
     var minimumWeatherDaylightOnly = false
@@ -63,8 +67,7 @@ struct DestinationFinderCriteria {
             || !ignoresWind
             || !ignoresGusts
             || !ignoresMinimumWeather
-            || requiresCloudless
-            || requiresScatteredCloudCoverage
+            || requiresBlueSkyCoverage
             || requiresRainFree
             || requiresRainFreeCoverage
     }
@@ -77,8 +80,8 @@ private final class DestinationFinderSession {
     var originICAO = "EDFZ"
     var from: Date
     var until: Date
-    var minimumTravelHours = 0.0
-    var maximumTravelHours = 3.0
+    var minimumTravelHours = 1.5
+    var maximumTravelHours = 4.5
     var ignoresTravelTime = false
     var appliesETOPS = true
     var maximumRoundTripPrice = 1_000.0
@@ -91,6 +94,9 @@ private final class DestinationFinderSession {
     var requiresBicycleAtAirport = false
     var requiresRentalCarAtAirport = false
     var requiresApp2DriveAtAirport = false
+    var requiresRailAtAirport = false
+    var requiresBusAtAirport = false
+    var requiresAnyMobilityAtAirport = false
     var minimumRunwayLength = 300.0
     var selectedCountryCodes: Set<String>?
     var requiredFuelTypes: Set<AircraftFuelType> = []
@@ -108,10 +114,11 @@ private final class DestinationFinderSession {
     var minimumWeather = DestinationFinderMinimumWeather.vfr
     var ignoresMinimumWeather = false
     var usesMinimumWeatherCoverageRule = true
-    var requiresCloudless = false
-    var requiresScatteredCloudCoverage = false
+    var requiresBlueSkyCoverage = false
+    var minimumBlueSkyCoverage = 1.0
     var requiresRainFree = false
     var requiresRainFreeCoverage = false
+    var minimumRainFreeCoverage = 1.0
     var daylightOnly = true
     var filterUserRaw = ""
     var maximumRouteWeatherRisk = RouteWeatherRisk.green
@@ -142,8 +149,8 @@ private final class DestinationFinderSession {
         ) ?? Date()
         from = calendar.date(bySettingHour: 6, minute: 0, second: 0, of: tomorrow) ?? tomorrow
         until = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: tomorrow) ?? tomorrow
-        minimumTravelHours = 0
-        maximumTravelHours = 3
+        minimumTravelHours = 1.5
+        maximumTravelHours = 4.5
         ignoresTravelTime = false
         appliesETOPS = true
         maximumRoundTripPrice = 1_000
@@ -156,6 +163,9 @@ private final class DestinationFinderSession {
         requiresBicycleAtAirport = false
         requiresRentalCarAtAirport = false
         requiresApp2DriveAtAirport = false
+        requiresRailAtAirport = false
+        requiresBusAtAirport = false
+        requiresAnyMobilityAtAirport = false
         minimumRunwayLength = 300
         selectedCountryCodes = countryCodes
         requiredFuelTypes = []
@@ -173,10 +183,11 @@ private final class DestinationFinderSession {
         minimumWeather = .vfr
         ignoresMinimumWeather = false
         usesMinimumWeatherCoverageRule = true
-        requiresCloudless = false
-        requiresScatteredCloudCoverage = false
+        requiresBlueSkyCoverage = false
+        minimumBlueSkyCoverage = 1
         requiresRainFree = false
         requiresRainFreeCoverage = false
+        minimumRainFreeCoverage = 1
         daylightOnly = true
         filterUserRaw = activeUserRaw
         maximumRouteWeatherRisk = .green
@@ -245,6 +256,33 @@ enum DestinationFinderEvaluator {
             || normalized.hasPrefix("ja–")
             || normalized.hasPrefix("ja-")
             || normalized == "available"
+    }
+
+    static func mobilityMatches(
+        bicycle: String,
+        rentalCar: String,
+        app2Drive: String,
+        rail: String,
+        bus: String,
+        requiresBicycle: Bool,
+        requiresRentalCar: Bool,
+        requiresApp2Drive: Bool,
+        requiresRail: Bool,
+        requiresBus: Bool,
+        requiresAny: Bool
+    ) -> Bool {
+        let availability = [
+            bicycle, rentalCar, app2Drive, rail, bus
+        ].map(serviceIsAvailable)
+
+        if requiresAny && !availability.contains(true) {
+            return false
+        }
+        return (!requiresBicycle || availability[0])
+            && (!requiresRentalCar || availability[1])
+            && (!requiresApp2Drive || availability[2])
+            && (!requiresRail || availability[3])
+            && (!requiresBus || availability[4])
     }
 
     static func featuresMatch(
@@ -320,8 +358,7 @@ enum DestinationFinderEvaluator {
             || !criteria.ignoresMaximumTemperature
             || !criteria.ignoresWind
             || !criteria.ignoresGusts
-            || criteria.requiresCloudless
-            || criteria.requiresScatteredCloudCoverage
+            || criteria.requiresBlueSkyCoverage
             || criteria.requiresRainFree
         guard !requiresSelectedHours || !selected.isEmpty else { return false }
 
@@ -361,23 +398,14 @@ enum DestinationFinderEvaluator {
         )
         else { return false }
 
-        if criteria.requiresCloudless {
-            let cloudValues = selected.compactMap(\.totalCloudCoverPercent)
-            guard !cloudValues.isEmpty,
-                  !cloudValues.contains(where: { $0 > 25 })
-            else { return false }
-            let fewHours = cloudValues.filter { $0 > 0 }.count
-            guard Double(fewHours) / Double(cloudValues.count) < 0.5
-            else { return false }
-        }
-
-        if criteria.requiresScatteredCloudCoverage {
-            guard scatteredCloudCoverageMatches(
+        if criteria.requiresBlueSkyCoverage {
+            guard blueSkyCoverageMatches(
                 hours,
                 from: criteria.from,
                 until: criteria.until,
                 destination: destination,
-                daylightOnly: criteria.daylightOnly
+                daylightOnly: criteria.daylightOnly,
+                minimumCoverage: criteria.minimumBlueSkyCoverage
             ) else { return false }
         }
 
@@ -396,7 +424,8 @@ enum DestinationFinderEvaluator {
                 from: criteria.from,
                 until: criteria.until,
                 destination: destination,
-                daylightOnly: criteria.daylightOnly
+                daylightOnly: criteria.daylightOnly,
+                minimumCoverage: criteria.minimumRainFreeCoverage
             ) else { return false }
         }
 
@@ -424,9 +453,11 @@ enum DestinationFinderEvaluator {
         from: Date,
         until: Date,
         destination: AirportReference,
-        daylightOnly: Bool = true
+        daylightOnly: Bool = true,
+        minimumCoverage: Double = 1.0
     ) -> Bool {
-        guard until >= from else { return false }
+        guard until >= from, (0...1).contains(minimumCoverage)
+        else { return false }
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = destination.timeZone
@@ -473,7 +504,8 @@ enum DestinationFinderEvaluator {
                     }
                     return precipitation < 0.1
                 }.count
-                guard Double(rainFreeSamples) / Double(samples.count) >= 0.66
+                guard Double(rainFreeSamples) / Double(samples.count)
+                    >= minimumCoverage
                 else { return false }
             }
 
@@ -483,14 +515,16 @@ enum DestinationFinderEvaluator {
         return evaluatedDay
     }
 
-    static func scatteredCloudCoverageMatches(
+    static func blueSkyCoverageMatches(
         _ hours: [DestinationFinderWeatherHour],
         from: Date,
         until: Date,
         destination: AirportReference,
-        daylightOnly: Bool = true
+        daylightOnly: Bool = true,
+        minimumCoverage: Double = 1.0
     ) -> Bool {
-        guard until >= from else { return false }
+        guard until >= from, (0...1).contains(minimumCoverage)
+        else { return false }
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = destination.timeZone
@@ -531,13 +565,14 @@ enum DestinationFinderEvaluator {
                         && $0.instant <= bounds.end
                 }
                 guard !samples.isEmpty else { return false }
-                let scatteredOrBetterSamples = samples.filter {
+                let blueSkySamples = samples.filter {
                     guard let cloudCover = $0.totalCloudCoverPercent else {
                         return false
                     }
                     return cloudCover <= 50
                 }.count
-                guard scatteredOrBetterSamples * 3 >= samples.count * 2
+                guard Double(blueSkySamples) / Double(samples.count)
+                    >= minimumCoverage
                 else { return false }
             }
 
@@ -779,18 +814,19 @@ enum DestinationFinderService {
                         flightDate: criteria.from,
                         required: criteria.requiresLandingVoucher
                       ),
-                      (!criteria.requiresBicycleAtAirport
-                        || DestinationFinderEvaluator.serviceIsAvailable(
-                            destination.bikeDirect
-                        )),
-                      (!criteria.requiresRentalCarAtAirport
-                        || DestinationFinderEvaluator.serviceIsAvailable(
-                            destination.rentalCarDirect
-                        )),
-                      (!criteria.requiresApp2DriveAtAirport
-                        || DestinationFinderEvaluator.serviceIsAvailable(
-                            destination.app2DriveDirect
-                        )),
+                      DestinationFinderEvaluator.mobilityMatches(
+                        bicycle: destination.bikeDirect,
+                        rentalCar: destination.rentalCarDirect,
+                        app2Drive: destination.app2DriveDirect,
+                        rail: destination.railDirect,
+                        bus: destination.busDirect,
+                        requiresBicycle: criteria.requiresBicycleAtAirport,
+                        requiresRentalCar: criteria.requiresRentalCarAtAirport,
+                        requiresApp2Drive: criteria.requiresApp2DriveAtAirport,
+                        requiresRail: criteria.requiresRailAtAirport,
+                        requiresBus: criteria.requiresBusAtAirport,
+                        requiresAny: criteria.requiresAnyMobilityAtAirport
+                      ),
                       destination.runwayM >= criteria.minimumRunwayLengthMeters,
                       destination.latitude != nil,
                       destination.longitude != nil,
@@ -1577,8 +1613,8 @@ struct DestinationFinderView: View {
     @State private var originICAO: String
     @State private var from: Date
     @State private var until: Date
-    @State private var minimumTravelHours = 0.0
-    @State private var maximumTravelHours = 3.0
+    @State private var minimumTravelHours = 1.5
+    @State private var maximumTravelHours = 4.5
     @State private var ignoresTravelTime = false
     @State private var appliesETOPS = true
     @State private var maximumRoundTripPrice = 1_000.0
@@ -1591,6 +1627,9 @@ struct DestinationFinderView: View {
     @State private var requiresBicycleAtAirport = false
     @State private var requiresRentalCarAtAirport = false
     @State private var requiresApp2DriveAtAirport = false
+    @State private var requiresRailAtAirport = false
+    @State private var requiresBusAtAirport = false
+    @State private var requiresAnyMobilityAtAirport = false
     @State private var minimumRunwayLength = 300.0
     @State private var selectedCountryCodes: Set<String>
     @State private var requiredFuelTypes: Set<AircraftFuelType> = []
@@ -1608,10 +1647,10 @@ struct DestinationFinderView: View {
     @State private var minimumWeather = DestinationFinderMinimumWeather.vfr
     @State private var ignoresMinimumWeather = false
     @State private var usesMinimumWeatherCoverageRule = true
-    @State private var requiresCloudless = false
-    @State private var requiresScatteredCloudCoverage = false
-    @State private var requiresRainFree = false
+    @State private var requiresBlueSkyCoverage = false
+    @State private var minimumBlueSkyCoverage = 100.0
     @State private var requiresRainFreeCoverage = false
+    @State private var minimumRainFreeCoverage = 100.0
     @State private var daylightOnly = true
     @State private var maximumRouteWeatherRisk = RouteWeatherRisk.green
     @State private var ignoresRouteWeather = true
@@ -1655,6 +1694,11 @@ struct DestinationFinderView: View {
         _requiresBicycleAtAirport = State(initialValue: session.requiresBicycleAtAirport)
         _requiresRentalCarAtAirport = State(initialValue: session.requiresRentalCarAtAirport)
         _requiresApp2DriveAtAirport = State(initialValue: session.requiresApp2DriveAtAirport)
+        _requiresRailAtAirport = State(initialValue: session.requiresRailAtAirport)
+        _requiresBusAtAirport = State(initialValue: session.requiresBusAtAirport)
+        _requiresAnyMobilityAtAirport = State(
+            initialValue: session.requiresAnyMobilityAtAirport
+        )
         _minimumRunwayLength = State(initialValue: session.minimumRunwayLength)
         _selectedCountryCodes = State(initialValue: session.selectedCountryCodes ?? allCountryCodes)
         _requiredFuelTypes = State(initialValue: session.requiredFuelTypes)
@@ -1676,13 +1720,17 @@ struct DestinationFinderView: View {
         _usesMinimumWeatherCoverageRule = State(
             initialValue: session.usesMinimumWeatherCoverageRule
         )
-        _requiresCloudless = State(initialValue: session.requiresCloudless)
-        _requiresScatteredCloudCoverage = State(
-            initialValue: session.requiresScatteredCloudCoverage
+        _requiresBlueSkyCoverage = State(
+            initialValue: session.requiresBlueSkyCoverage
         )
-        _requiresRainFree = State(initialValue: session.requiresRainFree)
+        _minimumBlueSkyCoverage = State(
+            initialValue: session.minimumBlueSkyCoverage * 100
+        )
         _requiresRainFreeCoverage = State(
             initialValue: session.requiresRainFreeCoverage
+        )
+        _minimumRainFreeCoverage = State(
+            initialValue: session.minimumRainFreeCoverage * 100
         )
         _daylightOnly = State(initialValue: session.daylightOnly)
         _maximumRouteWeatherRisk = State(initialValue: session.maximumRouteWeatherRisk)
@@ -2077,19 +2125,76 @@ struct DestinationFinderView: View {
 
     private var mobilitySection: some View {
         filterGroup(title: "MOBILITÄT AM PLATZ", symbol: "car.fill") {
-            HStack(spacing: 28) {
-                Toggle("Fahrrad am Platz", isOn: $requiresBicycleAtAirport)
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ],
+                alignment: .leading,
+                spacing: 9
+            ) {
+                Toggle("Irgendetwas davon", isOn: anyMobilityBinding)
                     .toggleStyle(.checkbox)
-                Toggle("Mietwagen am Platz", isOn: $requiresRentalCarAtAirport)
-                    .toggleStyle(.checkbox)
-                Toggle("app2drive am Platz", isOn: $requiresApp2DriveAtAirport)
-                    .toggleStyle(.checkbox)
-                Spacer()
+                    .fontWeight(.bold)
+                Toggle("Fahrrad am Platz", isOn: specificMobilityBinding(
+                    $requiresBicycleAtAirport
+                ))
+                .toggleStyle(.checkbox)
+                Toggle("Mietwagen am Platz", isOn: specificMobilityBinding(
+                    $requiresRentalCarAtAirport
+                ))
+                .toggleStyle(.checkbox)
+                Toggle("app2drive am Platz", isOn: specificMobilityBinding(
+                    $requiresApp2DriveAtAirport
+                ))
+                .toggleStyle(.checkbox)
+                Toggle("Bahn ≤ 500 m", isOn: specificMobilityBinding(
+                    $requiresRailAtAirport
+                ))
+                .toggleStyle(.checkbox)
+                Toggle("Bus ≤ 500 m", isOn: specificMobilityBinding(
+                    $requiresBusAtAirport
+                ))
+                .toggleStyle(.checkbox)
             }
-            Text("Aktivierte Merkmale müssen am Flugplatz als verfügbar hinterlegt sein.")
+            Text(
+                requiresAnyMobilityAtAirport
+                    ? "Treffer, sobald mindestens eines der fünf Mobilitätsmerkmale bestätigt ist."
+                    : "Einzeln aktivierte Merkmale müssen jeweils als verfügbar bestätigt sein."
+            )
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var anyMobilityBinding: Binding<Bool> {
+        Binding(
+            get: { requiresAnyMobilityAtAirport },
+            set: { enabled in
+                requiresAnyMobilityAtAirport = enabled
+                guard enabled else { return }
+                requiresBicycleAtAirport = false
+                requiresRentalCarAtAirport = false
+                requiresApp2DriveAtAirport = false
+                requiresRailAtAirport = false
+                requiresBusAtAirport = false
+            }
+        )
+    }
+
+    private func specificMobilityBinding(
+        _ binding: Binding<Bool>
+    ) -> Binding<Bool> {
+        Binding(
+            get: { binding.wrappedValue },
+            set: { enabled in
+                binding.wrappedValue = enabled
+                if enabled {
+                    requiresAnyMobilityAtAirport = false
+                }
+            }
+        )
     }
 
     private var runwaySection: some View {
@@ -2187,66 +2292,55 @@ struct DestinationFinderView: View {
                     ),
                     colors: temperatureScaleColors
                 )
-                GridRow {
-                    Color.clear.frame(width: 135, height: 1)
-                    HStack(spacing: 20) {
-                        Toggle("Regenfrei", isOn: Binding(
-                            get: { requiresRainFree },
-                            set: { enabled in
-                                requiresRainFree = enabled
-                                if enabled { requiresRainFreeCoverage = false }
+                sliderRow(
+                    title: "Regenfrei",
+                    value: $minimumRainFreeCoverage,
+                    range: 12.5...100,
+                    step: 12.5,
+                    valueText: coveragePercentageText(
+                        minimumRainFreeCoverage
+                    ),
+                    trailing: AnyView(
+                        Toggle("Ignorieren", isOn: Binding(
+                            get: { !requiresRainFreeCoverage },
+                            set: { requiresRainFreeCoverage = !$0 }
+                        ))
+                        .toggleStyle(.checkbox)
+                    )
+                )
+                .help(
+                    daylightOnly
+                        ? "An jedem Kalendertag muss der gewählte Anteil der Tageslichtstunden weniger als 0,1 mm Niederschlag haben."
+                        : "An jedem Kalendertag muss der gewählte Anteil der Stunden im gewählten Zeitraum weniger als 0,1 mm Niederschlag haben."
+                )
+                sliderRow(
+                    title: "Blaue-Himmel-Quote",
+                    value: $minimumBlueSkyCoverage,
+                    range: 12.5...100,
+                    step: 12.5,
+                    valueText: coveragePercentageText(
+                        minimumBlueSkyCoverage
+                    ),
+                    trailing: AnyView(
+                        Toggle("Ignorieren", isOn: Binding(
+                            get: { !requiresBlueSkyCoverage },
+                            set: { ignored in
+                                requiresBlueSkyCoverage = !ignored
                             }
                         ))
-                            .toggleStyle(.checkbox)
-                            .frame(width: 110, alignment: .leading)
-                            .help("Schließt Ziele aus, sobald in einer geprüften Stunde mindestens 0,1 mm Niederschlag vorhergesagt ist.")
-                        Toggle("66 % regenfrei", isOn: Binding(
-                            get: { requiresRainFreeCoverage },
-                            set: { enabled in
-                                requiresRainFreeCoverage = enabled
-                                if enabled { requiresRainFree = false }
-                            }
-                        ))
-                            .toggleStyle(.checkbox)
-                            .help(
-                                daylightOnly
-                                    ? "Pro Kalendertag am Ziel müssen mindestens 66 % der Tageslichtstunden weniger als 0,1 mm Niederschlag haben."
-                                    : "Pro Kalendertag am Ziel müssen mindestens 66 % der Stunden im gewählten Zeitraum weniger als 0,1 mm Niederschlag haben."
-                            )
-                    }
-                    Color.clear.frame(width: 210, height: 1)
-                }
-                GridRow {
-                    Color.clear.frame(width: 135, height: 1)
-                    HStack(spacing: 20) {
-                        Toggle("Wolkenlos", isOn: Binding(
-                            get: { requiresCloudless },
-                            set: { enabled in
-                                requiresCloudless = enabled
-                                if enabled {
-                                    requiresScatteredCloudCoverage = false
-                                }
-                            }
-                        ))
-                            .toggleStyle(.checkbox)
-                            .frame(width: 110, alignment: .leading)
-                            .help("Akzeptiert höchstens FEW und dies in weniger als 50 % des geprüften Zeitraums.")
-                        Toggle("66 % max. SCT", isOn: Binding(
-                            get: { requiresScatteredCloudCoverage },
-                            set: { enabled in
-                                requiresScatteredCloudCoverage = enabled
-                                if enabled { requiresCloudless = false }
-                            }
-                        ))
-                            .toggleStyle(.checkbox)
-                            .help(
-                                daylightOnly
-                                    ? "Pro Kalendertag am Ziel muss in mindestens zwei Dritteln der Tageslichtstunden höchstens SCT (50 % Gesamtbewölkung) vorhergesagt sein."
-                                    : "Pro Kalendertag am Ziel muss in mindestens zwei Dritteln der Stunden im gewählten Zeitraum höchstens SCT (50 % Gesamtbewölkung) vorhergesagt sein."
-                            )
-                    }
-                    Color.clear.frame(width: 210, height: 1)
-                }
+                        .toggleStyle(.checkbox)
+                    )
+                )
+                .help(
+                    daylightOnly
+                        ? "Eine Stunde zählt, wenn über alle Wolkenschichten mindestens 50 % blauer Himmel sichtbar sind. Der gewählte Anteil muss an jedem Kalendertag in den Tageslichtstunden erreicht werden."
+                        : "Eine Stunde zählt, wenn über alle Wolkenschichten mindestens 50 % blauer Himmel sichtbar sind. Der gewählte Anteil muss an jedem Kalendertag im gewählten Zeitraum erreicht werden."
+                )
+                Text(
+                    "Legende: Eine Stunde zählt als blauer Himmel, wenn die Gesamtbewölkung höchstens 50 % beträgt. Die gewählte Quote gilt für jeden Tag einzeln."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 sliderRow(
                     title: "Maximaler Wind",
                     value: $maximumWind,
@@ -2340,30 +2434,24 @@ struct DestinationFinderView: View {
                 "mind. \(minimumWeather.rawValue) · Sonnenaufgang–Sonnenuntergang · \(rule)"
             )
         }
-        if requiresRainFree {
-            conditions.append(
-                daylightOnly
-                    ? "tagsüber durchgehend regenfrei"
-                    : "im gesamten Zeitraum regenfrei"
+        if requiresRainFreeCoverage {
+            let percentage = coveragePercentageText(
+                minimumRainFreeCoverage
             )
-        } else if requiresRainFreeCoverage {
             conditions.append(
                 daylightOnly
-                    ? "pro Tag mind. 66 % der Tageslichtstunden regenfrei"
-                    : "pro Tag mind. 66 % des gewählten Zeitraums regenfrei"
+                    ? "pro Tag mind. \(percentage) der Tageslichtstunden regenfrei"
+                    : "pro Tag mind. \(percentage) des gewählten Zeitraums regenfrei"
             )
         }
-        if requiresCloudless {
-            conditions.append(
-                daylightOnly
-                    ? "tagsüber wolkenlos"
-                    : "im gesamten Zeitraum wolkenlos"
+        if requiresBlueSkyCoverage {
+            let percentage = coveragePercentageText(
+                minimumBlueSkyCoverage
             )
-        } else if requiresScatteredCloudCoverage {
             conditions.append(
                 daylightOnly
-                    ? "pro Tag mind. 66 % der Tageslichtstunden max. SCT"
-                    : "pro Tag mind. 66 % des gewählten Zeitraums max. SCT"
+                    ? "pro Tag in mind. \(percentage) der Tageslichtstunden mind. 50 % blauer Himmel"
+                    : "pro Tag in mind. \(percentage) des gewählten Zeitraums mind. 50 % blauer Himmel"
             )
         }
         return conditions.isEmpty
@@ -2536,6 +2624,17 @@ struct DestinationFinderView: View {
         }
     }
 
+    private func coveragePercentageText(_ value: Double) -> String {
+        if value.rounded() == value {
+            return "\(Int(value)) %"
+        }
+        return value.formatted(
+            .number
+                .locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(1))
+        ) + " %"
+    }
+
     private func filterGroup<Content: View>(
         title: String,
         symbol: String,
@@ -2703,6 +2802,9 @@ struct DestinationFinderView: View {
         session.requiresBicycleAtAirport = requiresBicycleAtAirport
         session.requiresRentalCarAtAirport = requiresRentalCarAtAirport
         session.requiresApp2DriveAtAirport = requiresApp2DriveAtAirport
+        session.requiresRailAtAirport = requiresRailAtAirport
+        session.requiresBusAtAirport = requiresBusAtAirport
+        session.requiresAnyMobilityAtAirport = requiresAnyMobilityAtAirport
         session.minimumRunwayLength = minimumRunwayLength
         session.selectedCountryCodes = selectedCountryCodes
         session.requiredFuelTypes = requiredFuelTypes
@@ -2720,10 +2822,11 @@ struct DestinationFinderView: View {
         session.minimumWeather = minimumWeather
         session.ignoresMinimumWeather = ignoresMinimumWeather
         session.usesMinimumWeatherCoverageRule = usesMinimumWeatherCoverageRule
-        session.requiresCloudless = requiresCloudless
-        session.requiresScatteredCloudCoverage = requiresScatteredCloudCoverage
-        session.requiresRainFree = requiresRainFree
+        session.requiresBlueSkyCoverage = requiresBlueSkyCoverage
+        session.minimumBlueSkyCoverage = minimumBlueSkyCoverage / 100
+        session.requiresRainFree = false
         session.requiresRainFreeCoverage = requiresRainFreeCoverage
+        session.minimumRainFreeCoverage = minimumRainFreeCoverage / 100
         session.daylightOnly = daylightOnly
         session.filterUserRaw = filterUserRaw
         session.maximumRouteWeatherRisk = maximumRouteWeatherRisk
@@ -2752,6 +2855,9 @@ struct DestinationFinderView: View {
         requiresBicycleAtAirport = session.requiresBicycleAtAirport
         requiresRentalCarAtAirport = session.requiresRentalCarAtAirport
         requiresApp2DriveAtAirport = session.requiresApp2DriveAtAirport
+        requiresRailAtAirport = session.requiresRailAtAirport
+        requiresBusAtAirport = session.requiresBusAtAirport
+        requiresAnyMobilityAtAirport = session.requiresAnyMobilityAtAirport
         minimumRunwayLength = session.minimumRunwayLength
         selectedCountryCodes = allCountryCodes
         requiredFuelTypes = session.requiredFuelTypes
@@ -2769,10 +2875,10 @@ struct DestinationFinderView: View {
         minimumWeather = session.minimumWeather
         ignoresMinimumWeather = session.ignoresMinimumWeather
         usesMinimumWeatherCoverageRule = session.usesMinimumWeatherCoverageRule
-        requiresCloudless = session.requiresCloudless
-        requiresScatteredCloudCoverage = session.requiresScatteredCloudCoverage
-        requiresRainFree = session.requiresRainFree
+        requiresBlueSkyCoverage = session.requiresBlueSkyCoverage
+        minimumBlueSkyCoverage = session.minimumBlueSkyCoverage * 100
         requiresRainFreeCoverage = session.requiresRainFreeCoverage
+        minimumRainFreeCoverage = session.minimumRainFreeCoverage * 100
         daylightOnly = session.daylightOnly
         filterUserRaw = session.filterUserRaw
         maximumRouteWeatherRisk = session.maximumRouteWeatherRisk
@@ -2806,6 +2912,9 @@ struct DestinationFinderView: View {
             requiresBicycleAtAirport: requiresBicycleAtAirport,
             requiresRentalCarAtAirport: requiresRentalCarAtAirport,
             requiresApp2DriveAtAirport: requiresApp2DriveAtAirport,
+            requiresRailAtAirport: requiresRailAtAirport,
+            requiresBusAtAirport: requiresBusAtAirport,
+            requiresAnyMobilityAtAirport: requiresAnyMobilityAtAirport,
             minimumRunwayLengthMeters: Int(minimumRunwayLength.rounded()),
             allowedCountryCodes: selectedCountryCodes,
             requiredFuelTypes: requiredFuelTypes,
@@ -2824,10 +2933,11 @@ struct DestinationFinderView: View {
             minimumWeather: minimumWeather,
             ignoresMinimumWeather: ignoresMinimumWeather,
             usesMinimumWeatherCoverageRule: usesMinimumWeatherCoverageRule,
-            requiresCloudless: requiresCloudless,
-            requiresScatteredCloudCoverage: requiresScatteredCloudCoverage,
-            requiresRainFree: requiresRainFree,
+            requiresBlueSkyCoverage: requiresBlueSkyCoverage,
+            minimumBlueSkyCoverage: minimumBlueSkyCoverage / 100,
+            requiresRainFree: false,
             requiresRainFreeCoverage: requiresRainFreeCoverage,
+            minimumRainFreeCoverage: minimumRainFreeCoverage / 100,
             daylightOnly: daylightOnly,
             daytimeOnly: false,
             minimumWeatherDaylightOnly: true,

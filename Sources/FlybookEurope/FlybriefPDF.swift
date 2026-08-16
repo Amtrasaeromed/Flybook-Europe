@@ -179,12 +179,13 @@ enum FlybriefPDFExporter {
               )
         else { return Data() }
 
-        for (index, leg) in snapshot.legs.enumerated() {
+        let pageGroups = pageLegGroups(for: snapshot)
+        for (index, legs) in pageGroups.enumerated() {
             let root = FlybriefPDFPage(
                 snapshot: snapshot,
-                leg: leg,
+                legs: legs,
                 pageNumber: index + 1,
-                pageCount: snapshot.legs.count
+                pageCount: pageGroups.count
             )
             .frame(width: pageSize.width, height: pageSize.height)
             .background(Color.white)
@@ -202,6 +203,19 @@ enum FlybriefPDFExporter {
         }
         context.closePDF()
         return data as Data
+    }
+
+    static func pageLegGroups(
+        for snapshot: FlybriefSnapshot
+    ) -> [[FlybriefLegSnapshot]] {
+        let totalRouteLegs = snapshot.legs.reduce(0) { partial, leg in
+            partial + max(1, leg.segments.count)
+        }
+        if snapshot.planningMode == FlightPlanningMode.multiStop.rawValue,
+           totalRouteLegs <= 4 {
+            return snapshot.legs.isEmpty ? [] : [snapshot.legs]
+        }
+        return snapshot.legs.map { [$0] }
     }
 }
 
@@ -287,7 +301,7 @@ private struct FlybriefPDFKitView: NSViewRepresentable {
 
 private struct FlybriefPDFPage: View {
     let snapshot: FlybriefSnapshot
-    let leg: FlybriefLegSnapshot
+    let legs: [FlybriefLegSnapshot]
     let pageNumber: Int
     let pageCount: Int
 
@@ -295,7 +309,14 @@ private struct FlybriefPDFPage: View {
         VStack(spacing: 10) {
             header
 
-            FlybriefLegCard(leg: leg)
+            VStack(spacing: 8) {
+                ForEach(legs) { leg in
+                    FlybriefLegCard(
+                        leg: leg,
+                        sharesPage: legs.count > 1
+                    )
+                }
+            }
             .frame(maxHeight: .infinity, alignment: .top)
 
             footer
@@ -381,6 +402,7 @@ private struct FlybriefPDFPage: View {
 
 private struct FlybriefLegCard: View {
     let leg: FlybriefLegSnapshot
+    let sharesPage: Bool
 
     var body: some View {
         VStack(spacing: 7) {
@@ -415,18 +437,26 @@ private struct FlybriefLegCard: View {
                     ForEach(leg.segments) { segment in
                         FlybriefSegmentCard(
                             segment: segment,
-                            dense: leg.segments.count > 2
+                            dense: sharesPage || leg.segments.count > 2
                         )
                     }
                 }
             } else {
                 HStack(alignment: .top, spacing: 8) {
-                    FlybriefEndpointCard(endpoint: leg.departure)
-                    FlybriefEndpointCard(endpoint: leg.arrival)
+                    FlybriefEndpointCard(
+                        endpoint: leg.departure,
+                        compact: sharesPage,
+                        dense: sharesPage
+                    )
+                    FlybriefEndpointCard(
+                        endpoint: leg.arrival,
+                        compact: sharesPage,
+                        dense: sharesPage
+                    )
                 }
             }
         }
-        .padding(10)
+        .padding(sharesPage ? 7 : 10)
         .background(
             RoundedRectangle(cornerRadius: 9)
                 .fill(FlybookColor.blue.opacity(0.035))

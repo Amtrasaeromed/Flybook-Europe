@@ -1,6 +1,17 @@
 import SwiftUI
 import AppKit
 
+final class FlybookActivatingSearchTextField: NSTextField {
+    override func mouseDown(with event: NSEvent) {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKey()
+        super.mouseDown(with: event)
+        if currentEditor() == nil {
+            selectText(nil)
+        }
+    }
+}
+
 enum TimeDisplayMode: String, CaseIterable, Identifiable {
     case local
     case utc
@@ -13,6 +24,31 @@ enum FlightPlanningMode: String, CaseIterable, Identifiable {
     case multiStop = "Multi-Stop"
 
     var id: String { rawValue }
+}
+
+enum FlightPlanningDestinationSync {
+    static func headerICAO(
+        forArrivalICAO arrivalICAO: String,
+        planningMode: FlightPlanningMode,
+        isOneWay: Bool
+    ) -> String? {
+        planningMode == .roundTrip || isOneWay ? arrivalICAO : nil
+    }
+
+    static func outboundICAO(
+        current: String,
+        headerDestinationICAO: String,
+        planningMode: FlightPlanningMode,
+        isOneWay: Bool
+    ) -> String {
+        if planningMode == .roundTrip {
+            return ""
+        }
+        if isOneWay {
+            return headerDestinationICAO
+        }
+        return current
+    }
 }
 
 private enum StartingFuelPreset {
@@ -61,6 +97,7 @@ struct DestinationPage: View {
     @StateObject private var destinationReturnWeatherModel =
         EDFZWeatherViewModel()
     @StateObject private var alpineFoehnModel = AlpineFoehnViewModel()
+    @StateObject private var exchangeRateModel = ExchangeRateViewModel()
     @State private var outboundFlightDate =
         Calendar.current.date(
             byAdding: .day,
@@ -75,6 +112,7 @@ struct DestinationPage: View {
         ) ?? Date()
     @State private var outboundStartText = "09:00"
     @State private var desiredHomeArrivalText = "17:00"
+    @State private var returnDepartureText = ""
     @State private var multiStopFirstArrivalText = ""
     @State private var multiStopDepartureText = ""
     @State private var multiStopSecondArrivalText = ""
@@ -100,6 +138,10 @@ struct DestinationPage: View {
     @State private var reserveToggleMustNotEnableRefuel = false
     @State private var refuelAtDestination = false
     @State private var includeLandingFeesInTotal = false
+    @State private var includeOvernightParkingFee = false
+    @State private var includeCustomsEntryFee = false
+    @State private var includeCustomsExitFee = false
+    @State private var ancillaryFeeContextSignature = ""
     @State private var isLiveWeatherLoading = false
     @State private var flybriefExportError: String?
     @State private var flybriefPreview: FlybriefPreviewDocument?
@@ -254,7 +296,8 @@ struct DestinationPage: View {
                 for: destination,
                 weatherTimeZone: weatherModel.weather?.timezone
             ),
-            referenceRunway: destination.referenceRunway
+            referenceRunway: destination.referenceRunway,
+            country: destination.country
         )
     }
 
@@ -263,7 +306,7 @@ struct DestinationPage: View {
     }
 
     private var planningDestination: AirportReference {
-        if flightPlanningMode == .roundTrip {
+        if flightPlanningMode == .roundTrip || isOneWay {
             return destinationReference
         }
         return allRouteAirportOptions.first {
@@ -285,13 +328,18 @@ struct DestinationPage: View {
         Binding(
             get: { planningDestination.icao },
             set: { newICAO in
-                if flightPlanningMode == .roundTrip {
-                    outboundDestinationICAO = ""
+                if let headerICAO = FlightPlanningDestinationSync.headerICAO(
+                    forArrivalICAO: newICAO,
+                    planningMode: flightPlanningMode,
+                    isOneWay: isOneWay
+                ) {
                     if let index = availableDestinations.firstIndex(where: {
-                        $0.icao == newICAO
+                        $0.icao == headerICAO
                     }) {
+                        mainDestinationICAO = headerICAO
                         selectedDestinationIndex = index
                     }
+                    outboundDestinationICAO = ""
                 } else {
                     outboundDestinationICAO = newICAO
                 }
@@ -350,7 +398,8 @@ struct DestinationPage: View {
                     timeZone: DestinationTimeZone.value(
                         for: airport,
                         weatherTimeZone: nil
-                    )
+                    ),
+                    country: airport.country
                 )
             )
         }
@@ -393,7 +442,8 @@ struct DestinationPage: View {
                         for: destination,
                         weatherTimeZone: nil
                     ),
-                    referenceRunway: destination.referenceRunway
+                    referenceRunway: destination.referenceRunway,
+                    country: destination.country
                 )
             )
         }
@@ -447,6 +497,122 @@ struct DestinationPage: View {
         )
     }
 
+    private var ancillaryFeeAirport: AirportReference {
+        flightPlanningMode == .multiStop
+            ? secondLegDestination
+            : planningDestination
+    }
+
+    private var ancillaryFeeProfile: AirportLandingFeeProfile {
+        AirportLandingFeeStore.profile(for: ancillaryFeeAirport.icao)
+    }
+
+    private var automaticOvernightParkingCount: Int {
+        guard flightPlanningMode == .roundTrip,
+              !isOneWay,
+              planningDestination.icao == secondLegOrigin.icao
+        else { return 0 }
+        return CharterMath.overnightCount(
+            arrival: outboundArrivalInstantForWeather,
+            departure: returnDepartureInstantForWeather,
+            timeZone: planningDestination.timeZone
+        )
+    }
+
+    private var automaticCustomsControls: CustomsControlCounts {
+        var routes: [[AirportReference]] = [outboundRouteRiskWaypoints]
+        if !isOneWay { routes.append(returnRouteRiskWaypoints) }
+        return CustomsFeeRules.controls(
+            at: ancillaryFeeAirport.icao,
+            routes: routes
+        )
+    }
+
+    private var chargedOvernightParkingCount: Int {
+        includeOvernightParkingFee ? max(1, automaticOvernightParkingCount) : 0
+    }
+
+    private var chargedCustomsEntryCount: Int {
+        includeCustomsEntryFee ? max(1, automaticCustomsControls.entry) : 0
+    }
+
+    private var chargedCustomsExitCount: Int {
+        includeCustomsExitFee ? max(1, automaticCustomsControls.exit) : 0
+    }
+
+    private var overnightParkingFeeEUR: Double? {
+        AirportLandingFeeCalculator.ancillaryFeeEUR(
+            profile: ancillaryFeeProfile,
+            amountText: ancillaryFeeProfile.overnightParkingPerNightEUR,
+            weightBands: ancillaryFeeProfile.overnightParkingBands,
+            mtowKilograms: AircraftProfileStore.mtowKilograms(
+                for: selectedAircraft
+            ),
+            count: chargedOvernightParkingCount,
+            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+        )
+    }
+
+    private func customsClearanceFeeEUR(count: Int) -> Double? {
+        AirportLandingFeeCalculator.ancillaryFeeEUR(
+            profile: ancillaryFeeProfile,
+            amountText: ancillaryFeeProfile.customsClearancePerControlEUR,
+            count: count,
+            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+        )
+    }
+
+    private var customsEntryFeeEUR: Double? {
+        customsClearanceFeeEUR(count: chargedCustomsEntryCount)
+    }
+
+    private var customsExitFeeEUR: Double? {
+        customsClearanceFeeEUR(count: chargedCustomsExitCount)
+    }
+
+    private var includedAncillaryAirportFeesEUR: Double {
+        (overnightParkingFeeEUR ?? 0)
+            + (customsEntryFeeEUR ?? 0)
+            + (customsExitFeeEUR ?? 0)
+    }
+
+    private var ancillaryFeeContext: String {
+        [
+            ancillaryFeeAirport.icao,
+            String(Int(outboundArrivalInstantForWeather.timeIntervalSince1970 / 60)),
+            String(Int(returnDepartureInstantForWeather.timeIntervalSince1970 / 60)),
+            String(automaticCustomsControls.entry),
+            String(automaticCustomsControls.exit),
+            flightPlanningMode.rawValue,
+            isOneWay.description
+        ].joined(separator: "|")
+    }
+
+    private func refreshAncillaryFeeDefaults() {
+        guard ancillaryFeeContextSignature != ancillaryFeeContext else { return }
+        ancillaryFeeContextSignature = ancillaryFeeContext
+        includeOvernightParkingFee = automaticOvernightParkingCount > 0
+        includeCustomsEntryFee = automaticCustomsControls.entry > 0
+        includeCustomsExitFee = automaticCustomsControls.exit > 0
+    }
+
+    private func ancillaryFeeLabel(
+        title: String,
+        count: Int,
+        fee: Double?
+    ) -> String {
+        guard count > 0 else { return title }
+        guard let fee else { return "\(title) \(count)× ?" }
+        let value = fee
+            .rounded(.toNearestOrAwayFromZero)
+            .formatted(
+                .currency(code: "EUR")
+                    .locale(Locale(identifier: "de_DE"))
+                    .precision(.fractionLength(0))
+            )
+        return "\(title) \(count)× · \(value)"
+    }
+
     private func landingFeeQuote(
         for landingAirports: [AirportReference],
         on landingDate: Date
@@ -460,9 +626,37 @@ struct DestinationPage: View {
                 AircraftProfileStore.hasIncreasedNoiseProtection(
                     for: selectedAircraft
                 ),
+            noiseLevelDBA: AircraftProfileStore.noiseLevelDBA(
+                for: selectedAircraft
+            ),
             landingDate: landingDate,
-            landingVoucherBookEnabled: landingVoucherBookEnabled
+            landingVoucherBookEnabled: landingVoucherBookEnabled,
+            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
         )
+    }
+
+    private var usesSwissLandingFees: Bool {
+        let outbound = outboundSelectedStopAirports + [firstLegDestination]
+        let inbound = isOneWay
+            ? []
+            : returnSelectedStopAirports + [secondLegDestination]
+        return (outbound + inbound + [ancillaryFeeAirport]).contains {
+            AirportLandingFeeStore.profile(for: $0.icao)
+                .effectiveCurrencyCode == "CHF"
+        }
+    }
+
+    private var exchangeRateLabel: String {
+        if let quote = exchangeRateModel.chfToEUR {
+            let rate = quote.euroPerCHF.formatted(
+                .number.locale(Locale(identifier: "de_DE"))
+                    .precision(.fractionLength(4))
+            )
+            return "EZB \(quote.localizedReferenceDate) · 1 CHF = \(rate) EUR · aufgerundet"
+        }
+        return exchangeRateModel.isLoading
+            ? "Aktueller CHF-Kurs wird geladen …"
+            : "CHF-Kurs nicht verfügbar · Gebühren unbekannt"
     }
 
     private var outboundRouteRiskWaypoints: [AirportReference] {
@@ -747,6 +941,9 @@ struct DestinationPage: View {
                 forceRefresh: false
             )
         }
+        .task {
+            await exchangeRateModel.refreshIfNeeded()
+        }
         .task(id: outboundWindTaskID) {
             guard await weatherLoadMayProceed(afterMilliseconds: 250) else {
                 return
@@ -891,26 +1088,41 @@ struct DestinationPage: View {
         }
         .onChange(of: destination.icao) { _ in
             mainDestinationICAO = destination.icao
+            outboundDestinationICAO =
+                FlightPlanningDestinationSync.outboundICAO(
+                    current: outboundDestinationICAO,
+                    headerDestinationICAO: destination.icao,
+                    planningMode: flightPlanningMode,
+                    isOneWay: isOneWay
+                )
             if flightPlanningMode == .roundTrip {
-                outboundDestinationICAO = ""
                 returnOriginICAO = destination.icao
             }
-            if flightPlanningMode == .multiStop {
+            if flightPlanningMode == .multiStop && !isOneWay {
                 returnDestinationICAO = destination.icao
             }
             resetRefuelEntry()
             resetAutomaticStops()
             normalizeFlightAltitudes()
             if flightPlanningMode == .roundTrip {
+                returnDepartureText = ""
                 desiredHomeArrivalText = standardArrivalText(
                     on: returnFlightDate
                 )
             }
         }
+        .onChange(of: isOneWay) { oneWay in
+            guard oneWay else { return }
+            outboundDestinationICAO = destination.icao
+            returnOriginICAO = destination.icao
+            resetAutomaticStops()
+            normalizeFlightAltitudes()
+        }
         .onChange(of: selectedOriginICAO) { _ in
             resetRefuelEntry()
             normalizeFlightAltitudes()
             if flightPlanningMode == .roundTrip {
+                returnDepartureText = ""
                 desiredHomeArrivalText = standardArrivalText(
                     on: returnFlightDate
                 )
@@ -919,6 +1131,7 @@ struct DestinationPage: View {
         .onChange(of: returnDestinationICAO) { _ in
             returnTrackMilesOverride = nil
             if flightPlanningMode == .roundTrip {
+                returnDepartureText = ""
                 desiredHomeArrivalText = standardArrivalText(
                     on: returnFlightDate
                 )
@@ -939,6 +1152,7 @@ struct DestinationPage: View {
             resetAutomaticStops()
             normalizeFlightAltitudes()
             if flightPlanningMode == .roundTrip {
+                returnDepartureText = ""
                 desiredHomeArrivalText = standardArrivalText(
                     on: returnFlightDate
                 )
@@ -960,8 +1174,9 @@ struct DestinationPage: View {
                         byAdding: .day,
                         value: 2,
                         to: today
-                    ) ?? today
+                ) ?? today
                 outboundStartText = "09:00"
+                returnDepartureText = ""
                 desiredHomeArrivalText = standardArrivalText(
                     on: returnFlightDate
                 )
@@ -1020,6 +1235,9 @@ struct DestinationPage: View {
         .onChange(of: returnStop2ICAO) { _ in
             returnTrackMilesOverride = nil
         }
+        .onChange(of: ancillaryFeeContext) { _ in
+            refreshAncillaryFeeDefaults()
+        }
         .onChange(of: totalCommercialBlockMinutes) { _ in
             storedCalculatedBlockMinutes = commercialEquivalentBlockMinutes
         }
@@ -1074,6 +1292,7 @@ struct DestinationPage: View {
             }
             outboundStartText = "09:00"
             if flightPlanningMode == .roundTrip {
+                returnDepartureText = ""
                 desiredHomeArrivalText = standardArrivalText(
                     on: returnFlightDate
                 )
@@ -1665,6 +1884,17 @@ struct DestinationPage: View {
             let roundedTimestamp =
                 ceil(rawDeparture.timeIntervalSince1970 / 300) * 300
             return Date(timeIntervalSince1970: roundedTimestamp)
+        }
+        if !returnDepartureText.isEmpty,
+           let manualDeparture = FlightDateTime.instant(
+               date: returnFlightDate,
+               timeText: returnDepartureText,
+               timeZone: timeDisplayMode == .utc
+                   ? TimeZone(secondsFromGMT: 0)!
+                   : secondLegOrigin.timeZone
+           )
+        {
+            return manualDeparture
         }
         return returnArrivalInstant.addingTimeInterval(
             TimeInterval(
@@ -3063,6 +3293,7 @@ struct DestinationPage: View {
 
         outboundFlightDate = tomorrow
         outboundStartText = "09:00"
+        returnDepartureText = ""
         multiStopFirstArrivalText = ""
         multiStopDepartureText = ""
         multiStopSecondArrivalText = ""
@@ -3259,6 +3490,7 @@ struct DestinationPage: View {
                     returnFlightDate: $returnFlightDate,
                     outboundStartText: $outboundStartText,
                     desiredHomeArrivalText: $desiredHomeArrivalText,
+                    returnDepartureText: $returnDepartureText,
                     multiStopFirstArrivalText: $multiStopFirstArrivalText,
                     multiStopDepartureText: $multiStopDepartureText,
                     multiStopSecondArrivalText: $multiStopSecondArrivalText,
@@ -3376,6 +3608,46 @@ struct DestinationPage: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(FlybookColor.navy)
                     }
+
+                    HStack(spacing: 12) {
+                        Toggle(
+                            ancillaryFeeLabel(
+                                title: "Parken über Nacht",
+                                count: chargedOvernightParkingCount,
+                                fee: overnightParkingFeeEUR
+                            ),
+                            isOn: $includeOvernightParkingFee
+                        )
+                        .toggleStyle(.checkbox)
+                        Toggle(
+                            ancillaryFeeLabel(
+                                title: "Zoll Einreise",
+                                count: chargedCustomsEntryCount,
+                                fee: customsEntryFeeEUR
+                            ),
+                            isOn: $includeCustomsEntryFee
+                        )
+                        .toggleStyle(.checkbox)
+                        Toggle(
+                            ancillaryFeeLabel(
+                                title: "Zoll Ausreise",
+                                count: chargedCustomsExitCount,
+                                fee: customsExitFeeEUR
+                            ),
+                            isOn: $includeCustomsExitFee
+                        )
+                        .toggleStyle(.checkbox)
+                        if usesSwissLandingFees {
+                            Spacer()
+                            Text(exchangeRateLabel)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(FlybookColor.muted)
+                                .lineLimit(1)
+                        }
+                    }
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(FlybookColor.navy)
+                    .disabled(!includeLandingFeesInTotal)
 
                     HStack {
                         HStack(spacing: 6) {
@@ -3580,6 +3852,8 @@ struct DestinationPage: View {
                         returnLandingFeeQuote,
                     includeLandingFees:
                         includeLandingFeesInTotal,
+                    ancillaryAirportFeesEUR:
+                        includedAncillaryAirportFeesEUR,
                     refuelLossEUR: refuelLossEUR,
                     startingFuelLiters: startingFuelLiters,
                     refuelEnabled: refuelAtDestination,
@@ -3602,6 +3876,7 @@ struct DestinationPage: View {
         .onAppear {
             selectedRefuelFuelRaw = preferredFuel.rawValue
             selectFullStartingFuel()
+            refreshAncillaryFeeDefaults()
         }
     }
 
@@ -3642,7 +3917,8 @@ struct DestinationPage: View {
                         AirportInformationPopover(
                             destination: destination,
                             airport: destinationReference,
-                            instant: plannedMainDestinationArrivalInstant
+                            instant: plannedMainDestinationArrivalInstant,
+                            chfToEUR: exchangeRateModel.chfToEUR
                         )
                     }
                 }
@@ -3845,7 +4121,7 @@ struct DestinationPage: View {
     private func serviceAvailabilityColor(_ value: String) -> Color {
         if positiveService(value) { return .green }
         if value.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("?") {
-            return .orange
+            return .gray
         }
         return .red
     }
@@ -3937,6 +4213,13 @@ struct DestinationPage: View {
                         for: secondLegDestination,
                         mode: newMode
                     )
+                )
+                returnDepartureText = convertedManualClock(
+                    returnDepartureText,
+                    date: returnFlightDate,
+                    airport: secondLegOrigin,
+                    from: timeDisplayMode,
+                    to: newMode
                 )
                 multiStopFirstArrivalText = convertedManualClock(
                     multiStopFirstArrivalText,
@@ -4823,6 +5106,20 @@ private struct AirportInformationPopover: View {
     let destination: Destination
     let airport: AirportReference
     let instant: Date?
+    let chfToEUR: CHFToEURExchangeRate?
+    @StateObject private var localExchangeRateModel = ExchangeRateViewModel()
+
+    init(
+        destination: Destination,
+        airport: AirportReference,
+        instant: Date?,
+        chfToEUR: CHFToEURExchangeRate? = nil
+    ) {
+        self.destination = destination
+        self.airport = airport
+        self.instant = instant
+        self.chfToEUR = chfToEUR
+    }
 
     private var operatingStatus: AirportOperatingStatus? {
         AirportOperatingHoursEvaluator.status(
@@ -4966,7 +5263,10 @@ private struct AirportInformationPopover: View {
                 informationSection("VERSORGUNG & MOBILITÄT") {
                     if !fuelText.isEmpty { detailRow("Kraftstoff", fuelText) }
                     if !destination.fuelDetails.isEmpty {
-                        detailRow("Tankstellen", destination.fuelDetails)
+                        detailRow(
+                            "Tankstellen",
+                            localizedCHFAmounts(in: destination.fuelDetails)
+                        )
                     }
                     if !destination.transfer.isEmpty {
                         detailRow(
@@ -4978,8 +5278,17 @@ private struct AirportInformationPopover: View {
                         )
                     }
                     detailRow("Fahrrad", destination.bikeDirect)
+                    if !destination.bikeInformation.isEmpty {
+                        detailRow("Fahrradinfo", destination.bikeInformation)
+                    }
+                    if let bicyclePriceText {
+                        detailRow("Fahrradpreis", bicyclePriceText)
+                    }
                     detailRow("Mietwagen", destination.rentalCarDirect)
                     detailRow("Bahn ≤ 500 m", destination.railDirect)
+                    if !destination.railInformation.isEmpty {
+                        detailRow("ÖPNV-Info", destination.railInformation)
+                    }
                     detailRow("Bus ≤ 500 m", destination.busDirect)
                     detailRow("app2drive", destination.app2DriveDirect)
                     if !destination.restaurantDirect.isEmpty {
@@ -4990,6 +5299,17 @@ private struct AirportInformationPopover: View {
                     }
                     if !destination.restaurantOpeningHours.isEmpty {
                         detailRow("Gastrozeiten", destination.restaurantOpeningHours)
+                    }
+                }
+
+                if !destination.airportFeeNote.isEmpty {
+                    informationSection("GEBÜHREN") {
+                        detailRow(
+                            "Tarif",
+                            localizedCHFAmounts(
+                                in: destination.airportFeeNote
+                            )
+                        )
                     }
                 }
 
@@ -5028,6 +5348,12 @@ private struct AirportInformationPopover: View {
             .padding(18)
         }
         .frame(width: 500, height: 620)
+        .task {
+            guard chfToEUR == nil,
+                  destination.country.uppercased() == "CH"
+            else { return }
+            await localExchangeRateModel.refreshIfNeeded()
+        }
     }
 
     @ViewBuilder
@@ -5074,6 +5400,71 @@ private struct AirportInformationPopover: View {
         var result = "\(name): \(availability.isEmpty ? "Preis hinterlegt" : availability)"
         if let price {
             result += String(format: " (%.2f €/l)", price)
+        }
+        return result
+    }
+
+    private var bicyclePriceText: String? {
+        let values: [(String, Double?)] = [
+            ("½ Tag inkl. Helm", destination.bikeHalfDayPrice),
+            ("Tag inkl. Helm", destination.bikeFullDayPrice),
+            ("Depot", destination.bikeDepositPrice)
+        ]
+        let existing = values.compactMap { label, amount -> String? in
+            guard let amount else { return nil }
+            return "\(label): \(bikePrice(amount))"
+        }
+        return existing.isEmpty ? nil : existing.joined(separator: " · ")
+    }
+
+    private func bikePrice(_ amount: Double) -> String {
+        let currency = destination.bikePriceCurrency.uppercased()
+        let native = amount.formatted(
+            .number.locale(Locale(identifier: "de_DE"))
+                .precision(.fractionLength(0))
+        )
+        guard currency == "CHF" else {
+            return "\(native) \(currency)"
+        }
+        guard let quote = chfToEUR ?? localExchangeRateModel.chfToEUR else {
+            return "CHF \(native) (EUR ?)"
+        }
+        let converted = ceil(amount * quote.euroPerCHF)
+            .formatted(
+                .number.locale(Locale(identifier: "de_DE"))
+                    .precision(.fractionLength(0))
+            )
+        return "CHF \(native) (ca. \(converted) EUR)"
+    }
+
+    private func localizedCHFAmounts(in text: String) -> String {
+        guard destination.country.uppercased() == "CH",
+              let quote = chfToEUR ?? localExchangeRateModel.chfToEUR,
+              let expression = try? NSRegularExpression(
+                pattern: #"CHF\s+([0-9]+(?:[.,][0-9]+)?)"#
+              )
+        else { return text }
+
+        let source = text as NSString
+        let matches = expression.matches(
+            in: text,
+            range: NSRange(location: 0, length: source.length)
+        )
+        var result = text
+        for match in matches.reversed() {
+            guard match.numberOfRanges > 1 else { continue }
+            let amountText = source.substring(with: match.range(at: 1))
+                .replacingOccurrences(of: ",", with: ".")
+            guard let amount = Double(amountText) else { continue }
+            let eur = ceil(amount * quote.euroPerCHF).formatted(
+                .number.locale(Locale(identifier: "de_DE"))
+                    .precision(.fractionLength(0))
+            )
+            let original = source.substring(with: match.range)
+            result = (result as NSString).replacingCharacters(
+                in: match.range,
+                with: "\(original) (ca. \(eur) EUR)"
+            )
         }
         return result
     }
@@ -5187,7 +5578,7 @@ private struct PlanningWeatherCard: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             HStack(spacing: 6) {
                 WindFlowIndicator(weather: weather)
 
@@ -5198,11 +5589,13 @@ private struct PlanningWeatherCard: View {
                         gust: weather.gust
                     )
                 )
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(width: 116, alignment: .center)
             }
-            .font(.system(size: 14, weight: .bold, design: .rounded))
             .foregroundStyle(FlybookColor.navy)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .frame(width: 158, height: 28, alignment: .center)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(windBackgroundColor)
@@ -5211,25 +5604,30 @@ private struct PlanningWeatherCard: View {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(FlybookColor.navy.opacity(0.45), lineWidth: 1)
             )
-            .frame(height: 28)
 
-            HStack(spacing: 7) {
+            HStack(spacing: 4) {
                 Text(
                     weather.temperature.map {
                         String(format: "%.0f°", $0)
                     } ?? "—"
                 )
                 .font(.system(size: 14, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .frame(width: 34, alignment: .trailing)
 
                 Image(systemName: symbol)
                     .font(.system(size: 20, weight: .medium))
                     .symbolRenderingMode(.multicolor)
+                    .frame(width: 28, height: 22)
 
                 Text(description)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .frame(width: 82, alignment: .leading)
             }
             .foregroundStyle(FlybookColor.navy)
+            .frame(width: 158, height: 22, alignment: .center)
 
             Text(metarCloudAndVisibility)
                 .font(
@@ -5241,6 +5639,8 @@ private struct PlanningWeatherCard: View {
                 )
                 .foregroundStyle(FlybookColor.navy)
                 .lineLimit(1)
+                .minimumScaleFactor(0.78)
+                .frame(width: 158, height: 18, alignment: .center)
                 .help(
                     "ICON zeigt den modellierten niedrigen "
                     + "Wolkenanteil. METAR zeigt dessen "
@@ -5249,16 +5649,19 @@ private struct PlanningWeatherCard: View {
                 )
 
             TimeContextInfo(weather: weather)
+                .frame(width: 158, height: 22, alignment: .center)
 
-            HStack(spacing: 7) {
-                Label(
-                    weather.category.rawValue,
-                    systemImage: "circle.fill"
-                )
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(categoryColor)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(categoryColor)
+                    .frame(width: 9, height: 9)
+                Text(weather.category.rawValue)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(categoryColor)
+                    .lineLimit(1)
+                    .frame(width: 48, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+            .frame(width: 158, height: 16, alignment: .center)
 
             Text(categoryReason ?? " ")
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -5266,33 +5669,30 @@ private struct PlanningWeatherCard: View {
                 .lineLimit(1)
                 .multilineTextAlignment(.center)
                 .frame(
-                    maxWidth: .infinity,
-                    minHeight: 15,
+                    width: 158,
+                    height: 15,
                     alignment: .center
                 )
 
-            if let sunriseText, let sunsetText,
-               let civilDawnText, let civilDuskText {
-                HStack(spacing: 2) {
-                    twilightColumn(
-                        primary: sunriseText,
-                        secondary: civilDawnText,
-                        primarySymbol: "sunrise.fill",
-                        secondarySymbol: "sun.horizon.fill",
-                        secondaryHelp: "Beginn der bürgerlichen Dämmerung"
-                    )
-                    twilightColumn(
-                        primary: sunsetText,
-                        secondary: civilDuskText,
-                        primarySymbol: "sunset.fill",
-                        secondarySymbol: "moon.stars.fill",
-                        secondaryHelp: "Ende der bürgerlichen Dämmerung"
-                    )
-                }
+            HStack(spacing: 2) {
+                twilightColumn(
+                    primary: sunriseText ?? "—",
+                    secondary: civilDawnText ?? "—",
+                    primarySymbol: "sunrise.fill",
+                    secondarySymbol: "sun.horizon.fill",
+                    secondaryHelp: "Beginn der bürgerlichen Dämmerung"
+                )
+                twilightColumn(
+                    primary: sunsetText ?? "—",
+                    secondary: civilDuskText ?? "—",
+                    primarySymbol: "sunset.fill",
+                    secondarySymbol: "moon.stars.fill",
+                    secondaryHelp: "Ende der bürgerlichen Dämmerung"
+                )
             }
+            .frame(width: 158, height: 29, alignment: .center)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.bottom, 6)
+        .frame(width: 174, height: 184, alignment: .top)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(cardBackgroundColor)
@@ -5484,6 +5884,7 @@ private struct FlightTimePlanningRows: View {
     @Binding var returnFlightDate: Date
     @Binding var outboundStartText: String
     @Binding var desiredHomeArrivalText: String
+    @Binding var returnDepartureText: String
     @Binding var multiStopFirstArrivalText: String
     @Binding var multiStopDepartureText: String
     @Binding var multiStopSecondArrivalText: String
@@ -5718,7 +6119,19 @@ private struct FlightTimePlanningRows: View {
                     timeZone: multiStopDepartureTimeZone
                 )
             },
-            set: { multiStopDepartureText = $0 }
+            set: { newValue in
+                let filtered = TimeInput.filtered(newValue)
+                multiStopDepartureText = filtered
+                if let arrivalText = MultiStopTimeLinker.arrivalText(
+                    departureText: filtered,
+                    date: returnFlightDate,
+                    departureTimeZone: multiStopDepartureTimeZone,
+                    arrivalTimeZone: secondArrivalTimeZone,
+                    travelMinutes: returnTravelMinutes
+                ) {
+                    multiStopSecondArrivalText = arrivalText
+                }
+            }
         )
     }
 
@@ -5730,6 +6143,15 @@ private struct FlightTimePlanningRows: View {
                 timeZone: multiStopDepartureTimeZone,
                 automatic: automaticMultiStopDepartureInstant
             )
+        }
+        if !returnDepartureText.isEmpty,
+           let manualDeparture = FlightDateTime.instant(
+               date: returnFlightDate,
+               timeText: returnDepartureText,
+               timeZone: roundTripDepartureTimeZone
+           )
+        {
+            return manualDeparture
         }
         return homeArrivalInstant?.addingTimeInterval(
             TimeInterval(-returnTravelMinutes * 60)
@@ -5753,7 +6175,70 @@ private struct FlightTimePlanningRows: View {
                     timeZone: secondArrivalTimeZone
                 )
             },
-            set: { multiStopSecondArrivalText = $0 }
+            set: { newValue in
+                let filtered = TimeInput.filtered(newValue)
+                multiStopSecondArrivalText = filtered
+                if let departureText = MultiStopTimeLinker.departureText(
+                    arrivalText: filtered,
+                    date: returnFlightDate,
+                    departureTimeZone: multiStopDepartureTimeZone,
+                    arrivalTimeZone: secondArrivalTimeZone,
+                    travelMinutes: returnTravelMinutes
+                ) {
+                    multiStopDepartureText = departureText
+                }
+            }
+        )
+    }
+
+    private var roundTripDepartureTimeZone: TimeZone {
+        timeDisplayMode == .utc
+            ? TimeZone(secondsFromGMT: 0)!
+            : secondDepartureAirport.timeZone
+    }
+
+    private var roundTripArrivalTimeZone: TimeZone {
+        timeDisplayMode == .utc
+            ? TimeZone(secondsFromGMT: 0)!
+            : secondArrivalAirport.timeZone
+    }
+
+    private var roundTripDepartureBinding: Binding<String> {
+        Binding(
+            get: {
+                guard returnDepartureText.isEmpty else {
+                    return returnDepartureText
+                }
+                return FlightDateTime.clock(
+                    instant: returnDepartureInstant,
+                    timeZone: roundTripDepartureTimeZone
+                )
+            },
+            set: { newValue in
+                let filtered = TimeInput.filtered(newValue)
+                returnDepartureText = filtered
+                if let arrivalText = MultiStopTimeLinker.arrivalText(
+                    departureText: filtered,
+                    date: returnFlightDate,
+                    departureTimeZone: roundTripDepartureTimeZone,
+                    arrivalTimeZone: roundTripArrivalTimeZone,
+                    travelMinutes: returnTravelMinutes
+                ) {
+                    desiredHomeArrivalText = arrivalText
+                }
+            }
+        )
+    }
+
+    private var roundTripArrivalBinding: Binding<String> {
+        Binding(
+            get: { desiredHomeArrivalText },
+            set: { newValue in
+                desiredHomeArrivalText = TimeInput.filtered(newValue)
+                // Die Ankunft wird zum neuen Anker; der Abflug wird daraus
+                // mit der aktuellen Streckenzeit rückwärts berechnet.
+                returnDepartureText = ""
+            }
         )
     }
 
@@ -6022,6 +6507,10 @@ private struct FlightTimePlanningRows: View {
                 ? TimeZone(secondsFromGMT: 0)!
                 : secondArrivalAirport.timeZone
         )
+        returnDepartureText = FlightDateTime.clock(
+            instant: departureNow,
+            timeZone: roundTripDepartureTimeZone
+        )
     }
 
     private func setReturnDay(_ dayOffset: Int) {
@@ -6054,6 +6543,7 @@ private struct FlightTimePlanningRows: View {
                 multiStopDepartureText = currentTime
             } else {
                 desiredHomeArrivalText = currentTime
+                returnDepartureText = ""
             }
             return
         }
@@ -6062,6 +6552,7 @@ private struct FlightTimePlanningRows: View {
             multiStopDepartureText = standardTime
         } else {
             desiredHomeArrivalText = standardTime
+            returnDepartureText = ""
         }
     }
 
@@ -6207,6 +6698,7 @@ private struct FlightTimePlanningRows: View {
                 leadingAirportSelection: $outboundOriginSelection,
                 trailingAirportSelection: $outboundDestinationSelection,
                 airportOptions: airportOptions,
+                destinationInformation: destinationInformation,
                 leading: {
                     EditableFlightTimeField(
                         title: "ABFLUG \(origin.icao)",
@@ -6374,6 +6866,7 @@ private struct FlightTimePlanningRows: View {
                 leadingAirportSelection: $returnOriginSelection,
                 trailingAirportSelection: $returnDestinationSelection,
                 airportOptions: airportOptions,
+                destinationInformation: destinationInformation,
                 leading: {
                     if planningMode == .multiStop {
                         EditableFlightTimeField(
@@ -6384,13 +6877,10 @@ private struct FlightTimePlanningRows: View {
                             lightCondition: returnDepartureCondition
                         )
                     } else {
-                        CalculatedFlightTime(
-                            value: FlightDateTime.clock(
-                                instant: returnDepartureInstant,
-                                timeZone: timeDisplayMode == .utc
-                                    ? TimeZone(secondsFromGMT: 0)!
-                                    : secondDepartureAirport.timeZone
-                            ),
+                        EditableFlightTimeField(
+                            title:
+                                "ABFLUG \(secondDepartureAirport.icao)",
+                            text: roundTripDepartureBinding,
                             symbol: "airplane.departure",
                             lightCondition:
                                 returnDepartureCondition
@@ -6409,7 +6899,7 @@ private struct FlightTimePlanningRows: View {
                     } else {
                         EditableFlightTimeField(
                             title: "ANKUNFT \(origin.icao)",
-                            text: $desiredHomeArrivalText,
+                            text: roundTripArrivalBinding,
                             symbol: "airplane.arrival",
                             lightCondition:
                                 homeArrivalCondition
@@ -6435,6 +6925,13 @@ private struct FlightTimePlanningRows: View {
                 desiredHomeArrivalText = filtered
             }
         }
+        .onChange(of: returnDepartureText) { newValue in
+            let filtered = TimeInput.filtered(newValue)
+
+            if filtered != newValue {
+                returnDepartureText = filtered
+            }
+        }
         .onChange(of: multiStopFirstArrivalText) { newValue in
             let filtered = TimeInput.filtered(newValue)
 
@@ -6456,6 +6953,51 @@ private struct FlightTimePlanningRows: View {
                 multiStopSecondArrivalText = filtered
             }
         }
+        .onChange(of: outboundOriginSelection) { _ in
+            resetMultiStopFirstArrivalToCalculation()
+        }
+        .onChange(of: outboundDestinationSelection) { _ in
+            resetMultiStopFirstArrivalToCalculation()
+        }
+        .onChange(of: outboundTravelMinutes) { _ in
+            resetMultiStopFirstArrivalToCalculation()
+        }
+        .onChange(of: returnOriginSelection) { _ in
+            recalculateMultiStopSecondArrival()
+        }
+        .onChange(of: returnDestinationSelection) { _ in
+            recalculateMultiStopSecondArrival()
+        }
+        .onChange(of: returnTravelMinutes) { _ in
+            if planningMode == .multiStop {
+                recalculateMultiStopSecondArrival()
+            } else if !returnDepartureText.isEmpty {
+                desiredHomeArrivalText = MultiStopTimeLinker.arrivalText(
+                    departureText: returnDepartureText,
+                    date: returnFlightDate,
+                    departureTimeZone: roundTripDepartureTimeZone,
+                    arrivalTimeZone: roundTripArrivalTimeZone,
+                    travelMinutes: returnTravelMinutes
+                ) ?? desiredHomeArrivalText
+            }
+        }
+    }
+
+    private func resetMultiStopFirstArrivalToCalculation() {
+        guard planningMode == .multiStop else { return }
+        multiStopFirstArrivalText = ""
+    }
+
+    private func recalculateMultiStopSecondArrival() {
+        guard planningMode == .multiStop else { return }
+        let departureText = multiStopDepartureBinding.wrappedValue
+        multiStopSecondArrivalText = MultiStopTimeLinker.arrivalText(
+            departureText: departureText,
+            date: returnFlightDate,
+            departureTimeZone: multiStopDepartureTimeZone,
+            arrivalTimeZone: secondArrivalTimeZone,
+            travelMinutes: returnTravelMinutes
+        ) ?? ""
     }
 }
 
@@ -6519,34 +7061,31 @@ private struct TimeContextInfo: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 5) {
-                HStack(spacing: 0) {
-                    Image(
-                        systemName:
-                            "gauge.with.dots.needle.33percent"
-                    )
-                    Text(pressureText)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-
-                Text(densityAltitudeText)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(densityAltitudeForeground)
+        HStack(spacing: 4) {
+            HStack(spacing: 1) {
+                Image(
+                    systemName:
+                        "gauge.with.dots.needle.33percent"
+                )
+                Text(pressureText)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(densityAltitudeBackground)
-                    )
             }
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(FlybookColor.navy)
+            .frame(width: 55, alignment: .trailing)
+
+            Text(densityAltitudeText)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(densityAltitudeForeground)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(width: 91, height: 20, alignment: .center)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(densityAltitudeBackground)
+                )
         }
-        .frame(height: 22)
+        .font(.system(size: 12, weight: .bold))
+        .foregroundStyle(FlybookColor.navy)
+        .frame(width: 158, height: 22, alignment: .center)
     }
 }
 
@@ -6579,6 +7118,347 @@ private extension View {
                     .stroke(FlybookColor.navy.opacity(0.34), lineWidth: 2)
                     .padding(-5)
             )
+    }
+}
+
+private struct AirportSearchTextField: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var isEditing: Bool
+    @Binding var focusRequest: Int
+    let fontSize: CGFloat
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = FlybookActivatingSearchTextField()
+        context.coordinator.appliedFocusRequest = focusRequest
+        field.delegate = context.coordinator
+        field.isEnabled = true
+        field.isEditable = true
+        field.isSelectable = true
+        field.refusesFirstResponder = false
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.placeholderString = "ICAO oder Name"
+        field.font = NSFont.systemFont(ofSize: fontSize, weight: .semibold)
+        field.textColor = NSColor(FlybookColor.navy)
+        field.lineBreakMode = .byTruncatingTail
+        field.cell?.usesSingleLineMode = true
+        field.stringValue = text
+        return field
+    }
+
+    func updateNSView(_ field: NSTextField, context: Context) {
+        context.coordinator.parent = self
+        field.font = NSFont.systemFont(ofSize: fontSize, weight: .semibold)
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+        if context.coordinator.appliedFocusRequest != focusRequest {
+            context.coordinator.appliedFocusRequest = focusRequest
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                field.window?.makeKeyAndOrderFront(nil)
+                field.window?.makeFirstResponder(field)
+                field.selectText(nil)
+            }
+        } else if !isEditing, field.currentEditor() != nil {
+            DispatchQueue.main.async {
+                guard !isEditing else { return }
+                field.window?.makeFirstResponder(nil)
+            }
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: AirportSearchTextField
+        var appliedFocusRequest = 0
+
+        init(parent: AirportSearchTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidBeginEditing(_ notification: Notification) {
+            parent.isEditing = true
+            guard let field = notification.object as? NSTextField else { return }
+            DispatchQueue.main.async {
+                (field.currentEditor() as? NSTextView)?.selectAll(nil)
+            }
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            parent.isEditing = false
+        }
+
+        func control(
+            _ control: NSControl,
+            textView: NSTextView,
+            doCommandBy commandSelector: Selector
+        ) -> Bool {
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                parent.onSubmit()
+                return true
+            }
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                parent.isEditing = false
+                control.window?.makeFirstResponder(nil)
+                return true
+            }
+            return false
+        }
+    }
+}
+
+private struct SearchableAirportPicker: View {
+    @Binding var selection: String
+    let airports: [AirportReference]
+    let markersByICAO: [String: String]
+    let includesVirtualOption: Bool
+    let width: CGFloat
+    let height: CGFloat
+    let fontSize: CGFloat
+
+    @State private var searchText = ""
+    @State private var isEditing = false
+    @State private var focusRequest = 0
+
+    private var selectedAirport: AirportReference? {
+        airports.first { $0.icao == selection }
+    }
+
+    private var selectedLabel: String {
+        if selection.isEmpty && includesVirtualOption {
+            return "Virtuell"
+        }
+        return selectedAirport.map { airport in
+            airportListLabel(airport)
+        }
+            ?? selection
+    }
+
+    private var normalizedQuery: String {
+        searchText
+            .folding(
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: .current
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var suggestions: [AirportReference] {
+        guard normalizedQuery.count >= 3 else { return [] }
+        return Array(airports.filter { airport in
+            "\(airport.icao) \(airport.name)"
+                .folding(
+                    options: [.caseInsensitive, .diacriticInsensitive],
+                    locale: .current
+                )
+                .contains(normalizedQuery)
+        }.prefix(7))
+    }
+
+    private var showsVirtualSuggestion: Bool {
+        includesVirtualOption
+            && normalizedQuery.count >= 3
+            && "virtuell".contains(normalizedQuery.lowercased())
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            AirportSearchTextField(
+                text: $searchText,
+                isEditing: $isEditing,
+                focusRequest: $focusRequest,
+                fontSize: fontSize,
+                onSubmit: selectFirstSuggestion
+            )
+            .frame(width: max(44, width - 32), height: height)
+
+            Menu {
+                if includesVirtualOption {
+                    Button("Virtuell") { select(icao: "") }
+                    Divider()
+                }
+                ForEach(airports) { airport in
+                    Button(airportListLabel(airport)) {
+                        select(icao: airport.icao)
+                    }
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+                    .frame(width: 18, height: height)
+            }
+            .menuStyle(.borderlessButton)
+            .focusable(false)
+            .fixedSize()
+        }
+        .padding(.leading, 8)
+        .padding(.trailing, 3)
+        .frame(width: width, height: height)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(
+                    isEditing
+                        ? FlybookColor.blue.opacity(0.75)
+                        : FlybookColor.line,
+                    lineWidth: isEditing ? 1.5 : 1
+                )
+                .allowsHitTesting(false)
+        )
+        .overlay(alignment: .topLeading) {
+            if isEditing,
+               normalizedQuery.count >= 3,
+               showsVirtualSuggestion || !suggestions.isEmpty {
+                suggestionList
+                    .offset(y: height + 2)
+            }
+        }
+        .zIndex(isEditing ? 100 : 1)
+        .onAppear { synchronizeSearchText() }
+        .onChange(of: isEditing) { editing in
+            if !editing {
+                synchronizeSearchText()
+            }
+        }
+        .onChange(of: selection) { _ in
+            synchronizeSearchText()
+        }
+        .onChange(of: searchText) { value in
+            let query = value.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            if let airport = airports.first(where: {
+                $0.icao.caseInsensitiveCompare(query) == .orderedSame
+            }) {
+                selection = airport.icao
+                isEditing = false
+                synchronizeSearchText()
+            } else if includesVirtualOption,
+                      query.caseInsensitiveCompare("Virtuell") == .orderedSame {
+                selection = ""
+                isEditing = false
+                synchronizeSearchText()
+            }
+        }
+        .help("Liste öffnen oder ab drei Zeichen nach ICAO beziehungsweise Flugplatzname suchen")
+    }
+
+    private var suggestionList: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if showsVirtualSuggestion {
+                suggestionButton(icao: "", name: "Virtuell")
+            }
+            ForEach(suggestions) { airport in
+                suggestionButton(
+                    icao: airport.icao,
+                    name: airport.name,
+                    markers: markersByICAO[airport.icao, default: ""]
+                )
+            }
+        }
+        .padding(.vertical, 4)
+        .frame(width: max(width, 260), alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(nsColor: .windowBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(FlybookColor.line, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.18), radius: 7, y: 4)
+    }
+
+    private func suggestionButton(
+        icao: String,
+        name: String,
+        markers: String = ""
+    ) -> some View {
+        Button {
+            select(icao: icao)
+        } label: {
+            HStack(spacing: 7) {
+                if !icao.isEmpty {
+                    Text(icao)
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .frame(width: 42, alignment: .leading)
+                }
+                Text(name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if !markers.isEmpty {
+                    Text(markers)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(FlybookColor.blue)
+                        .lineLimit(1)
+                }
+            }
+            .foregroundStyle(FlybookColor.navy)
+            .padding(.horizontal, 8)
+            .frame(height: 27)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func selectFirstSuggestion() {
+        if showsVirtualSuggestion {
+            select(icao: "")
+        } else if let airport = suggestions.first {
+            select(icao: airport.icao)
+        } else {
+            synchronizeSearchText()
+            isEditing = false
+        }
+    }
+
+    private func select(icao: String) {
+        selection = icao
+        isEditing = false
+        synchronizeSearchText()
+    }
+
+    private func synchronizeSearchText() {
+        searchText = selectedLabel
+    }
+
+    private func airportListLabel(_ airport: AirportReference) -> String {
+        let markers = markersByICAO[airport.icao, default: ""]
+        return markers.isEmpty
+            ? "\(airport.icao) · \(airport.name)"
+            : "\(airport.icao) [\(markers)] · \(airport.name)"
+    }
+}
+
+private enum StopAirportFilter: String, CaseIterable, Identifiable {
+    case avgas = "A"
+    case mogas = "M"
+    case voucher = "$"
+
+    var id: String { rawValue }
+
+    var help: String {
+        switch self {
+        case .avgas: return "Nur Flugplätze mit bestätigtem AVGAS"
+        case .mogas: return "Nur Flugplätze mit bestätigtem MOGAS"
+        case .voucher: return "Nur Flugplätze im gültigen Gutscheinheft"
+        }
     }
 }
 
@@ -6642,10 +7522,11 @@ private struct FlightPlanningLine<
     let leadingAirportSelection: Binding<String>?
     let trailingAirportSelection: Binding<String>?
     let airportOptions: [AirportReference]
+    let destinationInformation: [Destination]
 
     @State private var showsLeadingAirportInformation = false
     @State private var showsTrailingAirportInformation = false
-    @State private var showsAltitudeSelection = false
+    @State private var requiredStopAirportFilters: Set<StopAirportFilter> = []
 
     @AppStorage(ETOPSSettingsKey.greenYellowMinutes)
     private var greenYellowMinutes =
@@ -6758,6 +7639,9 @@ private struct FlightPlanningLine<
         .frame(width: 622, alignment: .leading)
         .onAppear { selectNearestBestLevel() }
         .onChange(of: bestLevelFeet) { _ in selectNearestBestLevel() }
+        .onChange(of: flightDate) { _ in
+            normalizeSelectedStopsForFilters()
+        }
     }
 
     private func selectNearestBestLevel() {
@@ -6857,7 +7741,16 @@ private struct FlightPlanningLine<
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(FlybookColor.muted)
 
-            airportSelectionMenu(title: title, selection: selection, operatingStatus: operatingStatus)
+            SearchableAirportPicker(
+                selection: selection,
+                airports: airportOptions,
+                markersByICAO: [:],
+                includesVirtualOption: false,
+                width: 174,
+                height: 28,
+                fontSize: 14
+            )
+                .id("\(title)-\(selection.wrappedValue)")
                 .padding(.top, 4)
 
             HStack(spacing: 6) {
@@ -6868,6 +7761,7 @@ private struct FlightPlanningLine<
                     instant: informationInstant,
                     isPresented: showsInformation
                 )
+                .frame(width: 22, height: 22, alignment: .center)
 
                 RunwayRecommendationButton(
                     runway: runway,
@@ -6926,45 +7820,6 @@ private struct FlightPlanningLine<
         }
     }
 
-    private func airportSelectionMenu(
-        title: String,
-        selection: Binding<String>,
-        operatingStatus: AirportOperatingStatus?
-    ) -> some View {
-        let selected = airportOptions.first { $0.icao == selection.wrappedValue }
-        return Menu {
-            ForEach(airportOptions) { airport in
-                Button("\(airport.icao) · \(airport.name)") {
-                    selection.wrappedValue = airport.icao
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Text(selected.map { "\($0.icao) · \($0.name)" } ?? selection.wrappedValue)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(FlybookColor.navy)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(FlybookColor.muted)
-            }
-            .padding(.horizontal, 9)
-            .frame(width: 174, height: 28)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(FlybookColor.line, lineWidth: 1)
-            )
-        }
-        .menuStyle(.borderlessButton)
-        .frame(width: 174, height: 28)
-    }
-
     private func airportOperatingStatusColor(_ status: AirportOperatingStatus?) -> Color {
         switch status {
         case .open, .closingSoon: return Color.green
@@ -6988,15 +7843,22 @@ private struct FlightPlanningLine<
 
     private var planningTimeRow: some View {
         HStack(alignment: .center, spacing: 0) {
-            HStack {
-                Spacer(minLength: 0)
-                DatePicker("", selection: $flightDate, displayedComponents: .date)
-                    .labelsHidden()
-                    .datePickerStyle(.field)
-                    .controlSize(.large)
-                    .font(.system(size: 18, weight: .semibold))
-                    .fixedSize()
-                Spacer(minLength: 0)
+            VStack(spacing: 1) {
+                Text(weekdayText)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(FlybookColor.muted)
+                    .lineLimit(1)
+                    .frame(height: 11)
+                HStack(spacing: 0) {
+                    dateStepButton(systemName: "minus", days: -1)
+                    DatePicker("", selection: $flightDate, displayedComponents: .date)
+                        .labelsHidden()
+                        .datePickerStyle(.field)
+                        .controlSize(.small)
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 84, height: 28, alignment: .center)
+                    dateStepButton(systemName: "plus", days: 1)
+                }
             }
             .frame(width: 128, height: 43)
 
@@ -7016,6 +7878,41 @@ private struct FlightPlanningLine<
                 .frame(width: 74, height: 43)
                 .frame(width: 128)
         }
+    }
+
+    private var weekdayText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "de_DE")
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: flightDate).capitalized
+    }
+
+    private func dateStepButton(systemName: String, days: Int) -> some View {
+        Button {
+            if let adjusted = Calendar.current.date(
+                byAdding: .day,
+                value: days,
+                to: flightDate
+            ) {
+                flightDate = adjusted
+            }
+        } label: {
+            Image(systemName: systemName)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(FlybookColor.navy)
+                .frame(width: 22, height: 28)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(FlybookColor.line, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .frame(width: 22, height: 28)
+        .help(days < 0 ? "Einen Tag zurück" : "Einen Tag weiter")
     }
 
     private var planningWeatherRow: some View {
@@ -7049,67 +7946,177 @@ private struct FlightPlanningLine<
             .frame(width: 128, alignment: .top)
 
             VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    PlanningWeatherCard(weather: leadingWeather, civilDawnText: leadingCivilDawnText, sunriseText: leadingSunriseText, sunsetText: leadingSunsetText, civilDuskText: leadingCivilDuskText)
-                        .frame(width: 174, height: 184)
-                    Color.clear.frame(width: 18, height: 1)
-                    PlanningWeatherCard(weather: trailingWeather, civilDawnText: trailingCivilDawnText, sunriseText: trailingSunriseText, sunsetText: trailingSunsetText, civilDuskText: trailingCivilDuskText)
-                        .frame(width: 174, height: 184)
+                HStack(alignment: .top, spacing: 0) {
+                    HStack(spacing: 0) {
+                        PlanningWeatherCard(weather: leadingWeather, civilDawnText: leadingCivilDawnText, sunriseText: leadingSunriseText, sunsetText: leadingSunsetText, civilDuskText: leadingCivilDuskText)
+                            .frame(width: 174, height: 184)
+                        Color.clear.frame(width: 18, height: 1)
+                        PlanningWeatherCard(weather: trailingWeather, civilDawnText: trailingCivilDawnText, sunriseText: trailingSunriseText, sunsetText: trailingSunsetText, civilDuskText: trailingCivilDuskText)
+                            .frame(width: 174, height: 184)
+                    }
+                    .frame(width: 366, height: 184, alignment: .top)
+
+                    VStack(spacing: 7) {
+                        TrackMilesEditor(trackMiles: $trackMiles)
+                        StopCountSelector(selection: $stopCount)
+                            .frame(width: 120, height: 84)
+                        stopAirportFilterBar
+                    }
+                    .frame(width: 128, height: 184, alignment: .top)
                 }
 
                 Spacer(minLength: 0)
                 planningFooterContent
-                    .frame(height: 24)
+                    .frame(width: 494, height: 24, alignment: .center)
             }
-            .frame(width: 366, height: 224, alignment: .top)
+            .frame(width: 494, height: 224, alignment: .top)
+        }
+    }
 
-            VStack(spacing: 9) {
-                TrackMilesEditor(trackMiles: $trackMiles)
-                StopCountSelector(selection: $stopCount)
-                    .frame(width: 120, height: 84)
-                Group {
-                    if stopCount > 0 {
-                        stopAirportPicker(
-                            title: "STOP 1",
-                            selection: $stop1ICAO,
-                            stopIndex: 1
+    private var stopAirportFilterBar: some View {
+        HStack(spacing: 5) {
+            ForEach(StopAirportFilter.allCases) { filter in
+                let isSelected = requiredStopAirportFilters.contains(filter)
+                Button {
+                    toggleStopAirportFilter(filter)
+                } label: {
+                    Text(filter.rawValue)
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(
+                            isSelected ? Color.white : FlybookColor.navy
                         )
-                    } else {
-                        Color.clear.frame(width: 120, height: 22)
-                    }
-                }
-                Group {
-                    if stopCount > 1 {
-                        stopAirportPicker(
-                            title: "STOP 2",
-                            selection: $stop2ICAO,
-                            stopIndex: 2
+                        .frame(width: 31, height: 23)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(
+                                    isSelected
+                                        ? FlybookColor.blue
+                                        : Color(nsColor: .controlBackgroundColor)
+                                )
                         )
-                    } else {
-                        Color.clear.frame(width: 120, height: 22)
-                    }
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(
+                                    isSelected
+                                        ? FlybookColor.navy.opacity(0.45)
+                                        : FlybookColor.line,
+                                    lineWidth: 1
+                                )
+                        )
                 }
+                .buttonStyle(.plain)
+                .help(filter.help + "; aktive Filter werden kombiniert")
             }
-            .frame(width: 128, alignment: .top)
+        }
+        .frame(width: 120, height: 25, alignment: .center)
+    }
+
+    private func toggleStopAirportFilter(_ filter: StopAirportFilter) {
+        if requiredStopAirportFilters.contains(filter) {
+            requiredStopAirportFilters.remove(filter)
+        } else {
+            requiredStopAirportFilters.insert(filter)
+        }
+        normalizeSelectedStopsForFilters()
+    }
+
+    private func normalizeSelectedStopsForFilters() {
+        if !stop1ICAO.isEmpty,
+           !stopAirportMatchesActiveFilters(icao: stop1ICAO) {
+            stop1ICAO = ""
+        }
+        if !stop2ICAO.isEmpty,
+           !stopAirportMatchesActiveFilters(icao: stop2ICAO) {
+            stop2ICAO = ""
         }
     }
 
     private func stopAirportPicker(
         title: String,
         selection: Binding<String>,
-        stopIndex: Int
+        stopIndex: Int,
+        width: CGFloat
     ) -> some View {
-        Picker(title, selection: selection) {
-            Text("Virtuell").tag("")
-            ForEach(sortedStopAirportOptions(stopIndex: stopIndex)) { airport in
-                Text("\(airport.icao) · \(airport.name)").tag(airport.icao)
+        let options = filteredStopAirportOptions(stopIndex: stopIndex)
+        return SearchableAirportPicker(
+            selection: selection,
+            airports: options,
+            markersByICAO: stopAirportMarkers(
+                for: options
+            ),
+            includesVirtualOption: true,
+            width: width,
+            height: 23,
+            fontSize: 10
+        )
+        .help(
+            "Virtuell verwendet die Modellroute; ein Flugplatz berechnet die tatsächlichen Teilstrecken. "
+            + "Bestätigte Kennzeichen: M = MOGAS, A = AVGAS, $ = Gutscheinheft."
+        )
+        .accessibilityLabel(title)
+    }
+
+    private func filteredStopAirportOptions(
+        stopIndex: Int
+    ) -> [AirportReference] {
+        sortedStopAirportOptions(stopIndex: stopIndex).filter {
+            stopAirportMatchesActiveFilters($0)
+        }
+    }
+
+    private func stopAirportMatchesActiveFilters(
+        icao: String
+    ) -> Bool {
+        guard let airport = stopAirportOptions.first(where: {
+            $0.icao == icao
+        }) else { return false }
+        return stopAirportMatchesActiveFilters(airport)
+    }
+
+    private func stopAirportMatchesActiveFilters(
+        _ airport: AirportReference
+    ) -> Bool {
+        requiredStopAirportFilters.isSubset(
+            of: confirmedStopAirportFilters(for: airport)
+        )
+    }
+
+    private func stopAirportMarkers(
+        for airports: [AirportReference]
+    ) -> [String: String] {
+        Dictionary(uniqueKeysWithValues: airports.map { airport in
+            let confirmed = confirmedStopAirportFilters(for: airport)
+            let markers = StopAirportFilter.allCases.compactMap {
+                confirmed.contains($0) ? $0.rawValue : nil
+            }
+            return (airport.icao, markers.joined(separator: " "))
+        })
+    }
+
+    private func confirmedStopAirportFilters(
+        for airport: AirportReference
+    ) -> Set<StopAirportFilter> {
+        var confirmed: Set<StopAirportFilter> = []
+        if airport.icao == "EDFZ" {
+            confirmed.formUnion([.avgas, .mogas])
+        } else if let information = destinationInformation.first(where: {
+            $0.icao == airport.icao
+        }) {
+            if DestinationFinderEvaluator.serviceIsAvailable(
+                information.avgas
+            ) {
+                confirmed.insert(.avgas)
+            }
+            if DestinationFinderEvaluator.serviceIsAvailable(
+                information.mogas
+            ) {
+                confirmed.insert(.mogas)
             }
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .controlSize(.small)
-        .frame(width: 120)
-        .help("Virtuell verwendet die Modellroute; ein Flugplatz berechnet die tatsächlichen Teilstrecken.")
+        if LandingVoucherBook.includes(airport.icao, on: flightDate) {
+            confirmed.insert(.voucher)
+        }
+        return confirmed
     }
 
     private func sortedStopAirportOptions(stopIndex: Int) -> [AirportReference] {
@@ -7191,110 +8198,124 @@ private struct FlightPlanningLine<
     }
 
     private var planningFooterContent: some View {
-            HStack(spacing: 0) {
-                Text(bestLevelFeet.map { String(format: "Best Level: FL%03d", Int(round(Double($0) / 100.0))) } ?? "Best Level: —")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(FlybookColor.navy)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.9)
-                    .frame(width: 140, alignment: .trailing)
-                Button {
-                    showsAltitudeSelection.toggle()
-                } label: {
-                    HStack(spacing: 5) {
-                        Text(altitudeLabel(flightAltitudeFeet))
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(
-                                isRecommendedAltitude(flightAltitudeFeet)
-                                    ? FlybookColor.navy
-                                    : FlybookColor.muted.opacity(0.55)
-                            )
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(FlybookColor.muted)
-                    }
-                    .padding(.horizontal, 7)
-                    .frame(width: 96, height: 23)
-                }
-                .buttonStyle(.plain)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(Color(nsColor: .controlBackgroundColor))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5)
-                        .stroke(FlybookColor.line, lineWidth: 1)
-                )
-                .popover(isPresented: $showsAltitudeSelection, arrowEdge: .bottom) {
-                    altitudeSelectionPopover
-                }
-                Group {
-                    if let headwindKnots { WindInfluenceLabel(headwindKnots: headwindKnots) }
-                }
-                .frame(width: 130, alignment: .leading)
-            }
-            .frame(width: 366, alignment: .center)
-    }
-
-    private var altitudeSelectionPopover: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("FLUGHÖHE")
-                .font(.system(size: 12, weight: .black))
+        HStack(spacing: 0) {
+            Text(bestLevelFeet.map { String(format: "Best Level: FL%03d", Int(round(Double($0) / 100.0))) } ?? "Best Level: —")
+                .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(FlybookColor.navy)
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(FlybookColor.navy)
-                    .frame(width: 6, height: 6)
-                Text("gültig für die Flugrichtung")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(FlybookColor.muted)
-            }
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .frame(width: 110, alignment: .trailing)
 
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(altitudeOptions, id: \.self) { altitude in
-                        altitudeSelectionRow(altitude)
+            Menu {
+                ForEach(altitudeOptions, id: \.self) { altitude in
+                    Button {
+                        flightAltitudeFeet = altitude
+                    } label: {
+                        HStack {
+                            if isRecommendedAltitude(altitude) {
+                                Image(systemName: "diamond.fill")
+                            }
+                            Text(
+                                altitudeLabel(altitude)
+                            )
+                            if flightAltitudeFeet == altitude {
+                                Image(systemName: "checkmark")
+                            }
+                        }
                     }
                 }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(altitudeLabel(flightAltitudeFeet))
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(
+                            isRecommendedAltitude(flightAltitudeFeet)
+                                ? FlybookColor.navy
+                                : FlybookColor.muted.opacity(0.55)
+                        )
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(FlybookColor.muted)
+                }
+                .padding(.horizontal, 6)
+                .frame(width: 92, height: 23)
             }
-            .frame(height: 390)
-        }
-        .padding(10)
-        .frame(width: 210)
-    }
-
-    private func altitudeSelectionRow(_ altitude: Int) -> some View {
-        let recommended = isRecommendedAltitude(altitude)
-        return Button {
-            flightAltitudeFeet = altitude
-            showsAltitudeSelection = false
-        } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .black))
-                    .opacity(flightAltitudeFeet == altitude ? 1 : 0)
-                Text(altitudeLabel(altitude))
-                    .font(.system(size: 12, weight: recommended ? .bold : .medium))
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(
-                recommended
-                    ? FlybookColor.navy
-                    : FlybookColor.muted.opacity(0.42)
-            )
-            .padding(.horizontal, 7)
-            .frame(maxWidth: .infinity, minHeight: 25)
+            .menuStyle(.borderlessButton)
             .background(
                 RoundedRectangle(cornerRadius: 5)
-                    .fill(
-                        flightAltitudeFeet == altitude
-                            ? FlybookColor.blue.opacity(0.13)
-                            : Color.clear
-                    )
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(FlybookColor.line, lineWidth: 1)
+            )
+
+            Group {
+                if let headwindKnots {
+                    WindInfluenceLabel(headwindKnots: headwindKnots)
+                } else {
+                    Text("Wind —")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(FlybookColor.muted)
+                }
+            }
+            .frame(width: 110, alignment: .center)
+
+            footerStopPickers
+                .frame(width: 182, height: 23, alignment: .center)
+        }
+        .frame(width: 494, height: 24, alignment: .center)
+    }
+
+    @ViewBuilder
+    private var footerStopPickers: some View {
+        if stopCount <= 0 {
+            Color.clear.frame(width: 182, height: 23)
+        } else if stopCount == 1 {
+            footerStopPicker(
+                label: "1",
+                selection: $stop1ICAO,
+                stopIndex: 1,
+                width: 182
+            )
+        } else {
+            HStack(spacing: 2) {
+                footerStopPicker(
+                    label: "1",
+                    selection: $stop1ICAO,
+                    stopIndex: 1,
+                    width: 90
+                )
+                footerStopPicker(
+                    label: "2",
+                    selection: $stop2ICAO,
+                    stopIndex: 2,
+                    width: 90
+                )
+            }
+        }
+    }
+
+    private func footerStopPicker(
+        label: String,
+        selection: Binding<String>,
+        stopIndex: Int,
+        width: CGFloat
+    ) -> some View {
+        HStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .foregroundStyle(FlybookColor.muted)
+                .frame(width: 10)
+            stopAirportPicker(
+                title: "STOP \(label)",
+                selection: selection,
+                stopIndex: stopIndex,
+                width: max(60, width - 12)
             )
         }
-        .buttonStyle(.plain)
+        .frame(width: width, height: 23, alignment: .center)
     }
 
     private func isRecommendedAltitude(_ altitude: Int) -> Bool {
@@ -8022,6 +9043,7 @@ private struct CalculationTotalRow: View {
     let outboundLandingFeeQuote: AirportLandingFeeQuote
     let returnLandingFeeQuote: AirportLandingFeeQuote
     let includeLandingFees: Bool
+    let ancillaryAirportFeesEUR: Double
     let refuelLossEUR: Double?
     let startingFuelLiters: Double
     let refuelEnabled: Bool
@@ -8151,7 +9173,8 @@ private struct CalculationTotalRow: View {
         CharterMath.combinedTotalCost(
             charterCostEUR: totalCharterCost,
             landingFeesEUR: includedLandingFeesEUR,
-            includeLandingFees: includeLandingFees
+            includeLandingFees: includeLandingFees,
+            ancillaryAirportFeesEUR: ancillaryAirportFeesEUR
         )
     }
 
@@ -8163,7 +9186,9 @@ private struct CalculationTotalRow: View {
         guard includeLandingFees else { return "Nur Charter" }
         return hasUnknownLandingFees
             ? "? Gebühr nicht enthalten"
-            : "Charter + Landegebühren"
+            : ancillaryAirportFeesEUR > 0
+                ? "Charter + Flugplatzgebühren"
+                : "Charter + Landegebühren"
     }
 
     private var totalFuelColor: Color {
@@ -9037,8 +10062,8 @@ private struct RunwayRecommendationButton: View {
             Label(runway ?? " ", systemImage: "road.lanes")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(FlybookColor.navy)
-                .padding(.horizontal, 10)
-                .frame(height: 28)
+                .lineLimit(1)
+                .frame(width: 120, height: 28, alignment: .center)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
                         .fill(backgroundColor)
@@ -9050,6 +10075,7 @@ private struct RunwayRecommendationButton: View {
         }
         .buttonStyle(.plain)
         .opacity(runway == nil ? 0 : 1)
+        .frame(width: 120, height: 28, alignment: .center)
         .help(
             windComponents == nil
                 ? "Bevorzugte Piste nach Windrichtung"
@@ -9149,8 +10175,8 @@ private struct FlightLocationHeader: View {
                 Label(runway ?? " ", systemImage: "road.lanes")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(FlybookColor.navy)
-                    .padding(.horizontal, 10)
-                    .frame(height: 28)
+                    .lineLimit(1)
+                    .frame(width: 120, height: 28, alignment: .center)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
                             .fill(crosswindBackgroundColor)
@@ -9162,7 +10188,7 @@ private struct FlightLocationHeader: View {
             }
             .buttonStyle(.plain)
             .opacity(runway == nil ? 0 : 1)
-            .frame(height: 28)
+            .frame(width: 120, height: 28)
             .help(windComponents == nil ? crosswindHelp : crosswindHelp + " – klicken für Windkomponenten")
             .popover(isPresented: $showsWindComponents, arrowEdge: .bottom) {
                 runwayWindComponentPopover
@@ -9457,6 +10483,11 @@ private struct AirportMetric: View {
             ) + "/L"
             return price
         }
+        if normalizedAvailability.hasPrefix("ja")
+            && normalizedAvailability.contains("ppr")
+        {
+            return "PPR"
+        }
         if ["ja", "yes", "verfügbar", "vorhanden"].contains(normalizedAvailability) {
             return "Ja"
         }
@@ -9497,6 +10528,7 @@ private struct AirportMetric: View {
         }
         if displayedValue == "Ja" { return .green }
         if displayedValue == "Nein" { return .red }
+        if displayedValue == "PPR" { return .orange }
         return FlybookColor.muted
     }
 
@@ -9981,7 +11013,7 @@ private struct ResourceImage: View {
 
     var body: some View {
         Group {
-            if let url = Bundle.module.url(
+            if let url = FlybookResources.bundle.url(
                 forResource: name,
                 withExtension: extensionName,
                 subdirectory: subdirectory

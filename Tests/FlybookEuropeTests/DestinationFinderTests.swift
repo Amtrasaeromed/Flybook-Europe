@@ -106,7 +106,7 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
-    func testRainFreeCoverageRequiresSixtySixPercentOnEveryDay() {
+    func testRainFreeCoverageRequiresSelectedPercentageOnEveryDay() {
         let firstDay = utcDate(year: 2026, month: 8, day: 17)
         let secondDay = utcDate(year: 2026, month: 8, day: 18)
         let firstDayHours = rainHours(
@@ -125,7 +125,8 @@ final class DestinationFinderTests: XCTestCase {
                 firstDayHours + secondDayHours,
                 from: firstDay,
                 until: secondDay.addingTimeInterval(23 * 3600),
-                destination: destination
+                destination: destination,
+                minimumCoverage: 0.625
             )
         )
     }
@@ -149,42 +150,45 @@ final class DestinationFinderTests: XCTestCase {
                 firstDayHours + secondDayHours,
                 from: firstDay,
                 until: secondDay.addingTimeInterval(23 * 3600),
-                destination: destination
+                destination: destination,
+                minimumCoverage: 0.625
             )
         )
     }
 
-    func testScatteredCloudCoverageRequiresTwoThirdsOnEveryDay() {
+    func testBlueSkyCoverageRequiresSelectedPercentageOnEveryDay() {
         let firstDay = utcDate(year: 2026, month: 8, day: 17)
         let secondDay = utcDate(year: 2026, month: 8, day: 18)
 
         XCTAssertTrue(
-            DestinationFinderEvaluator.scatteredCloudCoverageMatches(
+            DestinationFinderEvaluator.blueSkyCoverageMatches(
                 cloudHours(on: firstDay, acceptableHours: 8, overcastHours: 4)
                     + cloudHours(on: secondDay, acceptableHours: 8, overcastHours: 4),
                 from: firstDay,
                 until: secondDay.addingTimeInterval(23 * 3600),
-                destination: destination
+                destination: destination,
+                minimumCoverage: 0.625
             )
         )
     }
 
-    func testClearDayCannotCompensateForDayBelowScatteredCloudCoverage() {
+    func testClearDayCannotCompensateForDayBelowBlueSkyCoverage() {
         let firstDay = utcDate(year: 2026, month: 8, day: 17)
         let secondDay = utcDate(year: 2026, month: 8, day: 18)
 
         XCTAssertFalse(
-            DestinationFinderEvaluator.scatteredCloudCoverageMatches(
+            DestinationFinderEvaluator.blueSkyCoverageMatches(
                 cloudHours(on: firstDay, acceptableHours: 7, overcastHours: 5)
                     + cloudHours(on: secondDay, acceptableHours: 12, overcastHours: 0),
                 from: firstDay,
                 until: secondDay.addingTimeInterval(23 * 3600),
-                destination: destination
+                destination: destination,
+                minimumCoverage: 0.625
             )
         )
     }
 
-    func testMissingCloudValuesCountAgainstScatteredCloudCoverage() {
+    func testMissingCloudValuesCountAgainstBlueSkyCoverage() {
         let day = utcDate(year: 2026, month: 8, day: 17)
         var samples = cloudHours(on: day, acceptableHours: 8, overcastHours: 3)
         for hour in [17, 18] {
@@ -202,11 +206,35 @@ final class DestinationFinderTests: XCTestCase {
         }
 
         XCTAssertFalse(
-            DestinationFinderEvaluator.scatteredCloudCoverageMatches(
+            DestinationFinderEvaluator.blueSkyCoverageMatches(
                 samples,
                 from: day,
                 until: day.addingTimeInterval(23 * 3600),
-                destination: destination
+                destination: destination,
+                minimumCoverage: 0.625
+            )
+        )
+    }
+
+    func testCoverageAcceptsExactEightySevenPointFivePercent() {
+        let day = utcDate(year: 2026, month: 8, day: 17)
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.rainFreeCoverageMatches(
+                rainHours(on: day, dryHours: 7, rainyHours: 1),
+                from: day,
+                until: day.addingTimeInterval(23 * 3600),
+                destination: destination,
+                minimumCoverage: 0.875
+            )
+        )
+        XCTAssertTrue(
+            DestinationFinderEvaluator.blueSkyCoverageMatches(
+                cloudHours(on: day, acceptableHours: 7, overcastHours: 1),
+                from: day,
+                until: day.addingTimeInterval(23 * 3600),
+                destination: destination,
+                minimumCoverage: 0.875
             )
         )
     }
@@ -302,6 +330,75 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testAnyMobilityAcceptsOneConfirmedService() {
+        XCTAssertTrue(
+            DestinationFinderEvaluator.mobilityMatches(
+                bicycle: "?",
+                rentalCar: "Nein",
+                app2Drive: "?",
+                rail: "Ja – Bahnhof 350 m",
+                bus: "Nein",
+                requiresBicycle: false,
+                requiresRentalCar: false,
+                requiresApp2Drive: false,
+                requiresRail: false,
+                requiresBus: false,
+                requiresAny: true
+            )
+        )
+    }
+
+    func testAnyMobilityRejectsOnlyUnknownAndNegativeServices() {
+        XCTAssertFalse(
+            DestinationFinderEvaluator.mobilityMatches(
+                bicycle: "?",
+                rentalCar: "Nein",
+                app2Drive: "? – nicht bestätigt",
+                rail: "?",
+                bus: "Nein",
+                requiresBicycle: false,
+                requiresRentalCar: false,
+                requiresApp2Drive: false,
+                requiresRail: false,
+                requiresBus: false,
+                requiresAny: true
+            )
+        )
+    }
+
+    func testSpecificRailAndBusFiltersRequireConfirmedValues() {
+        XCTAssertFalse(
+            DestinationFinderEvaluator.mobilityMatches(
+                bicycle: "Ja",
+                rentalCar: "Ja",
+                app2Drive: "Ja",
+                rail: "?",
+                bus: "Ja",
+                requiresBicycle: false,
+                requiresRentalCar: false,
+                requiresApp2Drive: false,
+                requiresRail: true,
+                requiresBus: true,
+                requiresAny: false
+            )
+        )
+        XCTAssertTrue(
+            DestinationFinderEvaluator.mobilityMatches(
+                bicycle: "Nein",
+                rentalCar: "Nein",
+                app2Drive: "Nein",
+                rail: "Ja",
+                bus: "Ja – Haltestelle 200 m",
+                requiresBicycle: false,
+                requiresRentalCar: false,
+                requiresApp2Drive: false,
+                requiresRail: true,
+                requiresBus: true,
+                requiresAny: false
+            )
+        )
+    }
+
     @MainActor
     func testCountryOnlyFilterFindsEveryUKMergeAirport() async {
         let store = DestinationStore()
@@ -327,7 +424,6 @@ final class DestinationFinderTests: XCTestCase {
             ignoresGusts: true,
             minimumWeather: .vfr,
             ignoresMinimumWeather: true,
-            requiresCloudless: false,
             requiresRainFree: false,
             daylightOnly: false,
             daytimeOnly: false
@@ -599,7 +695,6 @@ final class DestinationFinderTests: XCTestCase {
             maximumGustKnots: maximumGust,
             ignoresGusts: ignoresGusts,
             minimumWeather: minimumWeather,
-            requiresCloudless: false,
             requiresRainFree: requiresRainFree,
             daylightOnly: daylightOnly,
             daytimeOnly: false,

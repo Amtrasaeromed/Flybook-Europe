@@ -19,10 +19,33 @@ enum CharterMath {
     static func combinedTotalCost(
         charterCostEUR: Double,
         landingFeesEUR: Double,
-        includeLandingFees: Bool
+        includeLandingFees: Bool,
+        ancillaryAirportFeesEUR: Double = 0
     ) -> Double {
         max(0, charterCostEUR)
-            + (includeLandingFees ? max(0, landingFeesEUR) : 0)
+            + (includeLandingFees
+                ? max(0, landingFeesEUR) + max(0, ancillaryAirportFeesEUR)
+                : 0)
+    }
+
+    static func overnightCount(
+        arrival: Date,
+        departure: Date,
+        timeZone: TimeZone
+    ) -> Int {
+        guard departure > arrival else { return 0 }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let arrivalDay = calendar.startOfDay(for: arrival)
+        let departureDay = calendar.startOfDay(for: departure)
+        return max(
+            0,
+            calendar.dateComponents(
+                [.day],
+                from: arrivalDay,
+                to: departureDay
+            ).day ?? 0
+        )
     }
 
     /// Commercial block time is rounded for every flight separately. Adding
@@ -148,5 +171,119 @@ enum CharterMath {
             * vatRate / (1 + vatRate)
             * billedLiters
         return priceSurcharge + includedVAT
+    }
+}
+
+enum SchengenArea {
+    static let countryCodes: Set<String> = [
+        "AT", "BE", "BG", "CH", "CZ", "DE", "DK", "EE", "ES", "FI",
+        "FR", "GR", "HR", "HU", "IS", "IT", "LI", "LT", "LU", "LV",
+        "MT", "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK"
+    ]
+
+    static func contains(countryCode: String) -> Bool {
+        countryCodes.contains(
+            countryCode
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .uppercased()
+        )
+    }
+
+    static func crossesBoundary(
+        from origin: AirportReference,
+        to destination: AirportReference
+    ) -> Bool {
+        let originCountry = countryCode(for: origin)
+        let destinationCountry = countryCode(for: destination)
+        guard !originCountry.isEmpty, !destinationCountry.isEmpty else {
+            return false
+        }
+        return contains(countryCode: originCountry)
+            != contains(countryCode: destinationCountry)
+    }
+
+    static func countryCode(for airport: AirportReference) -> String {
+        let explicit = airport.country
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        if !explicit.isEmpty { return explicit }
+
+        let icao = airport.icao.uppercased()
+        let prefixes: [(String, String)] = [
+            ("ED", "DE"), ("LS", "CH"), ("LO", "AT"), ("EB", "BE"),
+            ("LF", "FR"), ("EG", "GB"), ("EH", "NL"), ("EK", "DK"),
+            ("EN", "NO"), ("ES", "SE"), ("EF", "FI"), ("EI", "IE"),
+            ("LK", "CZ"), ("EP", "PL"), ("LZ", "SK"), ("LH", "HU"),
+            ("LJ", "SI"), ("LD", "HR"), ("LI", "IT"), ("LE", "ES"),
+            ("LP", "PT"), ("LG", "GR"), ("LR", "RO"), ("LB", "BG")
+        ]
+        return prefixes.first { icao.hasPrefix($0.0) }?.1 ?? ""
+    }
+}
+
+/// Customs territory is deliberately separate from Schengen. Switzerland
+/// participates in Schengen, but not in the EU customs territory.
+enum CustomsTerritory {
+    private static let euCountryCodes: Set<String> = [
+        "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI",
+        "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT",
+        "NL", "PL", "PT", "RO", "SE", "SI", "SK"
+    ]
+
+    static func identifier(countryCode: String) -> String {
+        let normalized = countryCode
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        if euCountryCodes.contains(normalized) { return "EU" }
+        // Liechtenstein forms one customs territory with Switzerland.
+        if normalized == "CH" || normalized == "LI" { return "CH-LI" }
+        return normalized
+    }
+
+    static func crossesBoundary(
+        from origin: AirportReference,
+        to destination: AirportReference
+    ) -> Bool {
+        let originCountry = SchengenArea.countryCode(for: origin)
+        let destinationCountry = SchengenArea.countryCode(for: destination)
+        guard !originCountry.isEmpty, !destinationCountry.isEmpty else {
+            return false
+        }
+        return identifier(countryCode: originCountry)
+            != identifier(countryCode: destinationCountry)
+    }
+}
+
+struct CustomsControlCounts: Equatable {
+    let entry: Int
+    let exit: Int
+}
+
+enum CustomsFeeRules {
+    /// Counts customs events at the airport that owns the fee schedule.
+    /// Arrival at that airport is an entry, departure from it is an exit.
+    static func controls(
+        at airportICAO: String,
+        routes: [[AirportReference]]
+    ) -> CustomsControlCounts {
+        let normalizedICAO = airportICAO.uppercased()
+        var entry = 0
+        var exit = 0
+
+        for route in routes {
+            for (origin, destination) in zip(route, route.dropFirst())
+            where CustomsTerritory.crossesBoundary(
+                from: origin,
+                to: destination
+            ) {
+                if destination.icao.uppercased() == normalizedICAO {
+                    entry += 1
+                }
+                if origin.icao.uppercased() == normalizedICAO {
+                    exit += 1
+                }
+            }
+        }
+        return CustomsControlCounts(entry: entry, exit: exit)
     }
 }

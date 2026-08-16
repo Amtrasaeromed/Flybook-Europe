@@ -1,8 +1,20 @@
 import SwiftUI
 import AppKit
 
+final class FlybookAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
 @main
 struct FlybookEuropeApp: App {
+    @NSApplicationDelegateAdaptor(FlybookAppDelegate.self)
+    private var appDelegate
     @StateObject private var store = DestinationStore()
     @State private var selectedIndex = 0
     @State private var didSelectDefaultDestination = false
@@ -18,6 +30,7 @@ struct FlybookEuropeApp: App {
     @State private var destinationSearchText = ""
     @State private var plannedMainDestinationArrival: Date?
     @State private var destinationSearchIsFocused = false
+    @State private var destinationSearchFocusRequest = 0
     @AppStorage(UnitSystemSettingsKey.displaySystem)
     private var displayUnitSystemRaw = DisplayUnitSystem.eu.rawValue
     @AppStorage(CalculationSettingsKey.fuelDisplayUnit)
@@ -37,7 +50,7 @@ struct FlybookEuropeApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Flybook Europe") {
+        Window("Flybook Europe", id: "main") {
             VStack(spacing: 0) {
                 navigationBar
                     .zIndex(100)
@@ -418,6 +431,7 @@ struct FlybookEuropeApp: App {
             DestinationSearchTextField(
                 text: $destinationSearchText,
                 isEditing: $destinationSearchIsFocused,
+                focusRequest: $destinationSearchFocusRequest,
                 placeholder: "Ziel suchen · ICAO oder Name",
                 onSubmit: selectTypedDestination
             )
@@ -445,6 +459,7 @@ struct FlybookEuropeApp: App {
                     .frame(width: 24, height: 28)
             }
             .menuStyle(.borderlessButton)
+            .focusable(false)
         }
         .padding(.horizontal, 10)
         .frame(width: 330, height: 36)
@@ -455,6 +470,7 @@ struct FlybookEuropeApp: App {
         .overlay(
             RoundedRectangle(cornerRadius: 9)
                 .stroke(FlybookColor.blue.opacity(0.55), lineWidth: 1.5)
+                .allowsHitTesting(false)
         )
         .overlay(alignment: .topLeading) {
             if destinationSearchIsFocused,
@@ -659,6 +675,7 @@ struct FlybookEuropeApp: App {
 private struct DestinationSearchTextField: NSViewRepresentable {
     @Binding var text: String
     @Binding var isEditing: Bool
+    @Binding var focusRequest: Int
     let placeholder: String
     let onSubmit: () -> Void
 
@@ -667,8 +684,13 @@ private struct DestinationSearchTextField: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSTextField {
-        let field = NSTextField()
+        let field = FlybookActivatingSearchTextField()
+        context.coordinator.appliedFocusRequest = focusRequest
         field.delegate = context.coordinator
+        field.isEnabled = true
+        field.isEditable = true
+        field.isSelectable = true
+        field.refusesFirstResponder = false
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
@@ -685,7 +707,15 @@ private struct DestinationSearchTextField: NSViewRepresentable {
         if field.stringValue != text {
             field.stringValue = text
         }
-        if !isEditing,
+        if context.coordinator.appliedFocusRequest != focusRequest {
+            context.coordinator.appliedFocusRequest = focusRequest
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                field.window?.makeKeyAndOrderFront(nil)
+                field.window?.makeFirstResponder(field)
+                field.selectText(nil)
+            }
+        } else if !isEditing,
            field.window?.firstResponder === field.currentEditor() {
             field.window?.makeFirstResponder(nil)
         }
@@ -693,6 +723,7 @@ private struct DestinationSearchTextField: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: DestinationSearchTextField
+        var appliedFocusRequest = 0
 
         init(parent: DestinationSearchTextField) {
             self.parent = parent

@@ -46,6 +46,7 @@ struct AircraftType: RawRepresentable, Hashable, Identifiable {
         keyPrefix + ".usableFuel"
     }
     var mtowKey: String { keyPrefix + ".mtowKilograms" }
+    var noiseLevelDBAKey: String { keyPrefix + ".noiseLevelDBA" }
     var increasedNoiseProtectionKey: String {
         keyPrefix + ".increasedNoiseProtection"
     }
@@ -87,6 +88,10 @@ struct AircraftType: RawRepresentable, Hashable, Identifiable {
     }
 
     var defaultMTOWKilograms: Double { self == .a211 ? 750 : 0 }
+    /// ICAO Annex 16, chapter 10 value published in the AQUILA A211 POH.
+    /// Unknown aircraft deliberately remain at zero until the operator enters
+    /// the value from the individual noise certificate.
+    var defaultNoiseLevelDBA: Double { self == .a211 ? 65.1 : 0 }
     var defaultIncreasedNoiseProtection: Bool { self == .a211 }
     var defaultPreferredFuel: AircraftFuelType { self == .a211 ? .mogas : .avgas }
     func defaultFuelApproval(_ fuel: AircraftFuelType) -> Bool {
@@ -468,6 +473,14 @@ enum AircraftProfileStore {
         storedValue(key: aircraft.mtowKey, fallback: aircraft.defaultMTOWKilograms)
     }
 
+    static func noiseLevelDBA(for aircraft: AircraftType) -> Double? {
+        let value = storedValue(
+            key: aircraft.noiseLevelDBAKey,
+            fallback: aircraft.defaultNoiseLevelDBA
+        )
+        return value > 0 ? value : nil
+    }
+
     static func assignedBase(for aircraft: AircraftType) -> FlybookBase {
         let raw = UserDefaults.standard.string(forKey: aircraft.assignedBaseKey)
         return raw.flatMap(FlybookBase.init(rawValue:)) ?? .lsvMainz
@@ -767,6 +780,7 @@ private struct AircraftProfileEditor: View {
     @AppStorage private var fixedFuelConsumptionEnabled: Bool
     @AppStorage private var usableFuel: Double
     @AppStorage private var mtowKilograms: Double
+    @AppStorage private var noiseLevelDBA: Double
     @AppStorage private var increasedNoiseProtection: Bool
     @AppStorage private var preferredFuelRaw: String
     @AppStorage private var avgasApproved: Bool
@@ -841,6 +855,7 @@ private struct AircraftProfileEditor: View {
             aircraft.usableFuelKey
         )
         _mtowKilograms = AppStorage(wrappedValue: aircraft.defaultMTOWKilograms, aircraft.mtowKey)
+        _noiseLevelDBA = AppStorage(wrappedValue: aircraft.defaultNoiseLevelDBA, aircraft.noiseLevelDBAKey)
         _increasedNoiseProtection = AppStorage(wrappedValue: aircraft.defaultIncreasedNoiseProtection, aircraft.increasedNoiseProtectionKey)
         _preferredFuelRaw = AppStorage(wrappedValue: aircraft.defaultPreferredFuel.rawValue, aircraft.preferredFuelKey)
         _avgasApproved = AppStorage(wrappedValue: aircraft.defaultFuelApproval(.avgas), aircraft.approvedFuelKey(.avgas))
@@ -908,8 +923,27 @@ private struct AircraftProfileEditor: View {
                                 suffix: "kg"
                             )
 
+                            profileRow(
+                                title: "Lärmwert",
+                                value: $noiseLevelDBA,
+                                range: 0...120,
+                                step: 0.1,
+                                suffix: "dB(A)",
+                                fractionDigits: 1
+                            )
+
+                            if noiseLevelDBA <= 0 {
+                                Label(
+                                    "Pflichtangabe: Ohne dB(A)-Wert werden dB-abhängige Landegebühren mit ? angezeigt.",
+                                    systemImage: "exclamationmark.triangle.fill"
+                                )
+                                .font(.caption.bold())
+                                .foregroundStyle(.red)
+                                .padding(.leading, 278)
+                            }
+
                             HStack(spacing: 18) {
-                                Text("Erhöhter Schallschutz")
+                                Text("Erhöhter Schallschutz / Kapitel 10")
                                     .font(.headline)
                                     .frame(width: 260, alignment: .leading)
                                 Toggle("Erfüllt", isOn: $increasedNoiseProtection)
@@ -1055,6 +1089,7 @@ private struct AircraftProfileEditor: View {
                         usableFuel =
                             aircraft.defaultUsableFuel
                         mtowKilograms = aircraft.defaultMTOWKilograms
+                        noiseLevelDBA = aircraft.defaultNoiseLevelDBA
                         increasedNoiseProtection = aircraft.defaultIncreasedNoiseProtection
                         preferredFuelRaw = aircraft.defaultPreferredFuel.rawValue
                         avgasApproved = aircraft.defaultFuelApproval(.avgas)
@@ -1224,7 +1259,8 @@ private struct AircraftProfileEditor: View {
         value: Binding<Double>,
         range: ClosedRange<Double>,
         step: Double,
-        suffix: String
+        suffix: String,
+        fractionDigits: Int = 0
     ) -> some View {
         HStack(spacing: 18) {
             Text(title)
@@ -1238,7 +1274,7 @@ private struct AircraftProfileEditor: View {
                 TextField(
                     "0",
                     value: value,
-                    format: .number.precision(.fractionLength(0))
+                    format: .number.precision(.fractionLength(fractionDigits))
                 )
                 .multilineTextAlignment(.trailing)
                 .textFieldStyle(.roundedBorder)
@@ -1248,13 +1284,13 @@ private struct AircraftProfileEditor: View {
                 Text(suffix)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(FlybookColor.navy)
-                    .frame(width: 42, alignment: .leading)
+                    .frame(width: 58, alignment: .leading)
 
                 Stepper(title, value: value, in: range, step: step)
                     .labelsHidden()
                     .fixedSize()
             }
-            .frame(width: 180, alignment: .leading)
+            .frame(width: 198, alignment: .leading)
             Spacer()
         }
     }

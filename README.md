@@ -6,10 +6,10 @@ NOTAM, PPR, Flugwetterbriefing noch die operative Flugleistungsrechnung.
 
 ## Aktueller Umfang
 
-- 125 Flugplätze in `airports.csv`
-- 94 touristische Zielprofile und 31 TechStop-Profile
-- 875 Merkmalszeilen: exakt sieben je Flugplatz
-- 373 Service-, 471 Kraftstoff- und 36 Preisdatensätze
+- 144 Flugplätze in `airports.csv`
+- 106 touristische Zielprofile und 37 TechStop-Profile
+- 1.008 Merkmalszeilen: exakt sieben je Flugplatz
+- 794 Service-, 446 Kraftstoff- und 54 Preisdatensätze
 - Flugzeug-, Vereins-, Benutzer- und Airportprofile dauerhaft in `UserDefaults`
 - Benutzerprofile Stephan und Maria in der stabilen Suite
   `de.flybook.europe.user-profiles`

@@ -113,6 +113,7 @@ struct AirportReference: Identifiable, Hashable {
     let elevationFeet: Double
     let timeZone: TimeZone
     var referenceRunway: String? = nil
+    var country: String = ""
 
     static let edfz = AirportReference(
         icao: "EDFZ",
@@ -121,7 +122,8 @@ struct AirportReference: Identifiable, Hashable {
         longitude: FlightDateTime.edfzLongitude,
         elevationFeet: 760,
         timeZone: DestinationTimeZone.edfz,
-        referenceRunway: "07/25"
+        referenceRunway: "07/25",
+        country: "DE"
     )
 }
 
@@ -252,8 +254,14 @@ struct Destination: Identifiable, Hashable {
     let transfer: String
     let transferMinutes: Int
     let bikeDirect: String
+    var bikeInformation: String = ""
+    var bikeHalfDayPrice: Double?
+    var bikeFullDayPrice: Double?
+    var bikeDepositPrice: Double?
+    var bikePriceCurrency: String = ""
     var rentalCarDirect: String = ""
     var railDirect: String = ""
+    var railInformation: String = ""
     var busDirect: String = ""
     var app2DriveDirect: String = ""
     var restaurantDirect: String = ""
@@ -267,6 +275,7 @@ struct Destination: Identifiable, Hashable {
     let highlights: String
     let activities: String
     let airportNote: String
+    var airportFeeNote: String = ""
     let status: String
     let airportSource: String
     let tourismSource: String

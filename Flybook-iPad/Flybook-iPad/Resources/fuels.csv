@@ -88,8 +88,9 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDTD:AVGAS,EDTD,AVGAS,Ja – AVGAS 100LL,Ja – AVGAS 100LL,Aktuelle Preise am Automaten/Betreiber prüfen,Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDTD:MOGAS_SUPER,EDTD,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise am Automaten/Betreiber prüfen,Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDTD:UL91,EDTD,UL91,Nein,Nein,Aktuelle Preise am Automaten/Betreiber prüfen,Selbstbedienungstankanlage,https://donau-airport.de/piloteninformationen/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
-1.2,EDTF:AVGAS,EDTF,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-02,2026-08-02
-1.2,EDTF:MOGAS_SUPER,EDTF,MOGAS_SUPER,Ja – MOGAS,Ja – MOGAS,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-02,2026-08-02
+1.2,EDTF:AVGAS,EDTF,AVGAS,Ja – AVGAS 100LL,AVGAS 100LL,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-16,2026-08-16
+1.2,EDTF:JET_A1,EDTF,JET_A1,Ja – Jet A1,Jet A1,"Keine Betankung mit laufenden Triebwerken, ausgenommen APU",,https://freiburg-airport.de/,2026-08-16,2026-08-16
+1.2,EDTF:MOGAS_SUPER,EDTF,MOGAS_SUPER,Ja – MOGAS,MOGAS,"Keine Betankung mit laufenden Triebwerken, ausgenommen APU",,https://freiburg-airport.de/,2026-08-16,2026-08-16
 1.2,EDTF:UL91,EDTF,UL91,Prüfen,Prüfen,Aktuelle Preise beim Betreiber; vor Flug prüfen,,https://freiburg-airport.de/,2026-08-02,2026-08-02
 1.2,EDTY:AVGAS,EDTY,AVGAS,Ja – AVGAS,Ja – AVGAS,Aktuelle Preise beim Betreiber,,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
 1.2,EDTY:MOGAS_SUPER,EDTY,MOGAS_SUPER,Nicht bestätigt,Nicht bestätigt,Aktuelle Preise beim Betreiber,,https://www.edty.de/de/airport/adolf_wuerth_airport/adolf_wuerth_airport.php,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
@@ -353,3 +354,48 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,LSZR:AVGAS,LSZR,AVGAS,Ja,Ja,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,LSZR:MOGAS_SUPER,LSZR,MOGAS_SUPER,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
 1.2,LSZR:UL91,LSZR,UL91,Nein,Nein,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 07/06",2026-08-02,2026-08-02
+1.2,EDWF:MOGAS_SUPER:20260816,EDWF,MOGAS_SUPER,Ja,Super 95,"2,59 €/l brutto",,https://flugplatz-leer-papenburg.de/aktuelles/,2026-08-16,2026-08-16
+1.2,EDWC:MOGAS_SUPER:20260816,EDWC,MOGAS_SUPER,Ja,Super Plus,"2,49 €/l brutto",,https://www.edwc.de/index.php,2026-08-16,2026-08-16
+1.2,EDLS:MOGAS_SUPER:20260816,EDLS,MOGAS_SUPER,Ja,Super Plus 98 / MOGAS,Kein öffentlicher Literpreis,,https://www.flugplatz-stadtlohn.de/index.php?L=1&id=79,2026-08-16,2026-08-16
+1.2,EDMV:MOGAS_SUPER:20260816,EDMV,MOGAS_SUPER,?,Nicht bestätigt,Kein belastbarer öffentlicher Nachweis,,https://www.edmv.de/,2026-08-16,2026-08-16
+1.2,EDAZ:MOGAS_SUPER:20260816,EDAZ,MOGAS_SUPER,Ja,Super Plus Aviation,"2,81 €/l brutto",,https://www.flugplatz-schoenhagen.aero/en/pilots/the-airport/fuel-prices,2026-08-16,2026-08-16
+1.2,EDWI:MOGAS_SUPER:20260816,EDWI,MOGAS_SUPER,Ja,Super Plus alkoholfrei,"2,36 €/l brutto",,https://www.edwi.info/piloten/tankstelle.html,2026-08-16,2026-08-16
+1.2,EDNL:MOGAS_SUPER:20260816,EDNL,MOGAS_SUPER,Ja,Super Plus,Kein öffentlicher Literpreis,,https://www.ednl.de/service/,2026-08-16,2026-08-16
+1.2,EDVK:MOGAS_SUPER:20260816,EDVK,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt nur JET A1 und AVGAS,,https://www.kassel-airport.de/informationen-fuer-piloten/services/,2026-08-16,2026-08-16
+1.2,EDRK:MOGAS_SUPER:20260816,EDRK,MOGAS_SUPER,Ja,Super Plus,"2,81 €/l brutto",,https://www.flugplatz-koblenz-winningen.de/index.php/de/,2026-08-16,2026-08-16
+1.2,EDTD:MOGAS_SUPER:20260816,EDTD,MOGAS_SUPER,?,Nicht bestätigt,Kein belastbarer öffentlicher Nachweis,,https://donau-airport.de/,2026-08-16,2026-08-16
+1.2,EDVI:MOGAS_SUPER:20260816,EDVI,MOGAS_SUPER,Ja,Super Plus 98,"2,59 €/l brutto",,https://flugplatz-hx.de/index.html,2026-08-16,2026-08-16
+1.2,EDME:MOGAS_SUPER:20260816,EDME,MOGAS_SUPER,?,Nicht bestätigt,Kein belastbarer öffentlicher Nachweis,,https://flugsportverein-eggenfelden.de/unser-flugplatz/,2026-08-16,2026-08-16
+1.2,EDGS:MOGAS_SUPER:20260816,EDGS,MOGAS_SUPER,Ja,Super Plus,"2,81 €/l brutto",,https://www.siegerland-airport.de/fuer-piloten/tankstelle-kraftstoffpreise/,2026-08-16,2026-08-16
+1.2,EDTF:MOGAS_SUPER:20260816,EDTF,MOGAS_SUPER,Ja,MOGAS,Kein öffentlicher Literpreis,,https://freiburg-airport.de/,2026-08-16,2026-08-16
+1.2,EDBN:MOGAS_SUPER:20260816,EDBN,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt nur AVGAS 100LL und JET A1,,https://www.flughafen-neubrandenburg.de/index.php?Itemid=104&id=7&option=com_content&view=article,2026-08-16,2026-08-16
+1.2,EDHL:MOGAS_SUPER:20260816,EDHL,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiberangebot ohne MOGAS,,https://www.flughafen-luebeck.de/de/startseite,2026-08-16,2026-08-16
+1.2,EDTY:MOGAS_SUPER:20260816,EDTY,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt AVGAS und JET A1 aber kein MOGAS,,https://www.edty.de/de/airport/pilot_information/fuel_pricing/fuel_pricing.php,2026-08-16,2026-08-16
+1.2,EDML:MOGAS_SUPER:20260816,EDML,MOGAS_SUPER,Ja,Super Plus 98 E0,"2,69 €/l brutto",,https://der-fliegerclub.de/flugplatz/edml/,2026-08-16,2026-08-16
+1.2,EDAY:MOGAS_SUPER:20260816,EDAY,MOGAS_SUPER,Ja,Super Plus / MOGAS,Kein öffentlicher Literpreis,,https://www.flugplatz-strausberg.de/,2026-08-16,2026-08-16
+1.2,EDFM:MOGAS_SUPER:20260816,EDFM,MOGAS_SUPER,Ja,MOGAS,"2,40 €/l brutto",,https://www.flugplatz-mannheim.de/city-airport-mannheim/,2026-08-16,2026-08-16
+1.2,EDLD:MOGAS_SUPER:20260816,EDLD,MOGAS_SUPER,Ja,Super Plus,"2,55 €/l brutto",,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-16,2026-08-16
+1.2,EDPA:MOGAS_SUPER:20260816,EDPA,MOGAS_SUPER,Ja,Super Plus,"2,39 €/l brutto; gemeldeter Stand 13.06.2026",,https://spritpreisliste.de/airports/EDPA,2026-08-16,2026-08-16
+1.2,ETSI:MOGAS_SUPER:20260816,ETSI,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt JET A1 und AVGAS,,https://etsi-airport.de/,2026-08-16,2026-08-16
+1.2,EDMA:MOGAS_SUPER:20260816,EDMA,MOGAS_SUPER,?,Nicht bestätigt,Kein belastbarer öffentlicher Nachweis,,https://www.augsburg-airport.de/piloten/,2026-08-16,2026-08-16
+1.2,EDLE:MOGAS_SUPER:20260816,EDLE,MOGAS_SUPER,Ja,Super Plus,"2,59 €/l brutto",,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-16,2026-08-16
+1.2,EDLH:MOGAS_SUPER:20260816,EDLH,MOGAS_SUPER,Ja,Super Plus,"2,45 €/l brutto",,https://www.flugplatz-hamm.de/lsc20/flugplatz/tanken,2026-08-16,2026-08-16
+1.2,EDLN:MOGAS_SUPER:20260816,EDLN,MOGAS_SUPER,Nein,Nicht verfügbar,Swift 100R ist kein MOGAS,,https://www.mgl.de/aviation/,2026-08-16,2026-08-16
+1.2,EDLA:MOGAS_SUPER:20260816,EDLA,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt nur AVGAS 100LL und JET A1,,https://www.flugplatz-arnsberg-menden.de/tanken/,2026-08-16,2026-08-16
+1.2,EDMB:MOGAS_SUPER:20260816,EDMB,MOGAS_SUPER,Ja,Super Plus,"2,35 €/l brutto",,https://edmb.de/gaststatte/,2026-08-16,2026-08-16
+1.2,EDVE:MOGAS_SUPER:20260816,EDVE,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt AVGAS 100LL / UL91 und JET A1,,https://www.fhbwe.de/aviation,2026-08-16,2026-08-16
+1.2,EDXE:MOGAS_SUPER:20260816,EDXE,MOGAS_SUPER,Ja,Super Plus,"2,45 €/l brutto",,https://edxe.de/hp/flugplatz/ausflugslokal-und-hotel-gets,2026-08-16,2026-08-16
+1.2,EDLM:MOGAS_SUPER:20260816,EDLM,MOGAS_SUPER,Ja,Super Plus,"2,61 €/l brutto",,https://xn--flugplatz-loemhle-g3b.de/tanken/,2026-08-16,2026-08-16
+1.2,EDTM:MOGAS_SUPER:20260816,EDTM,MOGAS_SUPER,Ja,Super Plus,"2,69 €/l brutto",,https://www.regio-airport-mengen.de/piloteninfo/tankstelle/,2026-08-16,2026-08-16
+1.2,EDQH:MOGAS_SUPER:20260816,EDQH,MOGAS_SUPER,Ja,Super 98 EN228,"2,31 €/l brutto",,https://flugplatz-herzogenaurach.de/?lang=en,2026-08-16,2026-08-16
+1.2,ETHN:MOGAS_SUPER:20260816,ETHN,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt nur AVGAS 100LL und JET A1,,https://www.flugplatz-ethn.de/Flugplatz,2026-08-16,2026-08-16
+1.2,EDFE:MOGAS_SUPER:20260816,EDFE,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt AVGAS 100LL und UL91 aber kein MOGAS,,https://egelsbach-airport.com/wp-content/uploads/2026/02/Kraftstoffpreise-ab-01.02.2026.pdf,2026-08-16,2026-08-16
+1.2,EDRY:MOGAS_SUPER:20260816,EDRY,MOGAS_SUPER,Ja,MOGAS,"2,89 €/l brutto",,https://flugplatz-speyer.de/infos-entgelte/,2026-08-16,2026-08-16
+1.2,EDTG:AVGAS:20260816,EDTG,AVGAS,Ja,AVGAS 100LL,Kein öffentlicher Literpreis,,https://www.gewerbepark-breisgau.de/unser-flugplatz/kontakt-adesse-lage/,2026-08-16,2026-08-16
+1.2,EDTG:JET_A1:20260816,EDTG,JET_A1,Ja,Jet A1,Kein öffentlicher Literpreis,,https://www.gewerbepark-breisgau.de/unser-flugplatz/kontakt-adesse-lage/,2026-08-16,2026-08-16
+1.2,EDTG:MOGAS_SUPER:20260816,EDTG,MOGAS_SUPER,Ja,Super Plus bleifrei 98 Oktan,Kein öffentlicher Literpreis,,https://www.gewerbepark-breisgau.de/unser-flugplatz/kontakt-adesse-lage/,2026-08-16,2026-08-16
+1.2,EDTG:UL91:20260816,EDTG,UL91,Nein,Nicht veröffentlicht,"Betreiber nennt 100LL, Jet A1 und Super Plus 98",,https://www.gewerbepark-breisgau.de/unser-flugplatz/kontakt-adesse-lage/,2026-08-16,2026-08-16
+1.2,EDTS:AVGAS:20260816,EDTS,AVGAS,Ja – nur PPR,AVGAS 100LL,"Fuel PPR; kein öffentlicher Literpreis",,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16
+1.2,EDTS:JET_A1:20260816,EDTS,JET_A1,Ja – nur PPR,Jet A1,"Fuel PPR; kein öffentlicher Literpreis",,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16
+1.2,EDTS:MOGAS_SUPER:20260816,EDTS,MOGAS_SUPER,Ja – nur PPR,MOGAS / Super Plus,"Fuel PPR; kein öffentlicher Literpreis",,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16
+1.2,EDTS:UL91:20260816,EDTS,UL91,Nein,Nicht veröffentlicht,"Betreiber nennt AVGAS 100LL, Jet A1 und MOGAS",,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16

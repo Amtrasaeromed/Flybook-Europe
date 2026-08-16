@@ -43,6 +43,33 @@ final class FlybriefPDFTests: XCTestCase {
         }
     }
 
+    func testMultiStopWithAtMostFourRouteLegsUsesOneA4Page() throws {
+        let base = sampleSnapshot()
+        let snapshot = FlybriefSnapshot(
+            title: base.title,
+            route: base.route,
+            flightDate: base.flightDate,
+            timeBasis: base.timeBasis,
+            planningMode: FlightPlanningMode.multiStop.rawValue,
+            aircraft: base.aircraft,
+            base: base.base,
+            legs: base.legs,
+            createdAt: base.createdAt
+        )
+
+        let groups = FlybriefPDFExporter.pageLegGroups(for: snapshot)
+        XCTAssertEqual(groups.count, 1)
+        XCTAssertEqual(groups.first?.count, 2)
+
+        let document = try XCTUnwrap(
+            PDFDocument(data: FlybriefPDFExporter.pdfData(for: snapshot))
+        )
+        XCTAssertEqual(document.pageCount, 1)
+        XCTAssertTrue(document.string?.contains("1. FLUG") == false)
+        XCTAssertTrue(document.string?.contains("HINFLUG") == true)
+        XCTAssertTrue(document.string?.contains("RÜCKFLUG") == true)
+    }
+
     private func sampleSnapshot() -> FlybriefSnapshot {
         let created = Date(timeIntervalSince1970: 1_786_609_800)
         return FlybriefSnapshot(

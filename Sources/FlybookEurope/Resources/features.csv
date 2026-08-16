@@ -939,11 +939,13 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,EDLM:wellness,EDLM,wellness,Nein,,,,,,,,,,,,,,2026-08-13
 1.2,LSGN:techstop,LSGN,techstop,Nein,,,,,,,,,,,,,,2026-08-15
 1.2,LSGN:breakfast,LSGN,breakfast,Nein,,,,,,,,,,,,,,2026-08-15
-1.2,LSGN:city,LSGN,city,Ja,Neuchâtel,ÖPNV,20,,,,,,,,,Neuchâtel,https://www.neuchatel-airport.ch/?lang=de,2026-08-15
+1.2,LSGN:city,LSGN,city,Ja,Neuchâtel,Littorail Linie 5,15,,,,,,,,,Neuchâtel,https://www.neuchatel-airport.ch/sich-fortbewegen/?lang=de,2026-08-16
 1.2,LSGN:beach,LSGN,beach,Nein,,,,,,,,,,,,,https://www.neuchatel-airport.ch/?lang=de,2026-08-15
 1.2,LSGN:lake,LSGN,lake,Ja,Neuenburgersee und Uferwege,Fahrrad,10,46.954,6.875,1.5,20,7,4,Fahrrad,10,Neuenburgersee und Uferwege,https://www.neuchatel-airport.ch/?lang=de,2026-08-15
 1.2,LSGN:mountain,LSGN,mountain,Nein,,,,,,,,,,,,,https://www.neuchatel-airport.ch/?lang=de,2026-08-15
 1.2,LSGN:wellness,LSGN,wellness,Nein,,,,,,,,,,,,,https://www.neuchatel-airport.ch/?lang=de,2026-08-15
+1.2,EDTM:techstop,EDTM,techstop,Ja,Mengen-Hohentengen,,,,,,,,,,,,https://www.regio-airport-mengen.de/piloteninfo/flugplatzdaten/,2026-08-15
+1.2,EDQH:techstop,EDQH,techstop,Ja,Herzogenaurach,,,,,,,,,,,,https://www.fliegerclub-nuernberg.de/flugplatz/,2026-08-15
 1.2,LSZC:techstop,LSZC,techstop,Nein,,,,,,,,,,,,,,2026-08-15
 1.2,LSZC:breakfast,LSZC,breakfast,Nein,,,,,,,,,,,,,,2026-08-15
 1.2,LSZC:city,LSZC,city,Nein,,,,,,,,,,,,,https://airportbuochs.ch/ueber-uns/,2026-08-15
@@ -979,3 +981,29 @@ schema_version,feature_id,airport_id,feature_type,status_raw,feature_name,access
 1.2,LSGR:lake,LSGR,lake,Ja,Blausee und Oeschinensee,Bus/Bahn,35,46.5328,7.6643,12.0,150,45,18,Bus/Bahn,35,Blausee und Oeschinensee,https://www.aerodromes.ch/fileadmin/user_upload/documents/Swiss_Aerodrome_Guide/Swiss_Aerodrome_Guide_2022.pdf,2026-08-15
 1.2,LSGR:mountain,LSGR,mountain,Ja,Kandertal und Bergwanderwege,Bus/Bahn,20,,,,,,,Bus/Bahn,20,Kandertal und Bergwanderwege,https://www.reichenbach.ch/de/gemeinde/freizeit-und-kultur/flugplatz/,2026-08-15
 1.2,LSGR:wellness,LSGR,wellness,Nein,,,,,,,,,,,,,https://www.reichenbach.ch/,2026-08-15
+1.2,EDTG:techstop,EDTG,techstop,Ja,Bremgarten / Gewerbepark Breisgau,,,,,,,,,,,,https://www.gewerbepark-breisgau.de/unser-flugplatz/,2026-08-16
+1.2,EDTS:techstop,EDTS,techstop,Ja,Schwenningen am Neckar,,,,,,,,,,,,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16
+1.2,EDTM:breakfast,EDTM,breakfast,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTM:city,EDTM,city,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTM:beach,EDTM,beach,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTM:lake,EDTM,lake,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTM:mountain,EDTM,mountain,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTM:wellness,EDTM,wellness,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDQH:breakfast,EDQH,breakfast,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDQH:city,EDQH,city,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDQH:beach,EDQH,beach,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDQH:lake,EDQH,lake,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDQH:mountain,EDQH,mountain,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDQH:wellness,EDQH,wellness,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:breakfast,EDTG,breakfast,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:city,EDTG,city,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:beach,EDTG,beach,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:lake,EDTG,lake,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:mountain,EDTG,mountain,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTG:wellness,EDTG,wellness,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:breakfast,EDTS,breakfast,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:city,EDTS,city,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:beach,EDTS,beach,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:lake,EDTS,lake,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:mountain,EDTS,mountain,Nein,,,,,,,,,,,,,,2026-08-16
+1.2,EDTS:wellness,EDTS,wellness,Nein,,,,,,,,,,,,,,2026-08-16
