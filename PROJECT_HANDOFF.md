@@ -74,6 +74,12 @@
   weiterhin editierbare Tanken-Zeile der Charterkalkulation übergeben. Die
   frühere Tanksäulen-/Starttankbedienung und der Hinflugreserve-Schalter der
   Charterkarte entfallen.
+- Die Flybrief-Wetterseiten enthalten keine Kraftstoffangaben mehr. Nach
+  „Tankberechnung übernehmen“ wird der bestätigte Tankplan als eigene letzte
+  PDF-Seite mit Minimum, Plan, Refueling-Stop, Leg-/Etappenverbrauch, Zeit und
+  Endreserve angehängt. Ändert sich Route, Flugzeug, Reserve, Startbestand oder
+  übernommene Tankmenge, wird die Bestätigung als veraltet behandelt und die
+  Fuelplan-Seite bis zur erneuten Bestätigung nicht ausgegeben.
 - Der macOS-Punktabruf benötigt ecCodes `grib_get`. iPadOS kann die
   komprimierten GRIB2-Dateien derzeit nicht lokal decodieren und lässt die
   Planungs-Ceiling deshalb leer, statt eine Näherung als Fremdwert auszugeben.

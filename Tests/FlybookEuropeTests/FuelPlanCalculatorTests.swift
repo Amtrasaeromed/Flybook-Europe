@@ -42,6 +42,51 @@ final class FuelPlanCalculatorTests: XCTestCase {
         )
     }
 
+    func testConfirmedPlanOnlyMatchesItsExactPlanningState() {
+        let result = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelAfterLegIndex: 0,
+            refuelLiters: 20
+        )
+        let confirmation = FuelPlanConfirmation(
+            aircraftName: "Aquila A211",
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelAfterLegIndex: 0,
+            refuelLiters: 20,
+            airportNames: [:],
+            result: result,
+            confirmedAt: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertTrue(
+            confirmation.matches(
+                legs: legs,
+                reserveMinutes: 45,
+                usableFuelLiters: 60,
+                aircraftName: "Aquila A211",
+                startingFuelLiters: 25,
+                charterRefuelLiters: 20,
+                charterRefuelAirportICAO: "C"
+            )
+        )
+        XCTAssertFalse(
+            confirmation.matches(
+                legs: legs,
+                reserveMinutes: 30,
+                usableFuelLiters: 60,
+                aircraftName: "Aquila A211",
+                startingFuelLiters: 25,
+                charterRefuelLiters: 20,
+                charterRefuelAirportICAO: "C"
+            )
+        )
+    }
+
     func testRefuelAtCReusesArrivalReserveForTheReturnTrip() {
         let result = FuelPlanCalculator.calculate(
             legs: legs,

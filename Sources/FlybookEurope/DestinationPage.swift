@@ -156,6 +156,7 @@ struct DestinationPage: View {
     @State private var flybriefExportError: String?
     @State private var flybriefPreview: FlybriefPreviewDocument?
     @State private var isFlybriefPreviewLoading = false
+    @State private var confirmedFuelPlan: FuelPlanConfirmation?
     @State private var refuelLiters = 0.0
     @State private var refuelAirportICAO = ""
     @State private var manualRefuelPrice: Double?
@@ -912,6 +913,21 @@ struct DestinationPage: View {
             )
         }
         return result
+    }
+
+    private var confirmedFlybriefFuelPlan: FuelPlanConfirmation? {
+        guard let confirmedFuelPlan,
+              confirmedFuelPlan.matches(
+                legs: activeFuelPlanLegs,
+                reserveMinutes: reserveMinutes,
+                usableFuelLiters: usableFuel,
+                aircraftName: selectedAircraft.displayName,
+                startingFuelLiters: startingFuelLiters,
+                charterRefuelLiters: refuelLiters,
+                charterRefuelAirportICAO: refuelAirportICAO
+              )
+        else { return nil }
+        return confirmedFuelPlan
     }
 
     private func fuelPlanLegs(
@@ -2017,6 +2033,7 @@ struct DestinationPage: View {
             aircraft: selectedAircraft.displayName,
             base: activeBase.rawValue,
             legs: legs,
+            fuelPlan: confirmedFlybriefFuelPlan,
             createdAt: Date()
         )
     }
@@ -2047,7 +2064,6 @@ struct DestinationPage: View {
             blockMinutes: outboundCalculatedBlockMinutes,
             trackMiles: outboundTrackMiles,
             altitudeFeet: outboundFlightAltitudeFeet,
-            fuelConsumptionPerHour: outboundFuelConsumptionPerHour,
             bestLevelFeet: outboundRouteWindModel.bestLevelFeet,
             routeWind: outboundRouteWindModel.wind,
             routeAssessments: outboundRouteRiskModel.assessments,
@@ -2081,7 +2097,6 @@ struct DestinationPage: View {
             blockMinutes: returnCalculatedBlockMinutes,
             trackMiles: returnTrackMiles,
             altitudeFeet: returnFlightAltitudeFeet,
-            fuelConsumptionPerHour: returnFuelConsumptionPerHour,
             bestLevelFeet: returnRouteWindModel.bestLevelFeet,
             routeWind: returnRouteWindModel.wind,
             routeAssessments: returnRouteRiskModel.assessments,
@@ -2106,7 +2121,6 @@ struct DestinationPage: View {
         blockMinutes: Int,
         trackMiles: Double,
         altitudeFeet: Int,
-        fuelConsumptionPerHour: Double,
         bestLevelFeet: Int?,
         routeWind: RouteWind?,
         routeAssessments: [RouteWeatherSegmentAssessment],
@@ -2194,8 +2208,7 @@ struct DestinationPage: View {
             routeWind: routeWind,
             routeAssessments: routeAssessments,
             stopForecasts: stopForecasts,
-            plannedSegments: plannedSegments,
-            fuelConsumptionPerHour: fuelConsumptionPerHour
+            plannedSegments: plannedSegments
         )
         return FlybriefLegSnapshot(
             id: id,
@@ -2210,10 +2223,6 @@ struct DestinationPage: View {
             trackText: "\(Int(trackMiles.rounded())) NM",
             altitudeText: flybriefAltitude(altitudeFeet),
             bestLevelText: bestLevelFeet.map { flybriefAltitude($0) } ?? "-",
-            fuel: flybriefFuel(
-                minutes: blockMinutes,
-                consumptionPerHour: fuelConsumptionPerHour
-            ),
             routeWindText: routeWindText,
             routeWindDetail: routeWindDetail,
             etopsText: FlightMath.duration(etopsMinutes),
@@ -2236,8 +2245,7 @@ struct DestinationPage: View {
         routeWind: RouteWind?,
         routeAssessments: [RouteWeatherSegmentAssessment],
         stopForecasts: [String: EDFZForecast],
-        plannedSegments: [FlybriefPlannedSegment],
-        fuelConsumptionPerHour: Double
+        plannedSegments: [FlybriefPlannedSegment]
     ) -> [FlybriefSegmentSnapshot] {
         guard plannedSegments.count > 1 else { return [] }
 
@@ -2305,10 +2313,6 @@ struct DestinationPage: View {
                 routeText: "\(segment.origin.icao) → \(segment.destination.icao)",
                 blockTimeText: FlightMath.duration(segment.travelMinutes),
                 trackText: "\(Int(segment.trackMilesNM.rounded())) NM",
-                fuel: flybriefFuel(
-                    minutes: segment.travelMinutes,
-                    consumptionPerHour: fuelConsumptionPerHour
-                ),
                 routeWindText: windText,
                 routeWindDetail: windDetail,
                 routeWeather: weatherPoints,
@@ -2603,28 +2607,6 @@ struct DestinationPage: View {
 
     private func flybriefRoundedWindDirection(_ degrees: Double) -> Int {
         Int((WindMath.normalized(degrees) / 5).rounded() * 5) % 360
-    }
-
-    private func flybriefFuel(
-        minutes: Int,
-        consumptionPerHour: Double
-    ) -> FlybriefFuelSnapshot {
-        let flightLiters = Double(max(0, minutes))
-            * max(0, consumptionPerHour) / 60
-        let reserveLiters = Double(max(0, reserveMinutes))
-            * max(0, consumptionPerHour) / 60
-        return FlybriefFuelSnapshot(
-            flightText: flybriefFuelQuantity(flightLiters),
-            withReserveText: flybriefFuelQuantity(
-                flightLiters + reserveLiters
-            ),
-            reserveMinutes: reserveMinutes
-        )
-    }
-
-    private func flybriefFuelQuantity(_ liters: Double) -> String {
-        let amount = Int(ceil(fuelDisplayUnit.fromLiters(max(0, liters))))
-        return "\(amount) \(fuelDisplayUnit.symbol)"
     }
 
     private func flybriefOpeningHoursText(
@@ -3600,7 +3582,8 @@ struct DestinationPage: View {
                 airportNames: fuelPlanAirportNames,
                 startingFuelLiters: $startingFuelLiters,
                 charterRefuelLiters: $refuelLiters,
-                charterRefuelAirportICAO: $refuelAirportICAO
+                charterRefuelAirportICAO: $refuelAirportICAO,
+                onConfirm: { confirmedFuelPlan = $0 }
             )
         }
         .sheet(item: $flybriefPreview) { document in

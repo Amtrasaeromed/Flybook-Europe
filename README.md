@@ -103,6 +103,13 @@ Planzeile manuell, als Minimum oder bis Voll festgelegt. **Tankberechnung
 editierbare Tanken-Zeile der Charterkalkulation, sodass der passende bekannte
 Platzpreis für die Zusatzkosten verwendet wird.
 
+Der Flybrief enthält auf seinen Wetterseiten keine Kraftstoffwerte mehr. Wird
+der Tankplan im Tankkalkulator mit **Tankberechnung übernehmen** bestätigt,
+hängt der Flybrief eine eigene Fuelplan-Seite mit Minimum- und Planbeständen,
+Refueling-Stop, Leg-/Etappenverbrauch, Zeiten und Endreserve an. Ein geänderter
+Flugplan, Startbestand, Reservewert oder Tankwert macht die alte Bestätigung
+ungültig; die Fuelplan-Seite erscheint erst nach erneuter Bestätigung wieder.
+
 ## Start und Prüfung
 
 `Flybook Europe starten.command` doppelklicken oder `Package.swift` in Xcode

@@ -13,10 +13,11 @@ final class FlybriefPDFTests: XCTestCase {
             snapshot.suggestedFilename,
             "Flybrief 13AUG26 EDFZ-EDXE-EDLM-EHAM-EDFZ.pdf"
         )
-        XCTAssertEqual(document.pageCount, 2)
+        XCTAssertEqual(document.pageCount, 3)
         let outboundPage = try XCTUnwrap(document.page(at: 0))
         let returnPage = try XCTUnwrap(document.page(at: 1))
-        for page in [outboundPage, returnPage] {
+        let fuelPage = try XCTUnwrap(document.page(at: 2))
+        for page in [outboundPage, returnPage, fuelPage] {
             XCTAssertEqual(page.bounds(for: .mediaBox).width, 595.28, accuracy: 0.1)
             XCTAssertEqual(page.bounds(for: .mediaBox).height, 841.89, accuracy: 0.1)
         }
@@ -27,8 +28,12 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("ETOPS-PIPI MAX"))
         XCTAssertTrue(text.contains("08:00-18:00 LCL"))
         XCTAssertFalse(text.contains("Regulär"))
-        XCTAssertTrue(text.contains("KRAFTSTOFF FLUG"))
-        XCTAssertTrue(text.contains("74 L (45 min)"))
+        XCTAssertFalse(outboundPage.string?.contains("KRAFTSTOFF") == true)
+        XCTAssertFalse(returnPage.string?.contains("KRAFTSTOFF") == true)
+        XCTAssertTrue(fuelPage.string?.contains("FUELPLAN") == true)
+        XCTAssertTrue(fuelPage.string?.contains("MINIMUM T/O") == true)
+        XCTAssertTrue(fuelPage.string?.contains("LEG / GESAMT") == true)
+        XCTAssertTrue(fuelPage.string?.contains("EHAM - Amsterdam Schiphol") == true)
         XCTAssertTrue(text.contains("Seitenwind rechts 8 G12 kt"))
         XCTAssertTrue(text.contains("Erstellt:"))
         XCTAssertTrue(text.contains("TEILSTRECKE 1/3"))
@@ -37,6 +42,7 @@ final class FlybriefPDFTests: XCTestCase {
         XCTAssertFalse(outboundPage.string?.contains("RÜCKFLUG") == true)
         XCTAssertTrue(returnPage.string?.contains("RÜCKFLUG") == true)
         XCTAssertFalse(returnPage.string?.contains("HINFLUG") == true)
+        XCTAssertFalse(fuelPage.string?.contains("HINFLUG") == true)
 
         if let output = ProcessInfo.processInfo.environment["FLYBRIEF_PREVIEW_PATH"] {
             try data.write(to: URL(fileURLWithPath: output), options: .atomic)
@@ -54,6 +60,7 @@ final class FlybriefPDFTests: XCTestCase {
             aircraft: base.aircraft,
             base: base.base,
             legs: base.legs,
+            fuelPlan: nil,
             createdAt: base.createdAt
         )
 
@@ -146,6 +153,7 @@ final class FlybriefPDFTests: XCTestCase {
                     )
                 )
             ],
+            fuelPlan: sampleFuelPlan(confirmedAt: created),
             createdAt: created
         )
     }
@@ -169,11 +177,6 @@ final class FlybriefPDFTests: XCTestCase {
             trackText: "210 NM",
             altitudeText: "FL085",
             bestLevelText: "FL080",
-            fuel: FlybriefFuelSnapshot(
-                flightText: "56 L",
-                withReserveText: "74 L",
-                reserveMinutes: 45
-            ),
             routeWindText: "Gegenwind 5 kt",
             routeWindDetail: "Wind 290°/18 kt · gültig 10:00",
             etopsText: "2:06",
@@ -204,11 +207,6 @@ final class FlybriefPDFTests: XCTestCase {
             routeText: route,
             blockTimeText: "0:58",
             trackText: "98 NM",
-            fuel: FlybriefFuelSnapshot(
-                flightText: "24 L",
-                withReserveText: "42 L",
-                reserveMinutes: 45
-            ),
             routeWindText: "Gegenwind 4 kt",
             routeWindDetail: "Kurs 340° · Wind 290°/18 kt · gültig 10:00",
             routeWeather: (0..<3).map {
@@ -258,6 +256,63 @@ final class FlybriefPDFTests: XCTestCase {
                 warningLevel: .good
             ),
             sunText: "Dawn 05:45 · SR 06:20 · SS 20:48 · Dusk 21:24 LCL"
+        )
+    }
+
+    private func sampleFuelPlan(confirmedAt: Date) -> FuelPlanConfirmation {
+        let legs = [
+            FuelPlanLeg(
+                id: "EDFZ-EDXE",
+                originICAO: "EDFZ",
+                destinationICAO: "EDXE",
+                flightMinutes: 42,
+                consumptionLitersPerHour: 25
+            ),
+            FuelPlanLeg(
+                id: "EDXE-EDLM",
+                originICAO: "EDXE",
+                destinationICAO: "EDLM",
+                flightMinutes: 26,
+                consumptionLitersPerHour: 25
+            ),
+            FuelPlanLeg(
+                id: "EDLM-EHAM",
+                originICAO: "EDLM",
+                destinationICAO: "EHAM",
+                flightMinutes: 18,
+                consumptionLitersPerHour: 25
+            ),
+            FuelPlanLeg(
+                id: "EHAM-EDFZ",
+                originICAO: "EHAM",
+                destinationICAO: "EDFZ",
+                flightMinutes: 124,
+                consumptionLitersPerHour: 25
+            )
+        ]
+        let result = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 98,
+            startingFuelLiters: 80,
+            refuelAfterLegIndex: 2,
+            refuelLiters: 27
+        )
+        return FuelPlanConfirmation(
+            aircraftName: "Aquila A211",
+            reserveMinutes: 45,
+            usableFuelLiters: 98,
+            startingFuelLiters: 80,
+            refuelAfterLegIndex: 2,
+            refuelLiters: 27,
+            airportNames: [
+                "EDFZ": "Mainz-Finthen",
+                "EDXE": "Rheine-Eschendorf",
+                "EDLM": "Marl-Loemühle",
+                "EHAM": "Amsterdam Schiphol"
+            ],
+            result: result,
+            confirmedAt: confirmedAt
         )
     }
 }

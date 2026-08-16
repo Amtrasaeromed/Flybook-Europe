@@ -53,6 +53,42 @@ struct FuelPlanTransfer: Equatable {
     let refuelLiters: Double
 }
 
+struct FuelPlanConfirmation: Equatable {
+    let aircraftName: String
+    let reserveMinutes: Int
+    let usableFuelLiters: Double
+    let startingFuelLiters: Double
+    let refuelAfterLegIndex: Int?
+    let refuelLiters: Double
+    let airportNames: [String: String]
+    let result: FuelPlanResult
+    let confirmedAt: Date
+
+    func matches(
+        legs: [FuelPlanLeg],
+        reserveMinutes: Int,
+        usableFuelLiters: Double,
+        aircraftName: String,
+        startingFuelLiters: Double,
+        charterRefuelLiters: Double,
+        charterRefuelAirportICAO: String
+    ) -> Bool {
+        let transfer = FuelPlanCalculator.transfer(
+            legs: legs,
+            refuelAfterLegIndex: refuelAfterLegIndex,
+            refuelLiters: refuelLiters
+        )
+        return result.rows.map(\.leg) == legs
+            && self.reserveMinutes == reserveMinutes
+            && abs(self.usableFuelLiters - usableFuelLiters) < 0.000_1
+            && self.aircraftName == aircraftName
+            && abs(self.startingFuelLiters - startingFuelLiters) < 0.000_1
+            && abs((transfer?.refuelLiters ?? 0) - charterRefuelLiters)
+                < 0.000_1
+            && (transfer?.airportICAO ?? "") == charterRefuelAirportICAO
+    }
+}
+
 enum FuelPlanCalculator {
     static func roundedLitersForDisplay(_ value: Double) -> Int {
         if value >= 0 {
@@ -223,6 +259,7 @@ struct FuelPlanCalculatorView: View {
     @Binding var startingFuelLiters: Double
     @Binding var charterRefuelLiters: Double
     @Binding var charterRefuelAirportICAO: String
+    let onConfirm: (FuelPlanConfirmation) -> Void
 
     @State private var refuelAfterLegIndex: Int?
     @State private var refuelLiters = 0.0
@@ -311,7 +348,8 @@ struct FuelPlanCalculatorView: View {
         charterRefuelLiters: Binding<Double> = .constant(0),
         charterRefuelAirportICAO: Binding<String> = .constant(""),
         initialRefuelAfterLegIndex: Int? = nil,
-        initialRefuelLiters: Double = 0
+        initialRefuelLiters: Double = 0,
+        onConfirm: @escaping (FuelPlanConfirmation) -> Void = { _ in }
     ) {
         self.legs = legs
         self.reserveMinutes = reserveMinutes
@@ -321,6 +359,7 @@ struct FuelPlanCalculatorView: View {
         _startingFuelLiters = startingFuelLiters
         _charterRefuelLiters = charterRefuelLiters
         _charterRefuelAirportICAO = charterRefuelAirportICAO
+        self.onConfirm = onConfirm
         _refuelAfterLegIndex = State(initialValue: initialRefuelAfterLegIndex)
         _refuelLiters = State(initialValue: max(0, initialRefuelLiters))
     }
@@ -352,15 +391,27 @@ struct FuelPlanCalculatorView: View {
             }
             Spacer()
             Button {
-                if let transfer = FuelPlanCalculator.transfer(
+                let transfer = FuelPlanCalculator.transfer(
                     legs: legs,
                     refuelAfterLegIndex: refuelAfterLegIndex,
                     refuelLiters: refuelLiters
-                ) {
-                    charterRefuelLiters = transfer.refuelLiters
-                    charterRefuelAirportICAO = transfer.airportICAO
-                    didTransferRefuel = true
-                }
+                )
+                charterRefuelLiters = transfer?.refuelLiters ?? 0
+                charterRefuelAirportICAO = transfer?.airportICAO ?? ""
+                onConfirm(
+                    FuelPlanConfirmation(
+                        aircraftName: aircraftName,
+                        reserveMinutes: reserveMinutes,
+                        usableFuelLiters: usableFuelLiters,
+                        startingFuelLiters: startingFuelLiters,
+                        refuelAfterLegIndex: refuelAfterLegIndex,
+                        refuelLiters: refuelLiters,
+                        airportNames: airportNames,
+                        result: result,
+                        confirmedAt: Date()
+                    )
+                )
+                didTransferRefuel = true
             } label: {
                 Label(
                     didTransferRefuel
@@ -373,7 +424,7 @@ struct FuelPlanCalculatorView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .disabled(refuelAfterLegIndex == nil)
+            .disabled(legs.isEmpty)
             Button("Schließen") { dismiss() }
                 .keyboardShortcut(.cancelAction)
         }
