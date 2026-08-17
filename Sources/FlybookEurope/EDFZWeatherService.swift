@@ -36,6 +36,7 @@ struct EDFZWeatherSample: Codable, Hashable {
     let windGustKnots: Double?
     let temperatureCelsius: Double?
     let dewPointCelsius: Double?
+    var precipitationMillimeters: Double? = nil
     let weatherCode: Int?
     let visibilityMeters: Double?
     let lowCloudCoverPercent: Double?
@@ -457,6 +458,7 @@ actor EDFZWeatherService {
                 windGustKnots: sample.windGustKnots,
                 temperatureCelsius: sample.temperatureCelsius,
                 dewPointCelsius: sample.dewPointCelsius,
+                precipitationMillimeters: sample.precipitationMillimeters,
                 weatherCode: sample.weatherCode,
                 visibilityMeters: sample.visibilityMeters,
                 lowCloudCoverPercent: sample.lowCloudCoverPercent,
@@ -583,7 +585,7 @@ actor EDFZWeatherService {
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(
                 name: "hourly",
-                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,dew_point_2m,weather_code,visibility,cloud_cover,cloud_cover_low,pressure_msl"
+                value: "wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,dew_point_2m,precipitation,weather_code,visibility,cloud_cover,cloud_cover_low,pressure_msl"
             )
         ]
 
@@ -696,6 +698,9 @@ actor EDFZWeatherService {
                 ),
                 dewPointCelsius: value(
                     decoded.hourly.dewPoint2m, index
+                ),
+                precipitationMillimeters: value(
+                    decoded.hourly.precipitation, index
                 ),
                 weatherCode: decoded.hourly.weatherCode.indices.contains(index)
                     ? decoded.hourly.weatherCode[index]
@@ -844,6 +849,8 @@ actor EDFZWeatherService {
                 windGustKnots: details.windSpeedOfGust.map { $0 * 1.943_844 },
                 temperatureCelsius: details.airTemperature,
                 dewPointCelsius: dewPoint,
+                precipitationMillimeters: entry.data.next1Hours?
+                    .details?.precipitationAmount,
                 weatherCode: weatherCode(symbol: symbol),
                 visibilityMeters: visibility,
                 lowCloudCoverPercent: lowCloud,
@@ -995,6 +1002,15 @@ private struct MetNorwayResponse: Decodable {
 
     struct NextHours: Decodable {
         let summary: Summary
+        let details: NextHoursDetails?
+    }
+
+    struct NextHoursDetails: Decodable {
+        let precipitationAmount: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case precipitationAmount = "precipitation_amount"
+        }
     }
 
     struct Summary: Decodable {
@@ -1013,6 +1029,7 @@ private struct Hourly: Decodable {
     let windGusts10m: [Double?]
     let temperature2m: [Double?]
     let dewPoint2m: [Double?]
+    let precipitation: [Double?]
     let weatherCode: [Int?]
     let visibility: [Double?]
     let cloudCover: [Double?]
@@ -1026,6 +1043,7 @@ private struct Hourly: Decodable {
         case windGusts10m = "wind_gusts_10m"
         case temperature2m = "temperature_2m"
         case dewPoint2m = "dew_point_2m"
+        case precipitation
         case weatherCode = "weather_code"
         case visibility
         case cloudCover = "cloud_cover"

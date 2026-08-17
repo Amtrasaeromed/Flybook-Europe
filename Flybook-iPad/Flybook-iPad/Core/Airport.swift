@@ -11,12 +11,14 @@ struct Airport: Identifiable, Hashable {
     let distanceFromEDFZ: Int?
     let referenceRunway: String
     let runwayLengthMeters: Int?
+    let runwayLDAMeters: Int?
     let runwayWidthMeters: Int?
     let runwaySurface: String
     let portOfEntry: String
     let airportFilter: String
     let aipAeroURL: String
     let aipAeroCheckedAt: String
+    let feeNote: String
 
     var id: String { icao }
 
@@ -67,6 +69,9 @@ enum AirportCatalog {
                 runwayLengthMeters: Int(Double(value("runway_length_m", in: row)) ?? -1) >= 0
                     ? Int(Double(value("runway_length_m", in: row)) ?? 0)
                     : nil,
+                runwayLDAMeters: Int(Double(value("runway_lda_m", in: row)) ?? -1) >= 0
+                    ? Int(Double(value("runway_lda_m", in: row)) ?? 0)
+                    : nil,
                 runwayWidthMeters: Int(Double(value("runway_width_m", in: row)) ?? -1) >= 0
                     ? Int(Double(value("runway_width_m", in: row)) ?? 0)
                     : nil,
@@ -77,7 +82,8 @@ enum AirportCatalog {
                 ),
                 airportFilter: value("airport_filter", in: row),
                 aipAeroURL: value("aip_aero_url", in: row),
-                aipAeroCheckedAt: value("aip_aero_checked_at", in: row)
+                aipAeroCheckedAt: value("aip_aero_checked_at", in: row),
+                feeNote: value("fee_note", in: row)
             )
         }
 
@@ -113,12 +119,14 @@ extension Airport {
         distanceFromEDFZ: 0,
         referenceRunway: "07/25",
         runwayLengthMeters: 1_000,
+        runwayLDAMeters: 1_000,
         runwayWidthMeters: 22,
         runwaySurface: "Asphalt",
         portOfEntry: "?",
         airportFilter: "Heimatflugplatz",
         aipAeroURL: "https://aip.aero/de/en/vfr/?EDFZ",
-        aipAeroCheckedAt: ""
+        aipAeroCheckedAt: "",
+        feeNote: ""
     )
 
     fileprivate static let edfz = fallbackEDFZ

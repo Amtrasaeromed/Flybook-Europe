@@ -741,7 +741,10 @@ struct DestinationPage: View {
             ),
             landingDate: landingDate,
             landingVoucherBookEnabled: landingVoucherBookEnabled,
-            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF,
+            voucherProvider: { icao, date in
+                LandingVoucherBook.includes(icao, on: date)
+            }
         )
     }
 

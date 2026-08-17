@@ -148,6 +148,67 @@ def main() -> int:
             "FlightNetwork.openMeteoData(" in ipad_swift
             and "priority: .low" in ipad_swift
         ),
+        "iPad bindet gemeinsame Flugplanungs-Rechenkerne ein": all(
+            f"../Sources/FlybookEurope/{name}" in ipad_project
+            for name in (
+                "AlpineFoehnWarning.swift",
+                "AirportFeeCore.swift",
+                "CharterMath.swift",
+                "ExchangeRateService.swift",
+                "FlightAltitudeRules.swift",
+                "RunwayPerformanceCore.swift",
+            )
+        ),
+        "iPad-Nebelrisiko nutzt Ceiling Niederschlag und Nacht": all(
+            token in ipad_swift
+            for token in (
+                "FogRiskModel.ceilingFeet(",
+                "rainLast6HoursMM: rainLast6Hours",
+                "isNight: isNight(",
+            )
+        ),
+        "iPad-Korridor nutzt ICON Seamless Foehn und Violett": all(
+            token in ipad_swift
+            for token in (
+                "ICONSeamlessAccessRoute.allCases",
+                "AlpineFoehnForecastService.shared.samples",
+                "case purple = 3",
+                "AlpineRegion.contains(",
+            )
+        ),
+        "iPad zeigt identische Performance- und DA-Warnschwellen": all(
+            token in ipad_swift
+            for token in (
+                "RunwayPerformance.densityAltitudeFeet(",
+                "RunwayPerformance.takeoff(",
+                "RunwayPerformance.landing(",
+                "if percentage >= 75",
+                "if percentage >= 50",
+                "value >= 100",
+                "weather.densityAltitudeFeet >= 5_000",
+                "weather.densityAltitudeFeet >= 2_500",
+            )
+        ),
+        "iPad bietet alle Hoehen und markiert Halbkreisregeln": (
+            "FlightAltitudeRules.options(" in ipad_swift
+            and "FlightAltitudeRules.isRecommended(" in ipad_swift
+        ),
+        "iPad-Charter nutzt echten Blockverbrauch und alle Kostenpunkte": all(
+            token in ipad_swift
+            for token in (
+                "CharterMath.actualFuelBurnLiters(",
+                'Toggle("Landegebühr"',
+                'Toggle("Übernachtungsgebühr"',
+                'Toggle("Zoll Einreise"',
+                'Toggle("Zoll Ausreise"',
+                'Toggle("Handling"',
+                'Toggle("Tankkostendifferenz"',
+                "AirportLandingFeeCalculator.quote(",
+                "AirportLandingFeeCalculator.ancillaryFeeEUR(",
+                "CustomsFeeRules.controlAirports(",
+                "exchangeRateModel.chfToEUR?.euroPerCHF",
+            )
+        ),
         "Mac und iPad verwenden dieselben Airport-Masterdaten": (
             all(
                 f"../Sources/FlybookEurope/Resources/{name}" in ipad_project

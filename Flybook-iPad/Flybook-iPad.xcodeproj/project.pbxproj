@@ -32,6 +32,12 @@
 		A10000000000000000000017 /* ../Sources/FlybookEurope/DWDICONCeilingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* ../Sources/FlybookEurope/DWDICONCeilingService.swift */; };
 		A10000000000000000000018 /* ../Sources/FlybookEurope/DWDMOSMIXService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000019 /* ../Sources/FlybookEurope/DWDMOSMIXService.swift */; };
 		A10000000000000000000019 /* IPadDestinationFinderWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* IPadDestinationFinderWeather.swift */; };
+		A1000000000000000000001A /* ../Sources/FlybookEurope/RunwayPerformanceCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001B /* ../Sources/FlybookEurope/RunwayPerformanceCore.swift */; };
+		A1000000000000000000001B /* ../Sources/FlybookEurope/FlightAltitudeRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001C /* ../Sources/FlybookEurope/FlightAltitudeRules.swift */; };
+		A1000000000000000000001C /* ../Sources/FlybookEurope/CharterMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001D /* ../Sources/FlybookEurope/CharterMath.swift */; };
+		A1000000000000000000001D /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift */; };
+		A1000000000000000000001E /* ../Sources/FlybookEurope/AirportFeeCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001F /* ../Sources/FlybookEurope/AirportFeeCore.swift */; };
+		A1000000000000000000001F /* ../Sources/FlybookEurope/ExchangeRateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* ../Sources/FlybookEurope/ExchangeRateService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +67,12 @@
 		B10000000000000000000018 /* ../Sources/FlybookEurope/DWDICONCeilingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/DWDICONCeilingService.swift; sourceTree = SOURCE_ROOT; };
 		B10000000000000000000019 /* ../Sources/FlybookEurope/DWDMOSMIXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/DWDMOSMIXService.swift; sourceTree = SOURCE_ROOT; };
 		B1000000000000000000001A /* IPadDestinationFinderWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadDestinationFinderWeather.swift; sourceTree = "<group>"; };
+		B1000000000000000000001B /* ../Sources/FlybookEurope/RunwayPerformanceCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/RunwayPerformanceCore.swift; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000001C /* ../Sources/FlybookEurope/FlightAltitudeRules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/FlightAltitudeRules.swift; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000001D /* ../Sources/FlybookEurope/CharterMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/CharterMath.swift; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000001E /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/AlpineFoehnWarning.swift; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000001F /* ../Sources/FlybookEurope/AirportFeeCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/AirportFeeCore.swift; sourceTree = SOURCE_ROOT; };
+		B10000000000000000000020 /* ../Sources/FlybookEurope/ExchangeRateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/ExchangeRateService.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +135,12 @@
 				B10000000000000000000015 /* IPadWeatherViewModel.swift */,
 				B10000000000000000000016 /* IPadRouteWind.swift */,
 				B1000000000000000000001A /* IPadDestinationFinderWeather.swift */,
+				B1000000000000000000001B /* ../Sources/FlybookEurope/RunwayPerformanceCore.swift */,
+				B1000000000000000000001C /* ../Sources/FlybookEurope/FlightAltitudeRules.swift */,
+				B1000000000000000000001D /* ../Sources/FlybookEurope/CharterMath.swift */,
+				B1000000000000000000001E /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift */,
+				B1000000000000000000001F /* ../Sources/FlybookEurope/AirportFeeCore.swift */,
+				B10000000000000000000020 /* ../Sources/FlybookEurope/ExchangeRateService.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -239,6 +257,12 @@
 				A10000000000000000000015 /* IPadRouteWind.swift in Sources */,
 				A10000000000000000000016 /* IPadMenuPages.swift in Sources */,
 				A10000000000000000000019 /* IPadDestinationFinderWeather.swift in Sources */,
+				A1000000000000000000001A /* ../Sources/FlybookEurope/RunwayPerformanceCore.swift in Sources */,
+				A1000000000000000000001B /* ../Sources/FlybookEurope/FlightAltitudeRules.swift in Sources */,
+				A1000000000000000000001C /* ../Sources/FlybookEurope/CharterMath.swift in Sources */,
+				A1000000000000000000001D /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift in Sources */,
+				A1000000000000000000001E /* ../Sources/FlybookEurope/AirportFeeCore.swift in Sources */,
+				A1000000000000000000001F /* ../Sources/FlybookEurope/ExchangeRateService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

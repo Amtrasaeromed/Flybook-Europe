@@ -45,6 +45,17 @@ struct FogRiskAssessment: Hashable, Sendable {
 /// Swift port of Universal Fog and Low Cloud Risk Index v1.0.0.
 /// The score is a risk index, not a calibrated probability.
 enum FogRiskModel {
+    static func ceilingFeet(
+        observed: Double?,
+        temperatureC: Double,
+        dewPointC: Double,
+        lowCloudPercent: Double
+    ) -> Double {
+        if let observed { return observed }
+        guard lowCloudPercent >= 62.5 else { return 10_000 }
+        return max(0, temperatureC - dewPointC) * 400
+    }
+
     static func classify(score: Int) -> FogRiskLevel {
         switch score {
         case 70...: return .veryHigh

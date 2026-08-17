@@ -71,7 +71,12 @@ final class IPadWeatherViewModel: ObservableObject {
             let samples = forecasts
                 .flatMap(\.samples)
                 .filter { calendar.isDate($0.validTime, inSameDayAs: date) }
-            return Self.dailySummary(date: date, samples: samples, calendar: calendar)
+            return Self.dailySummary(
+                date: date,
+                samples: samples,
+                calendar: calendar,
+                airport: overviewAirport
+            )
         }
     }
 
@@ -94,7 +99,8 @@ final class IPadWeatherViewModel: ObservableObject {
     private static func dailySummary(
         date: Date,
         samples: [EDFZWeatherSample],
-        calendar: Calendar
+        calendar: Calendar,
+        airport: Airport
     ) -> IPadDailyWeather {
         func nearest(hour: Int) -> EDFZWeatherSample? {
             samples.min {
@@ -123,12 +129,14 @@ final class IPadWeatherViewModel: ObservableObject {
                   let visibility = sample.visibilityMeters,
                   let lowCloud = sample.lowCloudCoverPercent
             else { return nil }
-            // Diese Näherung gehört ausschließlich zum validierten
-            // 5-Tages-Nebel-/Tiefwolken-Risikomodell. Sie wird weder als
-            // Planungs-Ceiling angezeigt noch zur Flugkategorie erklärt.
-            let riskCeiling = lowCloud >= 62.5
-                ? max(0, temperature - dewPoint) * 400
-                : 10_000
+            let rainStart = sample.validTime.addingTimeInterval(-5 * 60 * 60)
+            let rainLast6Hours = samples.lazy
+                .filter {
+                    $0.validTime >= rainStart
+                        && $0.validTime <= sample.validTime
+                }
+                .compactMap(\.precipitationMillimeters)
+                .reduce(0, +)
             return FogRiskModel.calculate(
                 FogRiskInput(
                     temperatureC: temperature,
@@ -136,8 +144,15 @@ final class IPadWeatherViewModel: ObservableObject {
                     windKt: wind,
                     visibilityKm: visibility / 1_000,
                     lowCloudPercent: lowCloud,
-                    ceilingFt: riskCeiling,
-                    totalCloudPercent: sample.totalCloudCoverPercent ?? 0
+                    ceilingFt: FogRiskModel.ceilingFeet(
+                        observed: sample.ceilingFeetAGL,
+                        temperatureC: temperature,
+                        dewPointC: dewPoint,
+                        lowCloudPercent: lowCloud
+                    ),
+                    totalCloudPercent: sample.totalCloudCoverPercent ?? 0,
+                    rainLast6HoursMM: rainLast6Hours,
+                    isNight: isNight(at: sample.validTime, airport: airport)
                 )
             )?.score
         }
@@ -154,6 +169,43 @@ final class IPadWeatherViewModel: ObservableObject {
             hourlyWindKnots: hourlyWind,
             hourlyFogRisk: hourlyFog
         )
+    }
+
+    private static func isNight(at instant: Date, airport: Airport) -> Bool {
+        let timeZone = TimeZone(identifier: airport.timeZoneIdentifier) ?? .current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let day = calendar.ordinality(of: .day, in: .year, for: instant) ?? 1
+        let gamma = 2 * Double.pi / 365 * (Double(day) - 1)
+        let equation = 229.18 * (
+            0.000075 + 0.001868 * cos(gamma) - 0.032077 * sin(gamma)
+                - 0.014615 * cos(2 * gamma) - 0.040849 * sin(2 * gamma)
+        )
+        let declination = 0.006918 - 0.399912 * cos(gamma)
+            + 0.070257 * sin(gamma) - 0.006758 * cos(2 * gamma)
+            + 0.000907 * sin(2 * gamma) - 0.002697 * cos(3 * gamma)
+            + 0.00148 * sin(3 * gamma)
+        let latitude = airport.latitude * .pi / 180
+        let zenith = 90.833 * .pi / 180
+        let cosineHour = cos(zenith) / (cos(latitude) * cos(declination))
+            - tan(latitude) * tan(declination)
+        guard (-1.0...1.0).contains(cosineHour) else { return false }
+        let hourAngle = acos(cosineHour) * 180 / .pi
+        let noonUTC = 720 - 4 * airport.longitude - equation
+        let sunriseUTC = noonUTC - 4 * hourAngle
+        let sunsetUTC = noonUTC + 4 * hourAngle
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let local = calendar.dateComponents([.year, .month, .day], from: instant)
+        guard let midnight = utc.date(from: DateComponents(
+            timeZone: utc.timeZone,
+            year: local.year,
+            month: local.month,
+            day: local.day
+        )) else { return false }
+        let sunrise = midnight.addingTimeInterval(sunriseUTC * 60)
+        let sunset = midnight.addingTimeInterval(sunsetUTC * 60)
+        return instant < sunrise || instant >= sunset
     }
 
     private static func representativeSymbol(codes: [Int]) -> String {

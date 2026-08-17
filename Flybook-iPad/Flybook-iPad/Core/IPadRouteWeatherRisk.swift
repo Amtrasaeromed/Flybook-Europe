@@ -12,6 +12,7 @@ enum IPadRouteWeatherRisk: Int, Comparable, Sendable {
     case green = 0
     case blue = 1
     case red = 2
+    case purple = 3
 
     static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 
@@ -21,9 +22,14 @@ enum IPadRouteWeatherRisk: Int, Comparable, Sendable {
         case .green: return .green
         case .blue: return Color.dashboardBlue
         case .red: return .red
+        case .purple: return .purple
         }
     }
 }
+
+// The shared Föhn evaluator intentionally uses the same risk type on both
+// platforms; the iPad keeps its ten-bar presentation while sharing severity.
+typealias RouteWeatherRisk = IPadRouteWeatherRisk
 
 @MainActor
 final class IPadRouteWeatherRiskViewModel: ObservableObject {
@@ -31,6 +37,7 @@ final class IPadRouteWeatherRiskViewModel: ObservableObject {
         repeating: IPadRouteWeatherRisk.unavailable,
         count: 10
     )
+    @Published private(set) var foehnWarning: AlpineFoehnWarning?
 
     func load(
         waypoints: [Airport],
@@ -40,6 +47,7 @@ final class IPadRouteWeatherRiskViewModel: ObservableObject {
     ) async {
         guard waypoints.count >= 2 else {
             segments = Array(repeating: .unavailable, count: 10)
+            foehnWarning = nil
             return
         }
         do {
@@ -49,9 +57,52 @@ final class IPadRouteWeatherRiskViewModel: ObservableObject {
                 end: end,
                 cruiseAltitudeFeet: cruiseAltitudeFeet
             )
+            foehnWarning = await Self.routeFoehnWarning(
+                waypoints: waypoints.map(\.sharedReference),
+                start: start,
+                end: end
+            )
         } catch {
             segments = Array(repeating: .unavailable, count: 10)
+            foehnWarning = nil
         }
+    }
+
+    private static func routeFoehnWarning(
+        waypoints: [AirportReference],
+        start: Date,
+        end: Date
+    ) async -> AlpineFoehnWarning? {
+        let axes = AlpineRegion.foehnAxes(along: waypoints)
+        guard !axes.isEmpty,
+              let samples = try? await AlpineFoehnForecastService.shared.samples(
+                from: start,
+                until: end
+              )
+        else { return nil }
+        let controllingSample = samples.filter {
+            axes.contains($0.axis)
+                && $0.instant >= start
+                && $0.instant <= end
+        }.max {
+            abs($0.pressureDifferenceHPA) < abs($1.pressureDifferenceHPA)
+        }
+        guard let controlling = controllingSample,
+              abs(controlling.pressureDifferenceHPA) >= 2
+        else { return nil }
+        let difference = controlling.pressureDifferenceHPA
+        let flowName = difference >= 0 ? "Südföhn" : "Nordföhn"
+        return AlpineFoehnWarning(
+            level: AlpineFoehnEvaluator.level(forMagnitude: abs(difference)),
+            pressureDifferenceHPA: difference,
+            flowName: flowName,
+            explanation: String(
+                format: "%@ auf der Alpenroute, Achse %@: Süd−Nord %+.1f hPa. GAFOR/SIGMET und Kammwind prüfen.",
+                flowName,
+                controlling.axis.title,
+                difference
+            )
+        )
     }
 }
 
@@ -91,13 +142,50 @@ actor IPadRouteWeatherRiskService {
         for (sample, response) in zip(samples, responses) {
             guard let hour = response.nearest(to: sample.instant) else { continue }
             hasData[sample.segment] = true
-            result[sample.segment] = max(
-                result[sample.segment],
-                classify(hour, cruiseAltitudeFeet: cruiseAltitudeFeet)
+            let base = classify(hour, cruiseAltitudeFeet: cruiseAltitudeFeet)
+            let assessed = alpineAssessment(
+                base,
+                hour: hour,
+                isAlpine: AlpineRegion.contains(
+                    latitude: sample.latitude,
+                    longitude: sample.longitude
+                )
             )
+            result[sample.segment] = max(result[sample.segment], assessed)
         }
         for index in result.indices where !hasData[index] {
             result[index] = .unavailable
+        }
+        if AlpineRegion.routeCrosses(waypoints.map(\.sharedReference)),
+           let foehnSamples = try? await AlpineFoehnForecastService.shared.samples(
+                from: start,
+                until: end
+           ) {
+            for index in result.indices {
+                let axes = Set(samples.compactMap { sample -> AlpineFoehnAxis? in
+                    guard sample.segment == index,
+                          AlpineRegion.contains(
+                            latitude: sample.latitude,
+                            longitude: sample.longitude
+                          ) else { return nil }
+                    return AlpineFoehnAxis.nearest(
+                        toLatitude: sample.latitude,
+                        longitude: sample.longitude
+                    )
+                })
+                let magnitude = foehnSamples.filter {
+                    axes.contains($0.axis)
+                        && $0.instant >= start
+                        && $0.instant <= end
+                }.map { abs($0.pressureDifferenceHPA) }.max()
+                guard !axes.isEmpty,
+                      let magnitude,
+                      let foehnRisk = AlpineFoehnEvaluator.routeRisk(
+                        forMagnitude: magnitude
+                      )
+                else { continue }
+                result[index] = max(result[index], foehnRisk)
+            }
         }
         cache[key] = (Date(), result)
         return result
@@ -109,17 +197,22 @@ actor IPadRouteWeatherRiskService {
     ) -> IPadRouteWeatherRisk {
         var risk = IPadRouteWeatherRisk.green
         var critical = false
+        var veryCritical = false
 
         if let visibility = hour.visibilityMeters {
-            if visibility < 1_500 { critical = true }
+            if visibility < 1_500 {
+                critical = true
+                veryCritical = true
+            }
             if visibility < 8_000 { risk = .blue }
         }
         if let rain = hour.precipitationMillimeters {
             if rain > 10 { critical = true }
             if rain >= 2 { risk = .blue }
         }
-        if let code = hour.weatherCode, [45, 48, 95, 96, 99].contains(code) {
-            critical = true
+        if let code = hour.weatherCode {
+            if [45, 48, 95, 96, 99].contains(code) { critical = true }
+            if [95, 96, 99].contains(code) { veryCritical = true }
         }
         if let temperature = hour.temperatureCelsius,
            let dewPoint = hour.dewPointCelsius,
@@ -131,11 +224,9 @@ actor IPadRouteWeatherRiskService {
             if cape >= 1_000, (hour.precipitationMillimeters ?? 0) > 0 { critical = true }
             if cape >= 500 { risk = .blue }
         }
-        if (hour.lowCloudCoverPercent ?? 0) >= 62.5,
-           let temperature = hour.temperatureCelsius,
-           let dewPoint = hour.dewPointCelsius {
-            let baseFeetAGL = max(0, (temperature - dewPoint) * 400)
+        if let baseFeetAGL = hour.estimatedCeilingBaseFeetAGL {
             if baseFeetAGL < 1_000 { critical = true }
+            if baseFeetAGL < 500 { veryCritical = true }
             if baseFeetAGL <= 2_500 { risk = .blue }
         }
         if let thickness = hour.brokenOvercastThicknessFeet {
@@ -144,7 +235,39 @@ actor IPadRouteWeatherRiskService {
         }
 
         guard critical else { return risk }
-        return hour.isSuitableAloft(around: cruiseAltitudeFeet) ? .blue : .red
+        return hour.isSuitableAloft(around: cruiseAltitudeFeet)
+            ? .blue
+            : (veryCritical ? .purple : .red)
+    }
+
+    private func alpineAssessment(
+        _ base: IPadRouteWeatherRisk,
+        hour: RiskHour,
+        isAlpine: Bool
+    ) -> IPadRouteWeatherRisk {
+        guard isAlpine else { return base }
+        var risk = base
+        let rain = hour.precipitationMillimeters ?? 0
+        if let visibility = hour.visibilityMeters {
+            if visibility < 5_000 { risk = .purple }
+            else if visibility < 8_000 { risk = max(risk, .red) }
+            else if visibility < 10_000 { risk = max(risk, .blue) }
+        }
+        if let clearance = hour.estimatedCeilingBaseFeetAGL {
+            if clearance < 1_000 { risk = .purple }
+            else if clearance < 2_000 { risk = max(risk, .red) }
+            else if clearance < 5_000 { risk = max(risk, .blue) }
+            if rain >= 0.1 {
+                if clearance < 2_000 { risk = .purple }
+                else if clearance < 5_000 { risk = max(risk, .red) }
+                else { risk = max(risk, .blue) }
+            }
+        } else if rain >= 2 {
+            risk = max(risk, .red)
+        } else if rain >= 0.1 {
+            risk = max(risk, .blue)
+        }
+        return risk
     }
 
     private func corridorSamples(
@@ -205,8 +328,7 @@ actor IPadRouteWeatherRiskService {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"
 
-        var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")
-        components?.queryItems = [
+        let queryItems = [
             URLQueryItem(name: "latitude", value: samples.map { String(format: "%.4f", $0.latitude) }.joined(separator: ",")),
             URLQueryItem(name: "longitude", value: samples.map { String(format: "%.4f", $0.longitude) }.joined(separator: ",")),
             URLQueryItem(name: "timezone", value: "UTC"),
@@ -225,15 +347,23 @@ actor IPadRouteWeatherRiskService {
                 "cloud_cover_700hPa", "geopotential_height_700hPa"
             ].joined(separator: ","))
         ]
-        guard let url = components?.url else { throw RiskError.noData }
-        let (data, response) = try await FlightNetwork.openMeteoData(
-            from: url,
-            priority: .low
-        )
-        guard let http = response as? HTTPURLResponse,
-              (200..<300).contains(http.statusCode)
-        else { throw RiskError.noData }
-        return try JSONDecoder().decode([RiskAPIResponse].self, from: data)
+        var lastError: Error?
+        for route in ICONSeamlessAccessRoute.allCases {
+            guard let url = route.url(queryItems: queryItems) else { continue }
+            do {
+                let (data, response) = try await FlightNetwork.openMeteoData(
+                    from: url,
+                    priority: .low
+                )
+                guard let http = response as? HTTPURLResponse,
+                      (200..<300).contains(http.statusCode)
+                else { throw RiskError.noData }
+                return try JSONDecoder().decode([RiskAPIResponse].self, from: data)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError ?? RiskError.noData
     }
 
     private func geographicPoint(
@@ -351,6 +481,13 @@ private struct RiskHour {
         pressureClouds = zip(hourly.pressureCloudCover, hourly.pressureHeight).map {
             ($0[routeRiskSafe: index] ?? nil, $1[routeRiskSafe: index] ?? nil)
         }
+    }
+
+    var estimatedCeilingBaseFeetAGL: Double? {
+        guard (lowCloudCoverPercent ?? 0) >= 62.5,
+              let temperatureCelsius,
+              let dewPointCelsius else { return nil }
+        return max(0, (temperatureCelsius - dewPointCelsius) * 400)
     }
 
     var brokenOvercastThicknessFeet: Double? {

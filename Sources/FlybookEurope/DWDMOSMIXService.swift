@@ -245,6 +245,7 @@ actor DWDMOSMIXService {
                 windGustKnots: value(values["FX1"], index).map { $0 * 1.943_844 },
                 temperatureCelsius: temperature,
                 dewPointCelsius: dewPoint,
+                precipitationMillimeters: value(values["RR1c"], index),
                 weatherCode: value(values["ww"], index).map { Int($0.rounded()) },
                 visibilityMeters: visibility,
                 lowCloudCoverPercent: lowCloud,

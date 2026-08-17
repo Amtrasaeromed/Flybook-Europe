@@ -27,6 +27,7 @@ struct AirportReference: Identifiable, Hashable {
     let elevationFeet: Double
     let timeZone: TimeZone
     var referenceRunway: String? = nil
+    var country: String = ""
 }
 
 enum DestinationTimeZone {
@@ -42,7 +43,8 @@ extension Airport {
             longitude: longitude,
             elevationFeet: Double(elevationFeet),
             timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .current,
-            referenceRunway: referenceRunway
+            referenceRunway: referenceRunway,
+            country: countryCode
         )
     }
 }

@@ -98,6 +98,30 @@ final class FogRiskModelTests: XCTestCase {
         XCTAssertEqual(DailyWeatherTimeline.hours.count, 17)
     }
 
+    func testSharedCeilingPrefersObservedValue() {
+        XCTAssertEqual(FogRiskModel.ceilingFeet(
+            observed: 1_250,
+            temperatureC: 10,
+            dewPointC: 9,
+            lowCloudPercent: 100
+        ), 1_250)
+    }
+
+    func testSharedCeilingUsesSpreadFallbackForBrokenLowCloud() {
+        XCTAssertEqual(FogRiskModel.ceilingFeet(
+            observed: nil,
+            temperatureC: 10,
+            dewPointC: 8,
+            lowCloudPercent: 75
+        ), 800)
+        XCTAssertEqual(FogRiskModel.ceilingFeet(
+            observed: nil,
+            temperatureC: 10,
+            dewPointC: 8,
+            lowCloudPercent: 50
+        ), 10_000)
+    }
+
     func testSparseSixHourlyForecastFillsIntermediateTimelineHours() {
         let sourceHours = [6, 12, 18]
 

@@ -305,7 +305,12 @@ actor WeatherService {
                 windKt: wind,
                 visibilityKm: visibility / 1_000,
                 lowCloudPercent: lowCloud,
-                ceilingFt: sample.ceilingFeetAGL ?? 10_000,
+                ceilingFt: FogRiskModel.ceilingFeet(
+                    observed: sample.ceilingFeetAGL,
+                    temperatureC: temperature,
+                    dewPointC: dewPoint,
+                    lowCloudPercent: lowCloud
+                ),
                 lowLevelRHPercent: nil,
                 totalCloudPercent: sample.totalCloudCoverPercent ?? 0,
                 rainLast6HoursMM: 0,

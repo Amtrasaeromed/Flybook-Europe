@@ -9,7 +9,9 @@ enum FlightAltitudeRules {
     }
 
     static func recommendedOptions(forCourseDegrees courseDegrees: Double) -> [Int] {
-        if (180..<360).contains(WindMath.normalized(courseDegrees)) {
+        let normalized = courseDegrees.truncatingRemainder(dividingBy: 360)
+        let course = normalized < 0 ? normalized + 360 : normalized
+        if (180..<360).contains(course) {
             return [2_500, 4_500, 6_500, 8_500, 10_500]
         }
         return [2_500, 3_500, 5_500, 7_500, 9_500, 11_500]

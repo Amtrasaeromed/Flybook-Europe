@@ -23,6 +23,11 @@ struct FlybookDashboardView: View {
     @State private var showsAirportPicker = false
     @State private var showsMigrationNotice = false
     @State private var includeLandingFees = false
+    @State private var includeOvernightParkingFee = false
+    @State private var includeCustomsEntryFee = false
+    @State private var includeCustomsExitFee = false
+    @State private var includeHandlingFee = false
+    @State private var includeRefuelLoss = false
     @State private var flightDepartureICAO = "EDFZ"
     @State private var flightArrivalICAO = ""
     @State private var selectedAltitudeFeet = 7_000
@@ -34,6 +39,7 @@ struct FlybookDashboardView: View {
     @StateObject private var routeWeather = IPadRouteWeatherRiskViewModel()
     @StateObject private var airportWeather = IPadWeatherViewModel()
     @StateObject private var routeWindModel = IPadRouteWindViewModel()
+    @StateObject private var exchangeRateModel = ExchangeRateViewModel()
 
     private var homeAirport: Airport {
         airports.first(where: { $0.icao == "EDFZ" })
@@ -130,6 +136,84 @@ struct FlybookDashboardView: View {
         activeETOPSProfileValue(name: "reserveMinutes", legacyKey: "flybookReserveMinutes", fallback: 45)
     }
 
+    private var runwayPerformanceSafetyMarginPercent: Int {
+        activeETOPSProfileValue(
+            name: "runwayPerformanceSafetyMarginPercent",
+            legacyKey: "flybookRunwayPerformanceSafetyMarginPercent",
+            fallback: 0
+        )
+    }
+
+    private var runwayPerformanceProfile: RunwayPerformanceProfile? {
+        let normalized = activeAircraft.uppercased()
+        guard ["DEUKS", "DEZHS", "A211"].contains(normalized) else {
+            return nil
+        }
+        let storedMTOW = UserDefaults.standard.double(
+            forKey: "aircraft.a211.mtowKilograms"
+        )
+        return RunwayPerformanceProfile(
+            maximumTakeoffWeightKilograms: storedMTOW > 0 ? storedMTOW : 750,
+            takeoffRollMeters: 250,
+            takeoffOver50FeetMeters: 430,
+            landingRollMeters: 210,
+            landingOver50FeetMeters: 500
+        )
+    }
+
+    private func runwayPerformance(
+        airport: Airport,
+        sample: EDFZWeatherSample?,
+        isDeparture: Bool
+    ) -> RunwayPerformanceDisplay? {
+        guard let profile = runwayPerformanceProfile,
+              let densityAltitude = RunwayPerformance.densityAltitudeFeet(
+                elevationFeet: Double(airport.elevationFeet),
+                temperatureCelsius: sample?.temperatureCelsius,
+                pressureHPA: sample?.pressureMSLHPA
+              ) else { return nil }
+        let headings = airport.referenceRunway.split(separator: "/")
+            .compactMap { Double($0.prefix(2)).map { $0 * 10 } }
+        let windSpeed = sample?.windSpeedKnots ?? 0
+        let windDirection = sample?.windDirectionDegrees ?? 0
+        let headwind = headings.map {
+            windSpeed * cos((windDirection - $0) * .pi / 180)
+        }.max() ?? 0
+        let fuelBurn = CharterMath.actualFuelBurnLiters(
+            minutes: routeBlockMinutes,
+            consumptionLitersPerHour: activeAircraftPerformance.cruise
+                .fuelLitersPerHour(at: Double(selectedAltitudeFeet))
+                ?? activeAircraftPerformance.fallbackFuelLitersPerHour
+        )
+        let weight = isDeparture
+            ? profile.maximumTakeoffWeightKilograms
+            : max(1, profile.maximumTakeoffWeightKilograms - fuelBurn * 0.72)
+        let raw = isDeparture
+            ? RunwayPerformance.takeoff(
+                profile: profile,
+                weightKilograms: weight,
+                densityAltitudeFeet: densityAltitude,
+                headwindKnots: headwind
+            )
+            : RunwayPerformance.landing(
+                profile: profile,
+                weightKilograms: weight,
+                densityAltitudeFeet: densityAltitude,
+                headwindKnots: headwind
+            )
+        let result = raw.addingSafetyMargin(
+            percent: runwayPerformanceSafetyMarginPercent
+        )
+        let available = isDeparture
+            ? airport.runwayLengthMeters
+            : (airport.runwayLDAMeters ?? airport.runwayLengthMeters)
+        return RunwayPerformanceDisplay(
+            result: result,
+            availableMeters: available,
+            isDeparture: isDeparture
+        )
+    }
+
     private var activeETOPSGreenYellowMinutes: Int {
         activeETOPSProfileValue(
             name: "greenYellowMinutes",
@@ -218,15 +302,15 @@ struct FlybookDashboardView: View {
     }
 
     private var altitudeOptions: [Int] {
+        FlightAltitudeRules.options(forCourseDegrees: routeCourseDegrees)
+    }
+
+    private var routeCourseDegrees: Double {
         let firstLegDestination = selectedIntermediateAirports.first ?? flightArrivalAirport
-        let course = FlightGeometry.initialBearing(
+        return FlightGeometry.initialBearing(
             from: flightDepartureAirport,
             to: firstLegDestination
         )
-        if (180..<360).contains(course) {
-            return [2_500, 4_500, 6_500, 8_500]
-        }
-        return [2_500, 3_500, 5_500, 7_500, 9_500]
     }
 
     private var altitudeRuleKey: String {
@@ -235,7 +319,9 @@ struct FlybookDashboardView: View {
     }
 
     private var bestLevelFeet: Int {
-        altitudeOptions.min {
+        FlightAltitudeRules.recommendedOptions(
+            forCourseDegrees: routeCourseDegrees
+        ).min {
             abs($0 - 7_000) < abs($1 - 7_000)
         } ?? 2_500
     }
@@ -267,15 +353,17 @@ struct FlybookDashboardView: View {
     }
 
     private var charterBlockHours: Double {
-        IPadCharterMath.commercialHours(minutes: routeBlockMinutes)
+        CharterMath.commercialDecimalHours(minutes: routeBlockMinutes)
     }
 
     private var charterFuelLiters: Int {
         let consumption = activeAircraftPerformance.cruise.fuelLitersPerHour(
             at: Double(selectedAltitudeFeet)
         ) ?? activeAircraftPerformance.fallbackFuelLitersPerHour
-        let required = Double(routeBlockMinutes + reserveMinutes) / 60 * consumption
-        return Int(ceil(required))
+        return Int(ceil(CharterMath.actualFuelBurnLiters(
+            minutes: routeBlockMinutes,
+            consumptionLitersPerHour: consumption
+        )))
     }
 
     private var charterCostEUR: Int {
@@ -291,7 +379,193 @@ struct FlybookDashboardView: View {
             * (weekday && weekdayEnabled ? 0.95 : 1)
         let vat = defaults.object(forKey: "flybookVATPercent") == nil
             ? 7 : defaults.double(forKey: "flybookVATPercent")
-        return Int((charterBlockHours * rate * (1 + max(0, vat) / 100)).rounded())
+        return Int((CharterMath.commercialCost(
+            minutes: routeBlockMinutes,
+            hourlyRateEUR: rate
+        ) * (1 + max(0, vat) / 100)).rounded())
+    }
+
+    private var charterRefuelLossEUR: Int? {
+        guard includeRefuelLoss else { return 0 }
+        let destinationPrice = destinationFuelPrices.mogas?.eurosPerLiter
+            ?? destinationFuelPrices.avgas?.eurosPerLiter
+        let homePrice = AirportFuelPriceCatalog.referenceEDFZ.mogas?.eurosPerLiter
+            ?? AirportFuelPriceCatalog.referenceEDFZ.avgas?.eurosPerLiter
+        return CharterMath.refuelLoss(
+            grossPricePerLiter: destinationPrice,
+            homeReferencePerLiter: homePrice,
+            liters: Double(charterFuelLiters),
+            destinationVATPercent: destination.countryCode == "DE" ? 19 : nil,
+            isForeign: destination.countryCode != "DE"
+        ).map { Int($0.rounded()) }
+    }
+
+    private var charterMTOWKilograms: Double {
+        runwayPerformanceProfile?.maximumTakeoffWeightKilograms ?? 750
+    }
+
+    private var charterHasIncreasedNoiseProtection: Bool {
+        let normalized = activeAircraft.uppercased()
+        guard ["DEUKS", "DEZHS", "A211"].contains(normalized) else {
+            return false
+        }
+        let key = "aircraft.a211.increasedNoiseProtection"
+        return UserDefaults.standard.object(forKey: key) == nil
+            ? true
+            : UserDefaults.standard.bool(forKey: key)
+    }
+
+    private var charterNoiseLevelDBA: Double? {
+        let normalized = activeAircraft.uppercased()
+        guard ["DEUKS", "DEZHS", "A211"].contains(normalized) else {
+            return nil
+        }
+        let stored = UserDefaults.standard.double(
+            forKey: "aircraft.a211.noiseLevelDBA"
+        )
+        return stored > 0 ? stored : 65.1
+    }
+
+    private var charterArrivalDate: Date {
+        outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60))
+    }
+
+    private var charterLandingFeeQuote: IPadCharterFeeQuote {
+        guard includeLandingFees else { return IPadCharterFeeQuote() }
+        let quote = AirportLandingFeeCalculator.quote(
+            for: routeWaypoints.dropFirst().map(\.icao),
+            mtowKilograms: charterMTOWKilograms,
+            hasIncreasedNoiseProtection: charterHasIncreasedNoiseProtection,
+            noiseLevelDBA: charterNoiseLevelDBA,
+            landingDate: charterArrivalDate,
+            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+        )
+        return IPadCharterFeeQuote(
+            knownTotalEUR: quote.knownTotalEUR,
+            unknownICAOs: quote.unknownICAOs
+        )
+    }
+
+    private func charterFixedFeeQuote(
+        airports: [Airport],
+        amount: (AirportLandingFeeProfile) -> String?
+    ) -> IPadCharterFeeQuote {
+        airports.reduce(into: IPadCharterFeeQuote()) { result, airport in
+            let profile = AirportLandingFeeStore.profile(for: airport.icao)
+            if let fee = AirportLandingFeeCalculator.ancillaryFeeEUR(
+                profile: profile,
+                amountText: amount(profile),
+                count: 1,
+                chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+            ) {
+                result.knownTotalEUR += fee
+            } else {
+                result.unknownICAOs.append(airport.icao)
+            }
+        }
+    }
+
+    private var charterOvernightFeeQuote: IPadCharterFeeQuote {
+        guard includeOvernightParkingFee else { return IPadCharterFeeQuote() }
+        let profile = AirportLandingFeeStore.profile(for: flightArrivalAirport.icao)
+        let calculatedNights = CharterMath.overnightCount(
+            arrival: charterArrivalDate,
+            departure: returnDeparture,
+            timeZone: TimeZone(identifier: flightArrivalAirport.timeZoneIdentifier)
+                ?? .current
+        )
+        let nights = max(1, calculatedNights)
+        guard let fee = AirportLandingFeeCalculator.ancillaryFeeEUR(
+            profile: profile,
+            amountText: profile.overnightParkingPerNightEUR,
+            weightBands: profile.overnightParkingBands,
+            mtowKilograms: charterMTOWKilograms,
+            count: nights,
+            chfToEURRate: exchangeRateModel.chfToEUR?.euroPerCHF
+        ) else {
+            return IPadCharterFeeQuote(unknownICAOs: [flightArrivalAirport.icao])
+        }
+        return IPadCharterFeeQuote(knownTotalEUR: fee)
+    }
+
+    private var charterCustomsAirports: CustomsControlAirports {
+        CustomsFeeRules.controlAirports(
+            routes: [routeWaypoints.map(\.sharedReference)]
+        )
+    }
+
+    private var charterCustomsFeeQuote: IPadCharterFeeQuote {
+        var result = IPadCharterFeeQuote()
+        if includeCustomsEntryFee {
+            let matches = charterCustomsAirports.entries.compactMap { reference in
+                airports.first { $0.icao == reference.icao }
+            }
+            result += charterFixedFeeQuote(
+                airports: matches.isEmpty ? [flightArrivalAirport] : matches,
+                amount: { $0.customsClearancePerControlEUR }
+            )
+        }
+        if includeCustomsExitFee {
+            let matches = charterCustomsAirports.exits.compactMap { reference in
+                airports.first { $0.icao == reference.icao }
+            }
+            result += charterFixedFeeQuote(
+                airports: matches.isEmpty ? [flightDepartureAirport] : matches,
+                amount: { $0.customsClearancePerControlEUR }
+            )
+        }
+        return result
+    }
+
+    private var charterHandlingFeeQuote: IPadCharterFeeQuote {
+        guard includeHandlingFee else { return IPadCharterFeeQuote() }
+        return charterFixedFeeQuote(
+            airports: Array(routeWaypoints.dropFirst()),
+            amount: { $0.handlingPerMovementEUR }
+        )
+    }
+
+    private var charterAirportFeeQuote: IPadCharterFeeQuote {
+        charterLandingFeeQuote
+            + charterOvernightFeeQuote
+            + charterCustomsFeeQuote
+            + charterHandlingFeeQuote
+    }
+
+    private var charterHasUnknownFees: Bool {
+        charterAirportFeeQuote.hasUnknownFees
+            || (includeRefuelLoss && charterRefuelLossEUR == nil)
+    }
+
+    private var charterKnownFeesEUR: Int {
+        Int((
+            charterAirportFeeQuote.knownTotalEUR
+                + Double(charterRefuelLossEUR ?? 0)
+        ).rounded())
+    }
+
+    private var charterTotalEUR: Int {
+        charterCostEUR + charterKnownFeesEUR
+    }
+
+    private var charterFeeDisplayText: String {
+        if charterHasUnknownFees {
+            return charterKnownFeesEUR > 0
+                ? "\(charterKnownFeesEUR) € + ?"
+                : "?"
+        }
+        return charterKnownFeesEUR > 0 ? "\(charterKnownFeesEUR) €" : "—"
+    }
+
+    private var charterFeePointText: String {
+        var points: [String] = []
+        if includeLandingFees { points.append("Landen") }
+        if includeOvernightParkingFee { points.append("Parken") }
+        if includeCustomsEntryFee { points.append("Zoll ein") }
+        if includeCustomsExitFee { points.append("Zoll aus") }
+        if includeHandlingFee { points.append("Handling") }
+        if includeRefuelLoss { points.append("Tanken") }
+        return points.isEmpty ? "Nur Charter" : points.joined(separator: " · ")
     }
 
     private var routeWaypoints: [Airport] {
@@ -374,6 +648,9 @@ struct FlybookDashboardView: View {
                 end: outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60)),
                 cruiseAltitudeFeet: selectedAltitudeFeet
             )
+        }
+        .task {
+            await exchangeRateModel.refreshIfNeeded()
         }
         .task(id: flightDataRequestKey) {
             let provisionalEnd = outboundDeparture.addingTimeInterval(TimeInterval(routeMinutes * 60))
@@ -692,13 +969,25 @@ struct FlybookDashboardView: View {
                 distanceNM: routeDistanceNM,
                 selectedAltitudeFeet: $selectedAltitudeFeet,
                 altitudeOptions: altitudeOptions,
+                courseDegrees: routeCourseDegrees,
                 bestLevelFeet: bestLevelFeet,
                 departureAirport: flightDepartureAirport,
                 arrivalAirport: flightArrivalAirport,
                 routeRisks: routeWeather.segments,
+                foehnWarning: routeWeather.foehnWarning,
                 routeHeadwindKnots: routeWindModel.wind?.headwindKnots,
                 departureWeatherSample: airportWeather.departureSample,
                 arrivalWeatherSample: airportWeather.arrivalSample,
+                departurePerformance: runwayPerformance(
+                    airport: flightDepartureAirport,
+                    sample: airportWeather.departureSample,
+                    isDeparture: true
+                ),
+                arrivalPerformance: runwayPerformance(
+                    airport: flightArrivalAirport,
+                    sample: airportWeather.arrivalSample,
+                    isDeparture: false
+                ),
                 onSwap: {
                     let previousDeparture = flightDepartureICAO
                     flightDepartureICAO = flightArrivalICAO
@@ -986,12 +1275,18 @@ struct FlybookDashboardView: View {
             HStack {
                 SectionTitle(title: "CHARTERKALKULATION", systemName: "eurosign.circle")
                 Spacer()
-                Text("Landegebühren")
-                    .font(.caption.bold())
-                    .foregroundStyle(Color.dashboardNavy)
-                Toggle("", isOn: $includeLandingFees)
-                    .labelsHidden()
-                    .tint(Color.dashboardBlue)
+                Menu {
+                    Toggle("Landegebühr", isOn: $includeLandingFees)
+                    Toggle("Übernachtungsgebühr", isOn: $includeOvernightParkingFee)
+                    Toggle("Zoll Einreise", isOn: $includeCustomsEntryFee)
+                    Toggle("Zoll Ausreise", isOn: $includeCustomsExitFee)
+                    Toggle("Handling", isOn: $includeHandlingFee)
+                    Toggle("Tankkostendifferenz", isOn: $includeRefuelLoss)
+                } label: {
+                    Label("Kostenpunkte", systemImage: "checklist")
+                        .font(.caption.bold())
+                        .foregroundStyle(Color.dashboardBlue)
+                }
             }
             .frame(height: 27)
             DashboardCard {
@@ -1000,7 +1295,7 @@ struct FlybookDashboardView: View {
                     CharterColumnHeader("STRECKE NM")
                     CharterColumnHeader("BLOCKZEIT")
                     CharterColumnHeader("KRAFTSTOFF")
-                    CharterColumnHeader("LANDEGEBÜHR")
+                    CharterColumnHeader("GEBÜHREN")
                     CharterColumnHeader("CHARTER")
                 }
 
@@ -1008,18 +1303,25 @@ struct FlybookDashboardView: View {
                     CharterValueBox(value: "\(Int(routeDistanceNM.rounded())) NM")
                     CharterValueBox(value: charterBlockHours.formatted(.number.precision(.fractionLength(1))) + " h")
                     CharterValueBox(value: "\(charterFuelLiters) L", accent: .green)
-                    CharterValueBox(value: includeLandingFees ? "?" : "—")
-                    CharterValueBox(value: "\(charterCostEUR) €")
+                    CharterValueBox(value: charterFeeDisplayText)
+                    CharterValueBox(value: "\(charterTotalEUR) €")
                 }
 
                 Divider()
 
                 HStack {
-                    Text("GESAMT HINFLUG")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(Color.dashboardNavy)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("GESAMT HINFLUG")
+                            .font(.subheadline.bold())
+                        Text(charterFeePointText)
+                            .font(.system(size: 8.5, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color.dashboardNavy)
                     Spacer()
-                    Text(includeLandingFees ? "\(charterCostEUR) € + ?" : "\(charterCostEUR) €")
+                    Text(charterHasUnknownFees
+                        ? "\(charterTotalEUR) € + ?"
+                        : "\(charterTotalEUR) €")
                         .font(.title3.bold().monospacedDigit())
                         .foregroundStyle(Color.dashboardNavy)
                 }
@@ -1729,13 +2031,17 @@ private struct EditableFlightLegCard: View {
     let distanceNM: Double
     @Binding var selectedAltitudeFeet: Int
     let altitudeOptions: [Int]
+    let courseDegrees: Double
     let bestLevelFeet: Int
     let departureAirport: Airport
     let arrivalAirport: Airport
     let routeRisks: [IPadRouteWeatherRisk]
+    let foehnWarning: AlpineFoehnWarning?
     let routeHeadwindKnots: Double?
     let departureWeatherSample: EDFZWeatherSample?
     let arrivalWeatherSample: EDFZWeatherSample?
+    let departurePerformance: RunwayPerformanceDisplay?
+    let arrivalPerformance: RunwayPerformanceDisplay?
     let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
 
@@ -1769,8 +2075,16 @@ private struct EditableFlightLegCard: View {
     var body: some View {
         DashboardCard {
             VStack(spacing: 6) {
-                IPadRouteRiskBars(risks: routeRisks)
-                    .frame(maxWidth: .infinity, minHeight: 14, maxHeight: 14)
+                HStack(spacing: 6) {
+                    IPadRouteRiskBars(risks: routeRisks)
+                    if let foehnWarning {
+                        Label(foehnWarning.flowName, systemImage: "wind")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(foehnWarning.level.color)
+                            .help(foehnWarning.explanation)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 14, maxHeight: 14)
 
                 ZStack {
                 Rectangle()
@@ -1851,8 +2165,21 @@ private struct EditableFlightLegCard: View {
 
                 Menu {
                     ForEach(altitudeOptions, id: \.self) { altitude in
-                        Button(altitudeLabel(altitude)) {
+                        Button {
                             selectedAltitudeFeet = altitude
+                        } label: {
+                            HStack {
+                                Text(altitudeLabel(altitude))
+                                    .fontWeight(
+                                        FlightAltitudeRules.isRecommended(
+                                            altitude,
+                                            forCourseDegrees: courseDegrees
+                                        ) ? .bold : .regular
+                                    )
+                                if selectedAltitudeFeet == altitude {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
                         }
                     }
                 } label: {
@@ -1900,9 +2227,17 @@ private struct EditableFlightLegCard: View {
                 .frame(height: 188)
 
                 HStack(spacing: 0) {
-                    FlightWeatherMetrics(airport: departureAirport, sample: departureWeatherSample)
+                    FlightWeatherMetrics(
+                        airport: departureAirport,
+                        sample: departureWeatherSample,
+                        performance: departurePerformance
+                    )
                     Divider().frame(height: 42)
-                    FlightWeatherMetrics(airport: arrivalAirport, sample: arrivalWeatherSample)
+                    FlightWeatherMetrics(
+                        airport: arrivalAirport,
+                        sample: arrivalWeatherSample,
+                        performance: arrivalPerformance
+                    )
                 }
                 .frame(height: 55)
             }
@@ -2130,29 +2465,42 @@ private struct RunwayRecommendationPanel: View {
     }
 
     private var windLimitColor: Color {
-        let crosswind = recommendation?.crosswind ?? 0
-        if crosswind >= 12 || weather.windSpeedKnots >= 18 || (weather.gustKnots ?? 0) >= 25 {
-            return .red
+        switch crosswindWarning {
+        case .none: return .green
+        case .yellow: return .orange
+        case .red: return .red
         }
-        if crosswind >= 8 || weather.windSpeedKnots >= 12 || (weather.gustKnots ?? 0) >= 18 {
-            return .orange
+    }
+
+    private var crosswindWarning: RunwayCrosswindWarning {
+        guard let recommendation else { return .none }
+        let gustCrosswind = weather.gustKnots.map { gust in
+            guard weather.windSpeedKnots > 0 else { return 0.0 }
+            return Double(gust) * recommendation.crosswind
+                / weather.windSpeedKnots
         }
-        return .green
+        return EDFZRunway.crosswindWarning(for: RunwayWindComponents(
+            headwindKnots: recommendation.headwind,
+            crosswindKnots: recommendation.crosswind,
+            gustCrosswindKnots: gustCrosswind,
+            crosswindComesFromRight: recommendation.crosswindComesFromRight
+        ))
     }
 
     private var metarBoxFill: Color {
-        isNormalWind ? .white : windLimitColor.opacity(0.18)
+        switch crosswindWarning {
+        case .none: return Color.green.opacity(0.24)
+        case .yellow: return Color.orange.opacity(0.32)
+        case .red: return Color.red.opacity(0.38)
+        }
     }
 
     private var metarBoxBorder: Color {
-        isNormalWind ? Color.gray.opacity(0.35) : windLimitColor.opacity(0.85)
+        windLimitColor.opacity(0.85)
     }
 
     private var isNormalWind: Bool {
-        let crosswind = recommendation?.crosswind ?? 0
-        return crosswind < 8
-            && weather.windSpeedKnots < 12
-            && (weather.gustKnots ?? 0) < 18
+        crosswindWarning == .none
     }
 }
 
@@ -2290,6 +2638,25 @@ private struct DashboardWeatherSnapshot {
     }
 }
 
+private struct RunwayPerformanceDisplay {
+    let result: RunwayPerformanceResult
+    let availableMeters: Int?
+    let isDeparture: Bool
+
+    var rollPercentage: Int? {
+        availableMeters.flatMap {
+            result.runwayPercentage(availableMeters: $0)
+        }
+    }
+
+    var fiftyFeetPercentage: Int? {
+        guard let availableMeters, availableMeters > 0 else { return nil }
+        return Int(ceil(
+            Double(result.over50FeetMeters) / Double(availableMeters) * 100
+        ))
+    }
+}
+
 private enum DashboardWeatherPreview {
     static func snapshot(
         for airport: Airport,
@@ -2298,9 +2665,11 @@ private enum DashboardWeatherPreview {
         if let sample {
             let temperature = sample.temperatureCelsius ?? 0
             let pressure = sample.pressureMSLHPA ?? 1_013.25
-            let pressureAltitude = Double(airport.elevationFeet) + (1_013.25 - pressure) * 30
-            let isaTemperature = 15 - 2 * pressureAltitude / 1_000
-            let densityAltitude = pressureAltitude + 120 * (temperature - isaTemperature)
+            let densityAltitude = RunwayPerformance.densityAltitudeFeet(
+                elevationFeet: Double(airport.elevationFeet),
+                temperatureCelsius: temperature,
+                pressureHPA: pressure
+            ) ?? Double(airport.elevationFeet)
             let cloudCover = sample.lowCloudCoverPercent ?? sample.totalCloudCoverPercent ?? 0
             let clouds: String
             switch cloudCover {
@@ -2376,6 +2745,7 @@ private struct FlightCategoryBadge: View {
 private struct FlightWeatherMetrics: View {
     let airport: Airport
     let sample: EDFZWeatherSample?
+    let performance: RunwayPerformanceDisplay?
 
     private var weather: DashboardWeatherSnapshot {
         DashboardWeatherPreview.snapshot(for: airport, sample: sample)
@@ -2386,16 +2756,61 @@ private struct FlightWeatherMetrics: View {
             WeatherMetricGroup {
                 WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
                 WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
-                WeatherMetric(title: "DICHTEHÖHE", value: "\(weather.densityAltitudeFeet.formatted()) ft")
+                densityAltitudeMetric
+                performanceMetric(isFiftyFeet: false)
             }
             WeatherMetricGroup {
                 WeatherMetric(title: "WOLKEN", value: weather.clouds)
                 WeatherMetric(title: "BASIS", value: "\(weather.cloudBaseFeet) ft")
                 WeatherMetric(title: "SICHT", value: "\(weather.visibilityKilometers) km")
+                performanceMetric(isFiftyFeet: true)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
+    }
+
+    private var densityAltitudeMetric: some View {
+        let high = weather.densityAltitudeFeet >= 5_000
+        let elevated = weather.densityAltitudeFeet >= 2_500
+        return WeatherMetric(
+            title: "DICHTEHÖHE",
+            value: "\(weather.densityAltitudeFeet.formatted()) ft",
+            valueColor: high ? .white : Color.dashboardNavy,
+            backgroundColor: high
+                ? Color.red.opacity(0.82)
+                : (elevated ? Color.yellow.opacity(0.62) : nil)
+        )
+    }
+
+    private func performanceMetric(isFiftyFeet: Bool) -> some View {
+        let percentage = isFiftyFeet
+            ? performance?.fiftyFeetPercentage
+            : performance?.rollPercentage
+        let meters = isFiftyFeet
+            ? performance?.result.over50FeetMeters
+            : performance?.result.rollMeters
+        let title = isFiftyFeet
+            ? "50 FT"
+            : (performance?.isDeparture == false ? "LDG ROLL" : "T/O ROLL")
+        let color: Color = {
+            guard let percentage else { return Color.dashboardNavy }
+            if isFiftyFeet { return percentage >= 100 ? .red : Color.dashboardNavy }
+            if percentage >= 75 { return .red }
+            if percentage >= 50 { return .orange }
+            return Color.dashboardNavy
+        }()
+        return WeatherMetric(
+            title: title,
+            value: meters.map { "\($0)m" + (percentage.map { " \($0)%" } ?? "") } ?? "—",
+            valueColor: color,
+            backgroundColor: percentage.map { value in
+                if isFiftyFeet { return value >= 100 ? Color.red.opacity(0.14) : nil }
+                if value >= 75 { return Color.red.opacity(0.14) }
+                if value >= 50 { return Color.orange.opacity(0.20) }
+                return nil
+            } ?? nil
+        )
     }
 }
 
@@ -2461,6 +2876,8 @@ private struct WeatherMetricGroup<Content: View>: View {
 private struct WeatherMetric: View {
     let title: String
     let value: String
+    var valueColor: Color = Color.dashboardNavy
+    var backgroundColor: Color? = nil
 
     var body: some View {
         VStack(spacing: 1) {
@@ -2471,11 +2888,15 @@ private struct WeatherMetric: View {
                 .minimumScaleFactor(0.6)
             Text(value)
                 .font(.system(size: 12.5, weight: .bold).monospacedDigit())
-                .foregroundStyle(Color.dashboardNavy)
+                .foregroundStyle(valueColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity)
+        .background(
+            backgroundColor ?? .clear,
+            in: RoundedRectangle(cornerRadius: 4)
+        )
     }
 }
 
@@ -2967,6 +3388,24 @@ private extension Date {
     var roundedToNextQuarterHour: Date {
         let interval: TimeInterval = 15 * 60
         return Date(timeIntervalSince1970: ceil(timeIntervalSince1970 / interval) * interval)
+    }
+}
+
+private struct IPadCharterFeeQuote {
+    var knownTotalEUR = 0.0
+    var unknownICAOs: [String] = []
+
+    var hasUnknownFees: Bool { !unknownICAOs.isEmpty }
+
+    static func + (lhs: Self, rhs: Self) -> Self {
+        Self(
+            knownTotalEUR: lhs.knownTotalEUR + rhs.knownTotalEUR,
+            unknownICAOs: lhs.unknownICAOs + rhs.unknownICAOs
+        )
+    }
+
+    static func += (lhs: inout Self, rhs: Self) {
+        lhs = lhs + rhs
     }
 }
 

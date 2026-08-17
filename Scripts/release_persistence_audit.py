@@ -25,6 +25,7 @@ def main() -> int:
     users = read("ETOPSSettings.swift")
     aircraft = read("AircraftSettings.swift")
     airports = read("AirportSettings.swift")
+    airport_fees = read("AirportFeeCore.swift")
 
     checks = {
         "stabile Bundle-ID": info.get("CFBundleIdentifier") == "de.flybook.europe",
@@ -58,8 +59,8 @@ def main() -> int:
             and "JSONEncoder().encode(profiles)" in airports
         ),
         "Airport-Landegebuehren JSON-persistent": (
-            'key = "airportLandingFeeProfiles.v1"' in airports
-            and airports.count("JSONEncoder().encode(profiles)") >= 2
+            'key = "airportLandingFeeProfiles.v1"' in airport_fees
+            and "JSONEncoder().encode(profiles)" in airport_fees
         ),
     }
 
