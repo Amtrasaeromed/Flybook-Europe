@@ -26,7 +26,9 @@ enum FuelPriceSettingsKey {
 
 actor MonthlyFuelPriceService {
     static let shared = MonthlyFuelPriceService()
-    nonisolated private static let validationVersion = 8
+    // Version 9 drops undated community values that could masquerade as a
+    // current fetch and overwrite a newer bundled AIP:Aero/AeroPS price.
+    nonisolated private static let validationVersion = 9
 
     private struct Cache: Codable {
         let monthKey: String
@@ -266,17 +268,13 @@ actor MonthlyFuelPriceService {
     private func fetchCommunityPrices(icao: String) async throws -> FuelPriceRecord {
         guard icao != "EDFZ" else { throw URLError(.unsupportedURL) }
         let primaryURL = URL(string: "https://spritpreisliste.de/airports/\(icao)")!
-        let secondaryURL = URL(string: "https://aviation-fuel-prices.com/airport-info/\(icao)")!
-        async let primary = try? download(primaryURL)
-        async let secondary = try? download(secondaryURL)
-        let (primaryHTML, secondaryHTML) = await (primary, secondary)
-        let first = primaryHTML.map(parse) ?? FuelPriceRecord()
-        // aviation-fuel-prices.com publishes the current airport price without
-        // the German source's nearby "Stand" field. Keep that source usable,
-        // while never accepting an undated loose match from spritpreisliste.de.
-        let second = secondaryHTML.map(parseCurrentAirportPage)
-            ?? FuelPriceRecord()
-        let record = merged(first, fallback: second)
+        let primaryHTML = try await download(primaryURL)
+        // Only accept a price with the source's adjacent publication date.
+        // aviation-fuel-prices.com can show a recently *confirmed* value whose
+        // actual update is years old (EDTG: confirmed 2026, updated 2020). Its
+        // undated HTML was previously stamped with today's fetch date and then
+        // incorrectly outranked the newer bundled AIP:Aero/AeroPS value.
+        let record = parse(primaryHTML)
         guard record.avgas != nil || record.ul91 != nil || record.mogas != nil else {
             throw URLError(.cannotParseResponse)
         }
@@ -344,33 +342,9 @@ actor MonthlyFuelPriceService {
         return nil
     }
 
-    private func parseCurrentAirportPage(_ html: String) -> FuelPriceRecord {
-        let text = html
-            .replacingOccurrences(
-                of: "<[^>]+>",
-                with: " ",
-                options: .regularExpression
-            )
-            .replacingOccurrences(of: "&nbsp;", with: " ")
-        return FuelPriceRecord(
-            avgas: loosePrice(in: text, labels: ["AVGAS 100LL", "AVGAS100LL"]),
-            ul91: loosePrice(in: text, labels: ["AVGAS UL91", "UL91"]),
-            mogas: loosePrice(in: text, labels: ["MOGAS", "Super+", "Super Plus"]),
-            reportedAt: "Abruf " + currentDateText
-        )
-    }
-
     private struct DatedPrice {
         let value: Double
         let reportedAt: String
-    }
-
-    private var currentDateText: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "de_DE")
-        formatter.timeZone = DestinationTimeZone.edfz
-        formatter.dateFormat = "dd.MM.yyyy"
-        return formatter.string(from: Date())
     }
 
     private func datedPrice(

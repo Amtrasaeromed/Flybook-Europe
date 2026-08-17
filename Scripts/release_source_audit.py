@@ -151,9 +151,11 @@ def runtime_checks() -> list[str]:
             lambda content_type, body: b"EDKA" in body.upper(),
         ),
         (
-            "Aviation Fuel Prices",
-            "https://aviation-fuel-prices.com/airport-info/EDKA",
-            lambda content_type, body: b"EDKA" in body.upper() or b"AACHEN" in body.upper(),
+            "AIP:Aero EDTG",
+            "https://aip.aero/de/en/vfr/?EDTG",
+            lambda content_type, body: b"EDTG" in body.upper()
+            and b"AVGAS" in body.upper()
+            and b"2.99" in body,
         ),
         (
             "Landegut",

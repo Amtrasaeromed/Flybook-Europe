@@ -1,103 +1,158 @@
 schema_version,price_id,airport_id,fuel_type,fuel_label_raw,price_eur_per_litre,price_raw_text,price_checked_at,source
-1.2,EDAZ:AVGAS:7,EDAZ,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDAZ
+1.2,EDAZ:AVGAS:7,EDAZ,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAZ
 1.2,EDAZ:MOGAS_SUPER:8,EDAZ,MOGAS_SUPER,Super Plus,2.69,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.flugplatz-schoenhagen.aero/piloten/verkehrslandeplatz/instrumentenanflugverfahren/treibstoffpreise/seite
-1.2,EDFM:AVGAS:25,EDFM,AVGAS,Avgas 100 LL,2.95,Avgas 100 LL 2.95 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDFM
+1.2,EDFM:AVGAS:25,EDFM,AVGAS,AVGAS 100LL,2.95,AVGAS 100LL 2.95 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFM
 1.2,EDFM:MOGAS_SUPER:26,EDFM,MOGAS_SUPER,MOGAS,2.4,"AVGAS 2,95 €/l; MOGAS 2,40 €/l",2026-08-03,https://www.flugplatz-mannheim.de/privatpiloten/
-1.2,EDGS:AVGAS:19,EDGS,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDGS
+1.2,EDGS:AVGAS:19,EDGS,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDGS
 1.2,EDGS:MOGAS_SUPER:20,EDGS,MOGAS_SUPER,Super Plus etwa,2.69,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",2026-08-03,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/
-1.2,EDLD:AVGAS:28,EDLD,AVGAS,24.07.2026: AVGAS,2.89,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l",2026-08-03,https://schwarze-heide.com/fuer-piloten/titelform/
+1.2,EDLD:AVGAS:28,EDLD,AVGAS,AVGAS 100LL,2.89,AVGAS 100LL 2.89 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLD
 1.2,EDLD:MOGAS_SUPER:29,EDLD,MOGAS_SUPER,Super Plus,2.55,"24.07.2026: AVGAS 2,89 €/l; Super Plus 2,55 €/l",2026-08-03,https://schwarze-heide.com/fuer-piloten/titelform/
-1.2,EDLE:AVGAS:31,EDLE,AVGAS,02.07.2026: AVGAS,2.94,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l",2026-08-03,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
+1.2,EDLE:AVGAS:31,EDLE,AVGAS,AVGAS 100LL,2.94,AVGAS 100LL 2.94 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLE
 1.2,EDLE:MOGAS_SUPER:32,EDLE,MOGAS_SUPER,Super Plus,2.59,"02.07.2026: AVGAS 2,94 €/l; Super Plus 2,59 €/l",2026-08-03,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
-1.2,EDML:AVGAS:22,EDML,AVGAS,AVGAS,2.98,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
+1.2,EDML:AVGAS:22,EDML,AVGAS,AVGAS 100LL,2.98,AVGAS 100LL 2.98 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDML
 1.2,EDML:MOGAS_SUPER:24,EDML,MOGAS_SUPER,Super Plus,2.69,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
 1.2,EDML:OTHER:21,EDML,OTHER,22.07.2026: Swift 100R,2.8,"22.07.2026: Swift 100R 2,80 €/l; AVGAS 2,98 €/l; Super Plus 2,69 €/l",2026-08-03,https://www.landen-in-landshut.de/spritpreise/aktuelle-preise/
-1.2,EDRK:AVGAS:13,EDRK,AVGAS,AVGAS,3.06,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",2026-08-03,https://flugplatz-koblenz-winningen.de/index.php/de/
+1.2,EDRK:AVGAS:13,EDRK,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDRK
 1.2,EDRK:MOGAS_SUPER:14,EDRK,MOGAS_SUPER,Super Plus,2.69,"AVGAS 3,06 €/l; Super Plus 2,69 €/l",2026-08-03,https://flugplatz-koblenz-winningen.de/index.php/de/
-1.2,EDVI:AVGAS:16,EDVI,AVGAS,Avgas 100 LL,2.49,Avgas 100 LL 2.49 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDVI
+1.2,EDVI:AVGAS:16,EDVI,AVGAS,AVGAS 100LL,2.49,AVGAS 100LL 2.49 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVI
 1.2,EDVI:MOGAS_SUPER:17,EDVI,MOGAS_SUPER,Super Plus ca.,2.59,"Zuletzt recherchiert: AVGAS ca. 2,49 €/l; Super Plus ca. 2,59 €/l",2026-08-03,https://www.flugplatz-hx.de/index.html
-1.2,EDWC:AVGAS:4,EDWC,AVGAS,Avgas 100 LL,2.59,Avgas 100 LL 2.59 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDWC
+1.2,EDWC:AVGAS:4,EDWC,AVGAS,AVGAS 100LL,2.59,AVGAS 100LL 2.59 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWC
 1.2,EDWC:MOGAS_SUPER:5,EDWC,MOGAS_SUPER,Super Plus,2.49,"AVGAS 2,59 €/l; Super Plus 2,49 €/l",2026-08-03,https://www.edwc.de/index.php/landegebuehren-ppr
-1.2,EDWF:AVGAS:1,EDWF,AVGAS,AVGAS,2.59,"AVGAS 2,59 €/l; Super 95 2,59 €/l",2026-08-03,https://flugplatz-leer-papenburg.de/aktuelles/
+1.2,EDWF:AVGAS:1,EDWF,AVGAS,AVGAS 100LL,2.69,AVGAS 100LL 2.69 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWF
 1.2,EDWF:MOGAS_SUPER:2,EDWF,MOGAS_SUPER,Super 95,2.59,"AVGAS 2,59 €/l; Super 95 2,59 €/l",2026-08-03,https://flugplatz-leer-papenburg.de/aktuelles/
-1.2,EDWI:AVGAS:10,EDWI,AVGAS,Avgas 100 LL,2.72,Avgas 100 LL 2.72 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDWI
+1.2,EDWI:AVGAS:10,EDWI,AVGAS,AVGAS 100LL,2.73,AVGAS 100LL 2.73 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWI
 1.2,EDWI:MOGAS_SUPER:11,EDWI,MOGAS_SUPER,Super Plus,2.36,"AVGAS 2,69 €/l; Super Plus 2,36 €/l",2026-08-03,https://www.edwi.info/piloten/tankstelle.html
-1.2,EHLE:AVGAS:20260803,EHLE,AVGAS,AVGAS 100LL,3.474,"AVGAS 100LL 3,474 €/l inkl. Steuern und MwSt.; Preisänderungen vorbehalten",2026-08-03,https://www.lelystadairport.nl/en/for-pilots/fuel/
+1.2,EHLE:AVGAS:20260803,EHLE,AVGAS,AVGAS 100LL,3.47,AVGAS 100LL 3.47 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/nl/en/vfr/?EHLE
 1.2,EHLE:AVGAS_UL94:20260803,EHLE,AVGAS_UL94,AVGAS UL94,3.093,"AVGAS UL94 3,093 €/l inkl. Steuern und MwSt.; Preisänderungen vorbehalten",2026-08-03,https://www.lelystadairport.nl/en/for-pilots/fuel/
-1.2,EDLM:AVGAS:20260813,EDLM,AVGAS,Avgas 100 LL,3.06,Avgas 100 LL 3.06 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDLM
+1.2,EDLM:AVGAS:20260813,EDLM,AVGAS,AVGAS 100LL,3.14,"AVGAS 100LL 3,14 €/l brutto; Betreiberseite am 13.08.2026 geprüft",2026-08-13,https://xn--flugplatz-loemhle-g3b.de/tanken/
 1.2,EDLM:MOGAS_SUPER:20260813,EDLM,MOGAS_SUPER,Super Plus,2.61,"Super Plus 2,61 €/l brutto und 2,19 €/l netto; aktueller Nutzerabgleich mit Betreiberseite am 13.08.2026; unverbindliche Preisempfehlung",2026-08-13,https://xn--flugplatz-loemhle-g3b.de/tanken/
 1.2,LSGN:AVGAS:20260815,LSGN,AVGAS,AVGAS 100LL,3.20,"AVGAS 100LL 3,20 EUR/l laut Betreiber, Stand Juli 2026",2026-08-15,https://www.neuchatel-airport.ch/airport-fees/?lang=de
-1.2,EDTM:AVGAS:20260815,EDTM,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTM
+1.2,EDTM:AVGAS:20260815,EDTM,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTM
 1.2,EDTM:MOGAS_SUPER:20260815,EDTM,MOGAS_SUPER,Super Plus,2.69,Preis gültig ab 1. Juli 2026 laut Betreiber,2026-08-15,https://www.regio-airport-mengen.de/piloteninfo/tankstelle/
-1.2,EDQH:AVGAS:20260815,EDQH,AVGAS,Avgas 100 LL,2.82,Avgas 100 LL 2.82 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDQH
+1.2,EDQH:AVGAS:20260815,EDQH,AVGAS,AVGAS 100LL,2.82,AVGAS 100LL 2.82 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDQH
 1.2,EDQH:MOGAS_SUPER:20260815,EDQH,MOGAS_SUPER,Super 98 EN228,2.31,Bruttopreis gültig ab 1. Januar 2026 laut Betreiber,2026-08-15,https://flugplatz-herzogenaurach.de/en/fuel-prices-from-january-1st-2024/
 1.2,EDWF:MOGAS_SUPER:20260816,EDWF,MOGAS_SUPER,Super 95,2.59,"Super 95 2,59 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://flugplatz-leer-papenburg.de/aktuelles/
-1.2,EDWC:MOGAS_SUPER:20260816,EDWC,MOGAS_SUPER,SuperPlus,2.49,SuperPlus 2.49 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDWC
-1.2,EDAZ:MOGAS_SUPER:20260816,EDAZ,MOGAS_SUPER,SuperPlus,2.81,SuperPlus 2.81 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDAZ
-1.2,EDWI:MOGAS_SUPER:20260816,EDWI,MOGAS_SUPER,SuperPlus,2.57,SuperPlus 2.57 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDWI
+1.2,EDWC:MOGAS_SUPER:20260816,EDWC,MOGAS_SUPER,MOGAS (car petrol),2.49,MOGAS (car petrol) 2.49 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWC
+1.2,EDAZ:MOGAS_SUPER:20260816,EDAZ,MOGAS_SUPER,MOGAS (car petrol),2.81,MOGAS (car petrol) 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAZ
+1.2,EDWI:MOGAS_SUPER:20260816,EDWI,MOGAS_SUPER,MOGAS (car petrol),2.57,MOGAS (car petrol) 2.57 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWI
 1.2,EDRK:MOGAS_SUPER:20260816,EDRK,MOGAS_SUPER,Super Plus,2.81,"Super Plus 2,81 €/l brutto; gültig ab 01.08.2026",2026-08-16,https://www.flugplatz-koblenz-winningen.de/index.php/de/
-1.2,EDVI:MOGAS_SUPER:20260816,EDVI,MOGAS_SUPER,SuperPlus,2.69,SuperPlus 2.69 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDVI
-1.2,EDGS:MOGAS_SUPER:20260816,EDGS,MOGAS_SUPER,SuperPlus,2.81,SuperPlus 2.81 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDGS
-1.2,EDFM:MOGAS_SUPER:20260816,EDFM,MOGAS_SUPER,Mogas,2.40,Mogas 2.40 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDFM
+1.2,EDVI:MOGAS_SUPER:20260816,EDVI,MOGAS_SUPER,MOGAS (car petrol),2.69,MOGAS (car petrol) 2.69 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVI
+1.2,EDGS:MOGAS_SUPER:20260816,EDGS,MOGAS_SUPER,MOGAS (car petrol),2.81,MOGAS (car petrol) 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDGS
+1.2,EDFM:MOGAS_SUPER:20260816,EDFM,MOGAS_SUPER,MOGAS (car petrol),2.40,MOGAS (car petrol) 2.40 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFM
 1.2,EDML:MOGAS_SUPER:20260816,EDML,MOGAS_SUPER,Super Plus 98 E0,2.69,"Super Plus 98 E0 2,69 €/l brutto; Stand 06.05.2026",2026-08-16,https://der-fliegerclub.de/flugplatz/edml/
 1.2,EDLD:MOGAS_SUPER:20260816,EDLD,MOGAS_SUPER,Super Plus,2.55,"Super Plus 2,55 €/l brutto; Preisstand 24.07.2026",2026-08-16,https://schwarze-heide.com/fuer-piloten/titelform/
-1.2,EDPA:MOGAS_SUPER:20260816,EDPA,MOGAS_SUPER,Mogas,2.49,Mogas 2.49 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDPA
+1.2,EDPA:MOGAS_SUPER:20260816,EDPA,MOGAS_SUPER,MOGAS (car petrol),2.49,MOGAS (car petrol) 2.49 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDPA
 1.2,EDLE:MOGAS_SUPER:20260816,EDLE,MOGAS_SUPER,Super Plus,2.59,"Super Plus 2,59 €/l brutto; Preisstand 02.07.2026",2026-08-16,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/
-1.2,EDLH:MOGAS_SUPER:20260816,EDLH,MOGAS_SUPER,SuperPlus,2.45,SuperPlus 2.45 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDLH
-1.2,EDMB:MOGAS_SUPER:20260816,EDMB,MOGAS_SUPER,SuperPlus,2.35,SuperPlus 2.35 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDMB
+1.2,EDLH:MOGAS_SUPER:20260816,EDLH,MOGAS_SUPER,MOGAS (car petrol),2.45,MOGAS (car petrol) 2.45 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLH
+1.2,EDMB:MOGAS_SUPER:20260816,EDMB,MOGAS_SUPER,MOGAS (car petrol),2.35,MOGAS (car petrol) 2.35 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDMB
 1.2,EDXE:MOGAS_SUPER:20260816,EDXE,MOGAS_SUPER,Super Plus,2.45,"Super Plus 2,45 €/l brutto; Betreiberseite am 16.08.2026 geprüft",2026-08-16,https://edxe.de/hp/flugplatz/ausflugslokal-und-hotel-gets
 1.2,EDLM:MOGAS_SUPER:20260816,EDLM,MOGAS_SUPER,SuperPlus,2.49,SuperPlus 2.49 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDLM
 1.2,EDTM:MOGAS_SUPER:20260816,EDTM,MOGAS_SUPER,SuperPlus,2.81,SuperPlus 2.81 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTM
 1.2,EDQH:MOGAS_SUPER:20260816,EDQH,MOGAS_SUPER,SuperPlus,2.42,SuperPlus 2.42 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDQH
 1.2,EDRY:MOGAS_SUPER:20260816,EDRY,MOGAS_SUPER,MOGAS,2.89,"MOGAS 2,89 €/l brutto; gültig ab 01.07.2026",2026-08-16,https://flugplatz-speyer.de/infos-entgelte/
-1.2,EDTG:AVGAS:20260816,EDTG,AVGAS,Avgas 100 LL,2.99,Avgas 100 LL 2.99 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTG
-1.2,EDTG:MOGAS_SUPER:20260816,EDTG,MOGAS_SUPER,SuperPlus,2.36,SuperPlus 2.36 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTG
-1.2,EDTG:JET_A1:20260816,EDTG,JET_A1,Jet A-1,2.49,Jet A-1 2.49 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTG
-1.2,EDAH:AVGAS:20260816,EDAH,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDAH
-1.2,EDAY:MOGAS_SUPER:20260816,EDAY,MOGAS_SUPER,Mogas,2.62,Mogas 2.62 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDAY
-1.2,EDAY:AVGAS:20260816,EDAY,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDAY
-1.2,EDFM:JET_A1:20260816,EDFM,JET_A1,Jet A-1,2.70,Jet A-1 2.70 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDFM
-1.2,EDGE:JET_A1:20260816,EDGE,JET_A1,Jet A-1,2.89,Jet A-1 2.89 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDGE
-1.2,EDGE:AVGAS:20260816,EDGE,AVGAS,Avgas 100 LL,2.83,Avgas 100 LL 2.83 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDGE
-1.2,EDGE:MOGAS_SUPER:20260816,EDGE,MOGAS_SUPER,SuperPlus,2.65,SuperPlus 2.65 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDGE
-1.2,EDHL:AVGAS:20260816,EDHL,AVGAS,Avgas 100 LL,3.53,Avgas 100 LL 3.53 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDHL
-1.2,EDHL:UL91:20260816,EDHL,UL91,Avgas UL 91,3.47,Avgas UL 91 3.47 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDHL
-1.2,EDKA:AVGAS:20260816,EDKA,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDKA
-1.2,EDKA:JET_A1:20260816,EDKA,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDKA
-1.2,EDKA:MOGAS_SUPER:20260816,EDKA,MOGAS_SUPER,SuperPlus,2.81,SuperPlus 2.81 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDKA
-1.2,EDKB:AVGAS:20260816,EDKB,AVGAS,Avgas 100 LL,2.99,Avgas 100 LL 2.99 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDKB
-1.2,EDKB:JET_A1:20260816,EDKB,JET_A1,Jet A-1,2.72,Jet A-1 2.72 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDKB
-1.2,EDKB:MOGAS_SUPER:20260816,EDKB,MOGAS_SUPER,SuperPlus,2.55,SuperPlus 2.55 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDKB
-1.2,EDLH:AVGAS:20260816,EDLH,AVGAS,Avgas 100 LL,2.89,Avgas 100 LL 2.89 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDLH
-1.2,EDLM:JET_A1:20260816,EDLM,JET_A1,Jet A-1,3.08,Jet A-1 3.08 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDLM
-1.2,EDLN:AVGAS:20260816,EDLN,AVGAS,Avgas 100 LL,3.24,Avgas 100 LL 3.24 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDLN
+1.2,EDTG:AVGAS:20260816,EDTG,AVGAS,AVGAS 100LL,2.99,AVGAS 100LL 2.99 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTG
+1.2,EDTG:MOGAS_SUPER:20260816,EDTG,MOGAS_SUPER,MOGAS (car petrol),2.36,MOGAS (car petrol) 2.36 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTG
+1.2,EDTG:JET_A1:20260816,EDTG,JET_A1,Jet A-1,2.49,Jet A-1 2.49 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTG
+1.2,EDAH:AVGAS:20260816,EDAH,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAH
+1.2,EDAY:MOGAS_SUPER:20260816,EDAY,MOGAS_SUPER,MOGAS (car petrol),2.62,MOGAS (car petrol) 2.62 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAY
+1.2,EDAY:AVGAS:20260816,EDAY,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAY
+1.2,EDFM:JET_A1:20260816,EDFM,JET_A1,Jet A-1,2.70,Jet A-1 2.70 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFM
+1.2,EDGE:JET_A1:20260816,EDGE,JET_A1,Jet A-1,2.89,Jet A-1 2.89 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDGE
+1.2,EDGE:AVGAS:20260816,EDGE,AVGAS,AVGAS 100LL,2.83,AVGAS 100LL 2.83 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDGE
+1.2,EDGE:MOGAS_SUPER:20260816,EDGE,MOGAS_SUPER,MOGAS (car petrol),2.65,MOGAS (car petrol) 2.65 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDGE
+1.2,EDHL:AVGAS:20260816,EDHL,AVGAS,AVGAS 100LL,3.52,AVGAS 100LL 3.52 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDHL
+1.2,EDHL:UL91:20260816,EDHL,UL91,AVGAS UL91,3.47,AVGAS UL91 3.47 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDHL
+1.2,EDKA:AVGAS:20260816,EDKA,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKA
+1.2,EDKA:JET_A1:20260816,EDKA,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKA
+1.2,EDKA:MOGAS_SUPER:20260816,EDKA,MOGAS_SUPER,MOGAS (car petrol),2.81,MOGAS (car petrol) 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKA
+1.2,EDKB:AVGAS:20260816,EDKB,AVGAS,AVGAS 100LL,2.99,AVGAS 100LL 2.99 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKB
+1.2,EDKB:JET_A1:20260816,EDKB,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKB
+1.2,EDKB:MOGAS_SUPER:20260816,EDKB,MOGAS_SUPER,MOGAS (car petrol),2.81,MOGAS (car petrol) 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKB
+1.2,EDLH:AVGAS:20260816,EDLH,AVGAS,AVGAS 100LL,2.89,AVGAS 100LL 2.89 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLH
+1.2,EDLM:JET_A1:20260816,EDLM,JET_A1,Jet A-1,3.08,Jet A-1 3.08 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLM
+1.2,EDLN:AVGAS:20260816,EDLN,AVGAS,AVGAS 100LL,3.24,AVGAS 100LL 3.24 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLN
 1.2,EDMA:AVGAS:20260816,EDMA,AVGAS,Avgas 100 LL,3.10,Avgas 100 LL 3.10 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDMA
 1.2,EDMA:JET_A1:20260816,EDMA,JET_A1,Jet A-1,2.69,Jet A-1 2.69 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDMA
-1.2,EDMB:JET_A1:20260816,EDMB,JET_A1,Jet A-1,3.03,Jet A-1 3.03 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDMB
-1.2,EDMB:AVGAS:20260816,EDMB,AVGAS,Avgas 100 LL,2.94,Avgas 100 LL 2.94 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDMB
-1.2,EDPA:AVGAS:20260816,EDPA,AVGAS,Avgas 100 LL,2.79,Avgas 100 LL 2.79 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDPA
-1.2,EDQH:JET_A1:20260816,EDQH,JET_A1,Jet A-1,3.17,Jet A-1 3.17 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDQH
-1.2,EDTD:JET_A1:20260816,EDTD,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTD
-1.2,EDTD:AVGAS:20260816,EDTD,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTD
-1.2,EDTF:MOGAS_SUPER:20260816,EDTF,MOGAS_SUPER,Mogas,2.35,Mogas 2.35 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTF
-1.2,EDTS:AVGAS:20260816,EDTS,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTS
-1.2,EDTS:JET_A1:20260816,EDTS,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTS
-1.2,EDTS:MOGAS_SUPER:20260816,EDTS,MOGAS_SUPER,SuperPlus,2.81,SuperPlus 2.81 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTS
-1.2,EDTY:AVGAS:20260816,EDTY,AVGAS,Avgas 100 LL,3.01,Avgas 100 LL 3.01 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTY
-1.2,EDTY:JET_A1:20260816,EDTY,JET_A1,Jet A-1,3.24,Jet A-1 3.24 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTY
-1.2,EDTZ:AVGAS:20260816,EDTZ,AVGAS,Avgas 100 LL,2.79,Avgas 100 LL 2.79 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDTZ
-1.2,EDVI:JET_A1:20260816,EDVI,JET_A1,Jet A-1,2.69,Jet A-1 2.69 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDVI
-1.2,EDVK:AVGAS:20260816,EDVK,AVGAS,Avgas 100 LL,3.14,Avgas 100 LL 3.14 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDVK
-1.2,EDXO:AVGAS:20260816,EDXO,AVGAS,Avgas 100 LL,2.99,Avgas 100 LL 2.99 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDXO
-1.2,EDXW:AVGAS:20260816,EDXW,AVGAS,Avgas 100 LL,3.13,Avgas 100 LL 3.13 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDXW
-1.2,EDXW:JET_A1:20260816,EDXW,JET_A1,Jet A-1,3.21,Jet A-1 3.21 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EDXW
-1.2,EHTX:JET_A1:20260816,EHTX,JET_A1,Jet A-1,2.89,Jet A-1 2.89 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EHTX
-1.2,EHTX:AVGAS:20260816,EHTX,AVGAS,Avgas 100 LL,3.30,Avgas 100 LL 3.30 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EHTX
-1.2,EHTX:MOGAS_SUPER:20260816,EHTX,MOGAS_SUPER,Mogas,3.00,Mogas 3.00 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/EHTX
-1.2,ETSI:AVGAS:20260816,ETSI,AVGAS,Avgas 100 LL,2.90,Avgas 100 LL 2.90 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/ETSI
+1.2,EDMB:JET_A1:20260816,EDMB,JET_A1,Jet A-1,3.03,Jet A-1 3.03 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDMB
+1.2,EDMB:AVGAS:20260816,EDMB,AVGAS,AVGAS 100LL,2.94,AVGAS 100LL 2.94 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDMB
+1.2,EDPA:AVGAS:20260816,EDPA,AVGAS,AVGAS 100LL,2.785,AVGAS 100LL 2.785 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDPA
+1.2,EDQH:JET_A1:20260816,EDQH,JET_A1,Jet A-1,3.17,Jet A-1 3.17 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDQH
+1.2,EDTD:JET_A1:20260816,EDTD,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTD
+1.2,EDTD:AVGAS:20260816,EDTD,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTD
+1.2,EDTF:MOGAS_SUPER:20260816,EDTF,MOGAS_SUPER,MOGAS (car petrol),2.35,MOGAS (car petrol) 2.35 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-05-31,https://aip.aero/de/en/vfr/?EDTF
+1.2,EDTS:AVGAS:20260816,EDTS,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTS
+1.2,EDTS:JET_A1:20260816,EDTS,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTS
+1.2,EDTS:MOGAS_SUPER:20260816,EDTS,MOGAS_SUPER,MOGAS (car petrol),2.81,MOGAS (car petrol) 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTS
+1.2,EDTY:AVGAS:20260816,EDTY,AVGAS,AVGAS 100LL,3.01,AVGAS 100LL 3.01 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTY
+1.2,EDTY:JET_A1:20260816,EDTY,JET_A1,Jet A-1,3.44,Jet A-1 3.44 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTY
+1.2,EDTZ:AVGAS:20260816,EDTZ,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTZ
+1.2,EDVI:JET_A1:20260816,EDVI,JET_A1,Jet A-1,2.69,Jet A-1 2.69 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVI
+1.2,EDVK:AVGAS:20260816,EDVK,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVK
+1.2,EDXO:AVGAS:20260816,EDXO,AVGAS,AVGAS 100LL,3.08,AVGAS 100LL 3.08 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXO
+1.2,EDXW:AVGAS:20260816,EDXW,AVGAS,AVGAS 100LL,3.13,AVGAS 100LL 3.13 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXW
+1.2,EDXW:JET_A1:20260816,EDXW,JET_A1,Jet A-1,3.21,Jet A-1 3.21 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXW
+1.2,EHTX:JET_A1:20260816,EHTX,JET_A1,Jet A-1,2.89,Jet A-1 2.89 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/nl/en/vfr/?EHTX
+1.2,EHTX:AVGAS:20260816,EHTX,AVGAS,AVGAS 100LL,3.30,AVGAS 100LL 3.30 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/nl/en/vfr/?EHTX
+1.2,EHTX:MOGAS_SUPER:20260816,EHTX,MOGAS_SUPER,MOGAS (car petrol),3.00,MOGAS (car petrol) 3.00 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/nl/en/vfr/?EHTX
+1.2,ETSI:AVGAS:20260816,ETSI,AVGAS,AVGAS 100LL,2.90,AVGAS 100LL 2.90 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?ETSI
 1.2,LDLO:JET_A1:20260816,LDLO,JET_A1,Jet A-1,2.80,Jet A-1 2.80 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/LDLO
 1.2,LDLO:AVGAS:20260816,LDLO,AVGAS,Avgas 100 LL,1.80,Avgas 100 LL 1.80 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/LDLO
 1.2,LIPV:AVGAS:20260816,LIPV,AVGAS,Avgas 100 LL,3.36,Avgas 100 LL 3.36 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/LIPV
-1.2,LOSM:AVGAS:20260816,LOSM,AVGAS,AVGAS,1.00,AVGAS 1.00 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/LOSM
-1.2,LOSM:MOGAS_SUPER:20260816,LOSM,MOGAS_SUPER,MOGAS,1.00,MOGAS 1.00 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/LOSM
-1.2,LOWZ:MOGAS_SUPER:20260816,LOWZ,MOGAS_SUPER,SuperPlus,2.23,SuperPlus 2.23 EUR/l laut AeroPS-Platzrechner,2026-08-16,https://gat.aerops.com/prices/calculator/LOWZ
+1.2,LOSM:AVGAS:20260816,LOSM,AVGAS,AVGAS 100LL,1.00,AVGAS 100LL 1.00 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOSM
+1.2,LOSM:MOGAS_SUPER:20260816,LOSM,MOGAS_SUPER,MOGAS (car petrol),1.00,MOGAS (car petrol) 1.00 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOSM
+1.2,LOWZ:MOGAS_SUPER:20260816,LOWZ,MOGAS_SUPER,MOGAS (car petrol),2.23,MOGAS (car petrol) 2.23 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOWZ
+1.2,EDAH:JET_A1:AIPAERO,EDAH,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAH
+1.2,EDAY:JET_A1:AIPAERO,EDAY,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAY
+1.2,EDAZ:JET_A1:AIPAERO,EDAZ,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDAZ
+1.2,EDFE:AVGAS:AIPAERO,EDFE,AVGAS,AVGAS 100LL,3.24,AVGAS 100LL 3.24 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFE
+1.2,EDFE:JET_A1:AIPAERO,EDFE,JET_A1,Jet A-1,3.03,Jet A-1 3.03 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFE
+1.2,EDFE:UL91:AIPAERO,EDFE,UL91,AVGAS UL91,3.12,AVGAS UL91 3.12 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFE
+1.2,EDFR:AVGAS:AIPAERO,EDFR,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFR
+1.2,EDFR:JET_A1:AIPAERO,EDFR,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDFR
+1.2,EDGS:JET_A1:AIPAERO,EDGS,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDGS
+1.2,EDHL:JET_A1:AIPAERO,EDHL,JET_A1,Jet A-1,3.14,Jet A-1 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDHL
+1.2,EDKM:AVGAS:AIPAERO,EDKM,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKM
+1.2,EDKM:JET_A1:AIPAERO,EDKM,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDKM
+1.2,EDLA:AVGAS:AIPAERO,EDLA,AVGAS,AVGAS 100LL,2.69,AVGAS 100LL 2.69 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLA
+1.2,EDLA:JET_A1:AIPAERO,EDLA,JET_A1,Jet A-1,2.79,Jet A-1 2.79 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLA
+1.2,EDLD:JET_A1:AIPAERO,EDLD,JET_A1,Jet A-1,2.99,Jet A-1 2.99 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLD
+1.2,EDLE:JET_A1:AIPAERO,EDLE,JET_A1,Jet A-1,2.73,Jet A-1 2.73 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLE
+1.2,EDLN:MOGAS_SUPER:AIPAERO,EDLN,MOGAS_SUPER,MOGAS (car petrol),3.20,MOGAS (car petrol) 3.20 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLN
+1.2,EDLS:AVGAS:AIPAERO,EDLS,AVGAS,AVGAS 100LL,2.79,AVGAS 100LL 2.79 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDLS
+1.2,EDME:AVGAS:AIPAERO,EDME,AVGAS,AVGAS 100LL,3.14,AVGAS 100LL 3.14 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDME
+1.2,EDME:JET_A1:AIPAERO,EDME,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDME
+1.2,EDME:MOGAS_SUPER:AIPAERO,EDME,MOGAS_SUPER,MOGAS (car petrol),2.81,MOGAS (car petrol) 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDME
+1.2,EDML:JET_A1:AIPAERO,EDML,JET_A1,Jet A-1,2.95,Jet A-1 2.95 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDML
+1.2,EDPA:JET_A1:AIPAERO,EDPA,JET_A1,Jet A-1,2.68,Jet A-1 2.68 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDPA
+1.2,EDQA:AVGAS:AIPAERO,EDQA,AVGAS,AVGAS 100LL,3.21,AVGAS 100LL 3.21 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDQA
+1.2,EDQA:JET_A1:AIPAERO,EDQA,JET_A1,Jet A-1,3.33,Jet A-1 3.33 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDQA
+1.2,EDRK:JET_A1:AIPAERO,EDRK,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDRK
+1.2,EDRY:AVGAS:AIPAERO,EDRY,AVGAS,AVGAS 100LL,3.34,AVGAS 100LL 3.34 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDRY
+1.2,EDRY:JET_A1:AIPAERO,EDRY,JET_A1,Jet A-1,3.05,Jet A-1 3.05 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDRY
+1.2,EDTM:JET_A1:AIPAERO,EDTM,JET_A1,Jet A-1,3.18,Jet A-1 3.18 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDTM
+1.2,EDVE:AVGAS:AIPAERO,EDVE,AVGAS,AVGAS 100LL,3.38,AVGAS 100LL 3.38 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVE
+1.2,EDVE:JET_A1:AIPAERO,EDVE,JET_A1,Jet A-1,3.09,Jet A-1 3.09 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVE
+1.2,EDVE:UL91:AIPAERO,EDVE,UL91,AVGAS UL91,3.25,AVGAS UL91 3.25 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVE
+1.2,EDVK:JET_A1:AIPAERO,EDVK,JET_A1,Jet A-1,2.88,Jet A-1 2.88 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVK
+1.2,EDVM:AVGAS:AIPAERO,EDVM,AVGAS,AVGAS 100LL,2.59,AVGAS 100LL 2.59 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVM
+1.2,EDVM:JET_A1:AIPAERO,EDVM,JET_A1,Jet A-1,2.59,Jet A-1 2.59 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVM
+1.2,EDVM:MOGAS_SUPER:AIPAERO,EDVM,MOGAS_SUPER,MOGAS (car petrol),2.55,MOGAS (car petrol) 2.55 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDVM
+1.2,EDWC:JET_A1:AIPAERO,EDWC,JET_A1,Jet A-1,2.69,Jet A-1 2.69 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWC
+1.2,EDWF:JET_A1:AIPAERO,EDWF,JET_A1,Jet A-1,2.89,Jet A-1 2.89 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWF
+1.2,EDWI:JET_A1:AIPAERO,EDWI,JET_A1,Jet A-1,2.90,Jet A-1 2.90 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWI
+1.2,EDWR:AVGAS:AIPAERO,EDWR,AVGAS,AVGAS 100LL,3.09,AVGAS 100LL 3.09 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDWR
+1.2,EDXE:AVGAS:AIPAERO,EDXE,AVGAS,AVGAS 100LL,2.65,AVGAS 100LL 2.65 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXE
+1.2,EDXF:AVGAS:AIPAERO,EDXF,AVGAS,AVGAS 100LL,2.79,AVGAS 100LL 2.79 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXF
+1.2,EDXF:JET_A1:AIPAERO,EDXF,JET_A1,Jet A-1,2.76,Jet A-1 2.76 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXF
+1.2,EDXO:JET_A1:AIPAERO,EDXO,JET_A1,Jet A-1,3.41,Jet A-1 3.41 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/de/en/vfr/?EDXO
+1.2,EHLE:JET_A1:AIPAERO,EHLE,JET_A1,Jet A-1,2.95,Jet A-1 2.95 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/nl/en/vfr/?EHLE
+1.2,EHLE:UL91:AIPAERO,EHLE,UL91,AVGAS UL91,3.09,AVGAS UL91 3.09 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/nl/en/vfr/?EHLE
+1.2,LOAN:AVGAS:AIPAERO,LOAN,AVGAS,AVGAS 100LL,3.10,AVGAS 100LL 3.10 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOAN
+1.2,LOAN:JET_A1:AIPAERO,LOAN,JET_A1,Jet A-1,2.81,Jet A-1 2.81 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOAN
+1.2,LOAN:MOGAS_SUPER:AIPAERO,LOAN,MOGAS_SUPER,MOGAS (car petrol),2.70,MOGAS (car petrol) 2.70 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOAN
+1.2,LOIH:AVGAS:AIPAERO,LOIH,AVGAS,AVGAS 100LL,2.59,AVGAS 100LL 2.59 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOIH
+1.2,LOIH:JET_A1:AIPAERO,LOIH,JET_A1,Jet A-1,2.39,Jet A-1 2.39 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOIH
+1.2,LOIH:MOGAS_SUPER:AIPAERO,LOIH,MOGAS_SUPER,MOGAS (car petrol),1.94,MOGAS (car petrol) 1.94 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOIH
+1.2,LOWS:AVGAS:AIPAERO,LOWS,AVGAS,AVGAS 100LL,3.89,AVGAS 100LL 3.89 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOWS
+1.2,LOWZ:AVGAS:AIPAERO,LOWZ,AVGAS,AVGAS 100LL,2.72,AVGAS 100LL 2.72 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOWZ
+1.2,LOWZ:JET_A1:AIPAERO,LOWZ,JET_A1,Jet A-1,2.05,Jet A-1 2.05 EUR/l laut AIP:Aero (dort als indikative AeroPS-Angabe ausgewiesen),2026-08-17,https://aip.aero/at/en/vfr/?LOWZ

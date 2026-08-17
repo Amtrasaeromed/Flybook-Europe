@@ -5547,6 +5547,12 @@ private struct AirportInformationPopover: View {
                             .font(.system(size: 12, weight: .semibold))
                     }
                     detailRow("Betriebszeit", openingHoursText)
+                    if !destination.aipAeroOpeningHours.isEmpty {
+                        detailRow(
+                            "AIP:Aero (UTC)",
+                            destination.aipAeroOpeningHours
+                        )
+                    }
                     if let operationalHoursNote {
                         detailRow("Zusatzregel", operationalHoursNote)
                     }
@@ -5567,6 +5573,9 @@ private struct AirportInformationPopover: View {
                     detailRow("Belag", destination.surface + (destination.grassOnly ? " · Grasplatz" : ""))
                     detailRow("POE", destination.portOfEntry)
                     detailRow("Platzhöhe", "\(Int(destination.elevationFeet.rounded())) ft")
+                    if !destination.aipAeroFrequencies.isEmpty {
+                        detailRow("Frequenzen", destination.aipAeroFrequencies)
+                    }
                     if !destination.status.isEmpty { detailRow("Datenstatus", destination.status) }
                 }
 
@@ -5651,12 +5660,22 @@ private struct AirportInformationPopover: View {
                        !destination.airportSource.isEmpty {
                         Link("Flugplatzquelle öffnen", destination: url)
                     }
+                    if let url = URL(string: destination.aipAeroURL),
+                       !destination.aipAeroURL.isEmpty {
+                        Link("AIP:Aero öffnen", destination: url)
+                    }
                     if let url = URL(string: destination.tourismSource),
                        !destination.tourismSource.isEmpty {
                         Link("Tourismusquelle öffnen", destination: url)
                     }
                 }
                 .font(.system(size: 12, weight: .bold))
+
+                if !destination.aipAeroCheckedAt.isEmpty {
+                    Text("AIP:Aero-Abgleich: \(destination.aipAeroCheckedAt)")
+                        .font(.caption.bold())
+                        .foregroundStyle(FlybookColor.muted)
+                }
 
                 Text("Betriebszeiten, PPR, NOTAM und Pistenzustand vor dem Flug beim Betreiber bestätigen.")
                     .font(.caption)

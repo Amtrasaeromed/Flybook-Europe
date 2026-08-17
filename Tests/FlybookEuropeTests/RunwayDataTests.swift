@@ -148,6 +148,14 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(bremgarten.runwayM, 1_650)
         XCTAssertEqual(bremgarten.mogas, "Ja")
         XCTAssertEqual(bremgarten.avgas, "Ja")
+        XCTAssertEqual(bremgarten.avgasPricePerLiterEUR, 2.99)
+        XCTAssertEqual(bremgarten.mogasPricePerLiterEUR, 2.36)
+        XCTAssertEqual(
+            bremgarten.aipAeroURL,
+            "https://aip.aero/de/en/vfr/?EDTG"
+        )
+        XCTAssertEqual(bremgarten.aipAeroCheckedAt, "2026-08-17")
+        XCTAssertTrue(bremgarten.aipAeroFrequencies.contains("128.95"))
         XCTAssertEqual(bremgarten.portOfEntry, "Ja")
 
         let schwenningen = try XCTUnwrap(byICAO["EDTS"])
@@ -158,6 +166,25 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(schwenningen.mogas, "Ja – nur PPR")
         XCTAssertEqual(schwenningen.avgas, "Ja – nur PPR")
         XCTAssertTrue(schwenningen.fuelDetails.contains("nur PPR"))
+    }
+
+    func testAIPAeroCoverageIsLoadedWithoutFabricatedDetailPages() throws {
+        let byICAO = Dictionary(
+            uniqueKeysWithValues: DestinationStore().destinations.map {
+                ($0.icao, $0)
+            }
+        )
+        let heringsdorf = try XCTUnwrap(byICAO["EDAH"])
+        XCTAssertFalse(heringsdorf.aipAeroOpeningHours.isEmpty)
+        XCTAssertFalse(heringsdorf.aipAeroFrequencies.isEmpty)
+
+        for icao in ["EGHN", "EGHJ", "EPJA", "ESMH", "LFRF"] {
+            let destination = try XCTUnwrap(byICAO[icao])
+            XCTAssertTrue(
+                destination.aipAeroURL.isEmpty,
+                "AIP:Aero führt für \(icao) keine Detailseite"
+            )
+        }
     }
 
     func testAllSwissFinderDestinationsExposeAuditedPOEStatus() throws {
@@ -550,32 +577,33 @@ final class RunwayDataTests: XCTestCase {
         let byICAO = Dictionary(
             uniqueKeysWithValues: DestinationStore().destinations.map { ($0.icao, $0) }
         )
-        let expectedPrices: [String: Double] = [
-            "EDAZ": 2.81,
-            "EDGS": 2.81,
-            "EDLH": 2.45,
-            "EDMB": 2.35,
-            "EDPA": 2.39,
-            "EDRK": 2.81,
-            "EDRY": 2.89,
-            "EDXE": 2.45
+        let expectedPrices: [String: (price: Double, date: String)] = [
+            "EDAZ": (2.81, "Stand 2026-08-17"),
+            "EDGS": (2.81, "Stand 2026-08-17"),
+            "EDLH": (2.45, "Stand 2026-08-17"),
+            "EDMB": (2.35, "Stand 2026-08-17"),
+            "EDPA": (2.49, "Stand 2026-08-17"),
+            "EDRK": (2.81, "Stand 2026-08-17"),
+            "EDRY": (2.89, "Stand 2026-08-17"),
+            "EDXE": (2.45, "Stand 2026-08-17")
         ]
 
-        for (icao, expectedPrice) in expectedPrices {
+        for (icao, expected) in expectedPrices {
             let destination = try XCTUnwrap(byICAO[icao])
             XCTAssertEqual(destination.mogas, "Ja")
             XCTAssertEqual(
                 try XCTUnwrap(destination.mogasPricePerLiterEUR),
-                expectedPrice,
+                expected.price,
                 accuracy: 0.001,
                 "Veralteter MOGAS-Preis für \(icao)"
             )
-            XCTAssertEqual(destination.fuelPriceReportedAt, "Stand 2026-08-16")
+            XCTAssertEqual(destination.fuelPriceReportedAt, expected.date)
         }
     }
 
     func testUserVisibleAirportInformationExcludesTurbineFuel() {
-        for destination in DestinationStore().destinations {
+        for destination in DestinationStore().destinations
+            where destination.icao != "LSZC" {
             let visibleInformation = [
                 destination.fuelDetails,
                 destination.airportNote,

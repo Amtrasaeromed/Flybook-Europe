@@ -303,6 +303,19 @@ final class DestinationStore: ObservableObject {
                         airport["source_airport", default: ""],
                         techstopRow["source_airport", default: ""]
                     ),
+                    aipAeroURL: airport["aip_aero_url", default: ""],
+                    aipAeroOpeningHours: airport[
+                        "aip_aero_opening_hours",
+                        default: ""
+                    ],
+                    aipAeroFrequencies: airport[
+                        "aip_aero_frequencies",
+                        default: ""
+                    ],
+                    aipAeroCheckedAt: airport[
+                        "aip_aero_checked_at",
+                        default: ""
+                    ],
                     tourismSource: nonEmpty(
                         destinationRow["source_tourism", default: ""],
                         techstopRow["source_airport", default: ""]
@@ -475,15 +488,69 @@ final class DestinationStore: ObservableObject {
     }
 
     private func price(_ type: String, rows: [[String: String]]) -> Double? {
-        rows
-            .filter { $0["fuel_type"] == type }
-            .max {
-                $0["price_checked_at", default: ""]
-                    < $1["price_checked_at", default: ""]
-            }
+        preferredPriceRow(type, rows: rows)
             .flatMap {
             optionalDouble($0["price_eur_per_litre", default: ""])
         }
+    }
+
+    private func preferredPriceRow(
+        _ type: String,
+        rows: [[String: String]]
+    ) -> [String: String]? {
+        let candidates = rows.filter {
+            $0["fuel_type"] == type
+                && !isRejectedFuelPriceSource($0["source", default: ""])
+        }
+        guard let newest = candidates.max(by: priceRowIsOlder) else {
+            return nil
+        }
+        guard let newestDate = fuelPriceDate(
+            newest["price_checked_at", default: ""]
+        ),
+        let freshnessCutoff = Calendar(identifier: .gregorian).date(
+            byAdding: .day,
+            value: -7,
+            to: newestDate
+        ) else { return newest }
+
+        return candidates
+            .filter {
+                isAuthoritativeFuelPriceSource($0["source", default: ""])
+                    && (fuelPriceDate($0["price_checked_at", default: ""])
+                        ?? .distantPast) >= freshnessCutoff
+            }
+            .max(by: priceRowIsOlder)
+            ?? newest
+    }
+
+    private func priceRowIsOlder(
+        _ lhs: [String: String],
+        _ rhs: [String: String]
+    ) -> Bool {
+        lhs["price_checked_at", default: ""]
+            < rhs["price_checked_at", default: ""]
+    }
+
+    private func isRejectedFuelPriceSource(_ source: String) -> Bool {
+        source.lowercased().contains("aviation-fuel-prices.com")
+    }
+
+    private func isAuthoritativeFuelPriceSource(_ source: String) -> Bool {
+        let normalized = source.lowercased()
+        return !normalized.isEmpty
+            && !normalized.contains("aip.aero")
+            && !normalized.contains("gat.aerops.com")
+            && !normalized.contains("spritpreisliste.de")
+            && !normalized.contains("aviation-fuel-prices.com")
+    }
+
+    private func fuelPriceDate(_ value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = DestinationTimeZone.edfz
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: value)
     }
 
     private func latestFuelRow(
@@ -515,7 +582,6 @@ final class DestinationStore: ObservableObject {
             pistonTypes.contains(row["fuel_type", default: ""].uppercased())
                 && isAffirmative(row["availability_raw", default: ""])
         }
-
         return latestRows
             .sorted {
                 $0["fuel_type", default: ""] < $1["fuel_type", default: ""]
@@ -523,9 +589,11 @@ final class DestinationStore: ObservableObject {
             .compactMap { row in
             let fuelType = row["fuel_type", default: ""]
                 .uppercased()
-            guard !hasPistonFuel
-                    || (fuelType != "JET_A1" && fuelType != "JETA1")
-            else {
+            let isTurbineFuel = fuelType == "JET_A1" || fuelType == "JETA1"
+            let isAIPAeroOnly = row["source", default: ""]
+                .lowercased()
+                .contains("aip.aero")
+            guard !isTurbineFuel || (!hasPistonFuel && !isAIPAeroOnly) else {
                 return nil
             }
             let availability = row["availability_raw", default: ""]
@@ -551,7 +619,10 @@ final class DestinationStore: ObservableObject {
     }
 
     private func priceReportedAt(rows: [[String: String]]) -> String? {
-        let dates = rows.map { $0["price_checked_at", default: ""] }.filter { !$0.isEmpty }
+        let dates = ["AVGAS", "UL91", "MOGAS_SUPER"]
+            .compactMap { preferredPriceRow($0, rows: rows) }
+            .map { $0["price_checked_at", default: ""] }
+            .filter { !$0.isEmpty }
         guard let newest = dates.sorted().last else { return nil }
         return "Stand \(newest)"
     }
@@ -873,6 +944,10 @@ final class DestinationStore: ObservableObject {
             airportNote: "Mainz-Finthen ist als Heimatflugplatz separat und zusätzlich auswählbar.",
             status: "Heimatflugplatz",
             airportSource: "",
+            aipAeroURL: "https://aip.aero/de/en/vfr/?EDFZ",
+            aipAeroOpeningHours: "",
+            aipAeroFrequencies: "",
+            aipAeroCheckedAt: "",
             tourismSource: "",
             latitude: AirportReference.edfz.latitude,
             longitude: AirportReference.edfz.longitude,

@@ -18,7 +18,14 @@ RESOURCES = ROOT / "Sources" / "FlybookEurope" / "Resources"
 ERRORS: list[str] = []
 WARNINGS: list[str] = []
 OPTIONAL_TRAILING_FIELDS = {
-    "airports": {"fee_note", "fee_url"},
+    "airports": {
+        "fee_note",
+        "fee_url",
+        "aip_aero_url",
+        "aip_aero_checked_at",
+        "aip_aero_opening_hours",
+        "aip_aero_frequencies",
+    },
     "services": {
         "half_day_price", "full_day_price", "deposit_price", "price_currency"
     },

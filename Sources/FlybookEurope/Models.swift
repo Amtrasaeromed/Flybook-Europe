@@ -279,6 +279,10 @@ struct Destination: Identifiable, Hashable {
     var airportFeeURL: String = ""
     let status: String
     let airportSource: String
+    var aipAeroURL: String = ""
+    var aipAeroOpeningHours: String = ""
+    var aipAeroFrequencies: String = ""
+    var aipAeroCheckedAt: String = ""
     let tourismSource: String
     let latitude: Double?
     let longitude: Double?

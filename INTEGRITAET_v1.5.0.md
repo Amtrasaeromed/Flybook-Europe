@@ -13,8 +13,8 @@ Persistenz, macOS und iPad-Simulatorbuild.
 | TechStop-Profile | 37 |
 | Merkmalszeilen | 1.008, exakt 7 je Platz |
 | Services | 794 |
-| Kraftstoffzeilen | 475 |
-| Preiszeilen | 102 |
+| Kraftstoffzeilen | 547 |
+| Preiszeilen | 157 |
 | Doppelte/verwaiste Schlüssel | 0 |
 | Max. EDFZ-Distanzabweichung | 1,92 NM |
 
@@ -24,12 +24,12 @@ nicht Teil des produktiven Airportbestands.
 
 ## Rechen- und Programmprüfung
 
-- 203 Swift-Tests: 0 Fehler, 3 bewusst deaktivierte Live-Quellentests
+- 206 Swift-Tests: 0 Fehler, 3 bewusst deaktivierte Live-Quellentests
 - 37 unabhängige Release-Rechenprüfungen: PASS
 - Datenimport, Fremdschlüssel und technische Airportdaten: PASS
 - Persistenz und stabile macOS-Bundle-ID: PASS
 - Datenfluss: 24 Prüfungen, einschließlich gemeinsamem macOS-/iPad-Netzwerkgate
-- macOS-Debug-/Releasepfad und iPad-Release-Simulatorbuild: PASS
+- macOS-App und signierter iPad-Release-Gerätebuild: PASS
 
 Geprüft sind unter anderem Flugzeit und Blockzeit, Wind, Best Level,
 Kraftstoffverbrauch und Reserve, Refueling-Stops, Charterrundung,
@@ -46,6 +46,20 @@ geschützte/gedrosselte und 65 historisch veraltete oder technisch nicht
 erreichbare Nachweise. Diese Herkunftslinks werden von der App nicht zur
 Laufzeit abgerufen und bleiben bis zu einer redaktionell verifizierten
 Ersatzquelle unverändert, damit keine Quellenbelege erfunden werden.
+
+AIP:Aero wurde für alle 144 produktiven Plätze abgefragt. 139 Detailseiten
+waren verfügbar; EGHN, EGHJ, EPJA, ESMH und LFRF sind dort nicht gelistet und
+behalten deshalb ausschließlich ihre vorhandenen Quellen. Es gab keine
+Netzwerkfehler. Koordinaten-, Höhen- und Pistenabweichungen stehen mit beiden
+Rohwerten im Audit und wurden nicht automatisch in die kuratierten
+Airport-Stammdaten übernommen.
+
+Bei EDTG stimmten AIP:Aero, AeroPS und Spritpreisliste mit 2,99 EUR/l AVGAS,
+2,36 EUR/l MOGAS und 2,49 EUR/l Jet A-1 überein. Abweichende Werte von
+2,04/1,77/2,03 EUR/l stammten aus einer Seite mit tatsächlichem Update vom
+11.12.2020, obwohl sie 2026 als bestätigt bezeichnet wurden. Diese undatierten
+Laufzeitwerte werden nicht mehr übernommen; der alte Preis-Cache wird durch
+eine Validierungsversion verworfen.
 
 ## Gemeinsame Mac-/iPad-Pfade
 

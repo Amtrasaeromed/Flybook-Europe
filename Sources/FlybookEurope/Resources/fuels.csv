@@ -24,7 +24,7 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDFR:MOGAS_SUPER,EDFR,MOGAS_SUPER,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDFR:UL91,EDFR,UL91,Prüfen,Prüfen,,,INTERN: Airport-Hinweis der Zeile,2026-08-02,2026-08-02
 1.2,EDGE:AVGAS,EDGE,AVGAS,Ja,Avgas 100 LL,Avgas 100 LL 2.83 EUR/l laut AeroPS,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/16",2026-08-16,2026-08-16
-1.2,EDGE:MOGAS_SUPER,EDGE,MOGAS_SUPER,Ja,SuperPlus,SuperPlus 2.65 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDGE,2026-08-16,2026-08-16
+1.2,EDGE:MOGAS_SUPER,EDGE,MOGAS_SUPER,Ja,MOGAS (car petrol),SuperPlus 2.65 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDGE,2026-08-17,2026-08-17
 1.2,EDGE:UL91,EDGE,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 06/16",2026-08-02,2026-08-02
 1.2,EDGS:AVGAS,EDGS,AVGAS,Ja – AVGAS 100LL,Avgas 100 LL,Avgas 100 LL 3.14 EUR/l laut AeroPS,,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-16,2026-08-16
 1.2,EDGS:MOGAS_SUPER,EDGS,MOGAS_SUPER,Ja – Super Plus,Ja – Super Plus,"Recherchierter Stand: AVGAS etwa 3,06 €/l; Super Plus etwa 2,69 €/l",,https://www.siegerland-airport.de/en/pilot-information/service-station-fuel/,2026-08-03 · mittel bis hoch,2026-08-03 · mittel bis hoch
@@ -35,8 +35,8 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDKA:AVGAS,EDKA,AVGAS,Ja,Avgas 100 LL,Avgas 100 LL 3.14 EUR/l laut AeroPS,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-16,2026-08-16
 1.2,EDKA:MOGAS_SUPER,EDKA,MOGAS_SUPER,Ja,SuperPlus,SuperPlus 2.81 EUR/l laut AeroPS,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-16,2026-08-16
 1.2,EDKA:UL91,EDKA,UL91,Prüfen,Prüfen,,,"AOPA/rec.aviation European Fuel Price Survey (tmdg.co.uk), Eintragsdatum je Platz – Eintrag 03/99",2026-08-02,2026-08-02
-1.2,EDKB:AVGAS,EDKB,AVGAS,Ja,Avgas 100 LL,Avgas 100 LL 2.99 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDKB,2026-08-16,2026-08-16
-1.2,EDKB:MOGAS_SUPER,EDKB,MOGAS_SUPER,Ja,SuperPlus,SuperPlus 2.55 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDKB,2026-08-16,2026-08-16
+1.2,EDKB:AVGAS,EDKB,AVGAS,Ja,AVGAS 100LL,Avgas 100 LL 2.99 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDKB,2026-08-17,2026-08-17
+1.2,EDKB:MOGAS_SUPER,EDKB,MOGAS_SUPER,Ja,MOGAS (car petrol),SuperPlus 2.55 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDKB,2026-08-17,2026-08-17
 1.2,EDKB:UL91,EDKB,UL91,Prüfen,Vor Abflug beim Betreiber prüfen,,,https://www.flugplatz-hangelar.de/,2026-08-03,2026-08-03
 1.2,EDKM:AVGAS,EDKM,AVGAS,Ja,AVGAS,,,https://flugplatz-meschede.de/,2026-08-03,2026-08-03
 1.2,EDKM:MOGAS_SUPER,EDKM,MOGAS_SUPER,Nein,Nicht bestätigt,,,https://flugplatz-meschede.de/,2026-08-03,2026-08-03
@@ -421,7 +421,7 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDAY:MOGAS_SUPER:20260816,EDAY,MOGAS_SUPER,Ja,Mogas,Mogas 2.62 EUR/l laut AeroPS,,https://www.flugplatz-strausberg.de/,2026-08-16,2026-08-16
 1.2,EDFM:MOGAS_SUPER:20260816,EDFM,MOGAS_SUPER,Ja,Mogas,Mogas 2.40 EUR/l laut AeroPS,,https://www.flugplatz-mannheim.de/city-airport-mannheim/,2026-08-16,2026-08-16
 1.2,EDLD:MOGAS_SUPER:20260816,EDLD,MOGAS_SUPER,Ja,Super Plus,"2,55 €/l brutto",,https://schwarze-heide.com/fuer-piloten/titelform/,2026-08-16,2026-08-16
-1.2,EDPA:MOGAS_SUPER:20260816,EDPA,MOGAS_SUPER,Ja,Mogas,Mogas 2.49 EUR/l laut AeroPS,,https://spritpreisliste.de/airports/EDPA,2026-08-16,2026-08-16
+1.2,EDPA:MOGAS_SUPER:20260816,EDPA,MOGAS_SUPER,Ja,MOGAS (car petrol),Mogas 2.49 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDPA,2026-08-17,2026-08-17
 1.2,ETSI:MOGAS_SUPER:20260816,ETSI,MOGAS_SUPER,Nein,Nicht verfügbar,Betreiber nennt JET A1 und AVGAS,,https://etsi-airport.de/,2026-08-16,2026-08-16
 1.2,EDMA:MOGAS_SUPER:20260816,EDMA,MOGAS_SUPER,?,Nicht bestätigt,Kein belastbarer öffentlicher Nachweis,,https://www.augsburg-airport.de/piloten/,2026-08-16,2026-08-16
 1.2,EDLE:MOGAS_SUPER:20260816,EDLE,MOGAS_SUPER,Ja,Super Plus,"2,59 €/l brutto",,https://www.flughafen-essen-muelheim.de/piloten/dienstleistungen/benzinpreise/,2026-08-16,2026-08-16
@@ -445,32 +445,104 @@ schema_version,fuel_id,airport_id,fuel_type,availability_raw,grade_or_detail,pri
 1.2,EDTS:JET_A1:20260816,EDTS,JET_A1,Ja – nur PPR,Jet A-1,Jet A-1 3.18 EUR/l laut AeroPS,,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16
 1.2,EDTS:MOGAS_SUPER:20260816,EDTS,MOGAS_SUPER,Ja – nur PPR,SuperPlus,SuperPlus 2.81 EUR/l laut AeroPS,,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16
 1.2,EDTS:UL91:20260816,EDTS,UL91,Nein,Nicht veröffentlicht,"Betreiber nennt AVGAS 100LL, Jet A1 und MOGAS",,https://www.sfg-schwenningen.de/flugplatz/infos-f%C3%BCr-piloten/,2026-08-16,2026-08-16
-1.2,EDAH:JET_A1,EDAH,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDAH,2026-08-16,2026-08-16
-1.2,EDAY:JET_A1,EDAY,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDAY,2026-08-16,2026-08-16
-1.2,EDAZ:JET_A1,EDAZ,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDAZ,2026-08-16,2026-08-16
-1.2,EDBN:JET_A1,EDBN,JET_A1,Ja,Jet A-1,Jet A-1 0.00 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDBN,2026-08-16,2026-08-16
-1.2,EDFM:JET_A1,EDFM,JET_A1,Ja,Jet A-1,Jet A-1 2.70 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDFM,2026-08-16,2026-08-16
-1.2,EDGE:JET_A1,EDGE,JET_A1,Ja,Jet A-1,Jet A-1 2.89 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDGE,2026-08-16,2026-08-16
-1.2,EDGS:JET_A1,EDGS,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDGS,2026-08-16,2026-08-16
-1.2,EDKA:JET_A1,EDKA,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDKA,2026-08-16,2026-08-16
-1.2,EDKB:JET_A1,EDKB,JET_A1,Ja,Jet A-1,Jet A-1 2.72 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDKB,2026-08-16,2026-08-16
-1.2,EDLM:JET_A1,EDLM,JET_A1,Ja,Jet A-1,Jet A-1 3.08 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDLM,2026-08-16,2026-08-16
-1.2,EDMA:JET_A1,EDMA,JET_A1,Ja,Jet A-1,Jet A-1 2.69 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDMA,2026-08-16,2026-08-16
-1.2,EDMB:JET_A1,EDMB,JET_A1,Ja,Jet A-1,Jet A-1 3.03 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDMB,2026-08-16,2026-08-16
-1.2,EDMB:AVGAS,EDMB,AVGAS,Ja,Avgas 100 LL,Avgas 100 LL 2.94 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDMB,2026-08-16,2026-08-16
-1.2,EDQH:JET_A1,EDQH,JET_A1,Ja,Jet A-1,Jet A-1 3.17 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDQH,2026-08-16,2026-08-16
-1.2,EDTD:JET_A1,EDTD,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDTD,2026-08-16,2026-08-16
-1.2,EDTM:JET_A1,EDTM,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDTM,2026-08-16,2026-08-16
-1.2,EDTY:JET_A1,EDTY,JET_A1,Ja,Jet A-1,Jet A-1 3.24 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDTY,2026-08-16,2026-08-16
-1.2,EDVI:JET_A1,EDVI,JET_A1,Ja,Jet A-1,Jet A-1 2.69 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDVI,2026-08-16,2026-08-16
-1.2,EDVK:JET_A1,EDVK,JET_A1,Ja,Jet A-1,Jet A-1 1.86 EUR/l; Jet A-1 2.89 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDVK,2026-08-16,2026-08-16
-1.2,EDWC:JET_A1,EDWC,JET_A1,Ja,Jet A-1,Jet A-1 2.69 EUR/l; Jet A-1 1.59 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDWC,2026-08-16,2026-08-16
-1.2,EDWI:JET_A1,EDWI,JET_A1,Ja,Jet A-1,Jet A-1 2.90 EUR/l; Jet A-1 2.13 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDWI,2026-08-16,2026-08-16
-1.2,EDXO:JET_A1,EDXO,JET_A1,Ja,Jet A-1,Jet A-1 2.99 EUR/l; Jet A-1 2.30 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDXO,2026-08-16,2026-08-16
-1.2,EDXW:JET_A1,EDXW,JET_A1,Ja,Jet A-1,Jet A-1 3.21 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EDXW,2026-08-16,2026-08-16
-1.2,EGKA:JET_A1,EGKA,JET_A1,Ja,Jet A-1,Jet A-1 1.07 GBP/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EGKA,2026-08-16,2026-08-16
+1.2,EDAH:JET_A1,EDAH,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDAH,2026-08-17,2026-08-17
+1.2,EDAY:JET_A1,EDAY,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDAY,2026-08-17,2026-08-17
+1.2,EDAZ:JET_A1,EDAZ,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDAZ,2026-08-17,2026-08-17
+1.2,EDBN:JET_A1,EDBN,JET_A1,Ja,Jet A-1,Jet A-1 0.00 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDBN,2026-08-17,2026-08-17
+1.2,EDFM:JET_A1,EDFM,JET_A1,Ja,Jet A-1,Jet A-1 2.70 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDFM,2026-08-17,2026-08-17
+1.2,EDGE:JET_A1,EDGE,JET_A1,Ja,Jet A-1,Jet A-1 2.89 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDGE,2026-08-17,2026-08-17
+1.2,EDGS:JET_A1,EDGS,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDGS,2026-08-17,2026-08-17
+1.2,EDKA:JET_A1,EDKA,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDKA,2026-08-17,2026-08-17
+1.2,EDKB:JET_A1,EDKB,JET_A1,Ja,Jet A-1,Jet A-1 2.72 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDKB,2026-08-17,2026-08-17
+1.2,EDLM:JET_A1,EDLM,JET_A1,Ja,Jet A-1,Jet A-1 3.08 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDLM,2026-08-17,2026-08-17
+1.2,EDMA:JET_A1,EDMA,JET_A1,Ja,Jet A-1,Jet A-1 2.69 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDMA,2026-08-17,2026-08-17
+1.2,EDMB:JET_A1,EDMB,JET_A1,Ja,Jet A-1,Jet A-1 3.03 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDMB,2026-08-17,2026-08-17
+1.2,EDMB:AVGAS,EDMB,AVGAS,Ja,AVGAS 100LL,Avgas 100 LL 2.94 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDMB,2026-08-17,2026-08-17
+1.2,EDQH:JET_A1,EDQH,JET_A1,Ja,Jet A-1,Jet A-1 3.17 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDQH,2026-08-17,2026-08-17
+1.2,EDTD:JET_A1,EDTD,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDTD,2026-08-17,2026-08-17
+1.2,EDTM:JET_A1,EDTM,JET_A1,Ja,Jet A-1,Jet A-1 3.18 EUR/l; Jet A-1 2.20 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDTM,2026-08-17,2026-08-17
+1.2,EDTY:JET_A1,EDTY,JET_A1,Ja,Jet A-1,Jet A-1 3.24 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDTY,2026-08-17,2026-08-17
+1.2,EDVI:JET_A1,EDVI,JET_A1,Ja,Jet A-1,Jet A-1 2.69 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDVI,2026-08-17,2026-08-17
+1.2,EDVK:JET_A1,EDVK,JET_A1,Ja,Jet A-1,Jet A-1 1.86 EUR/l; Jet A-1 2.89 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDVK,2026-08-17,2026-08-17
+1.2,EDWC:JET_A1,EDWC,JET_A1,Ja,Jet A-1,Jet A-1 2.69 EUR/l; Jet A-1 1.59 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDWC,2026-08-17,2026-08-17
+1.2,EDWI:JET_A1,EDWI,JET_A1,Ja,Jet A-1,Jet A-1 2.90 EUR/l; Jet A-1 2.13 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDWI,2026-08-17,2026-08-17
+1.2,EDXO:JET_A1,EDXO,JET_A1,Ja,Jet A-1,Jet A-1 2.99 EUR/l; Jet A-1 2.30 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDXO,2026-08-17,2026-08-17
+1.2,EDXW:JET_A1,EDXW,JET_A1,Ja,Jet A-1,Jet A-1 3.21 EUR/l laut AeroPS,,https://aip.aero/de/en/vfr/?EDXW,2026-08-17,2026-08-17
+1.2,EGKA:JET_A1,EGKA,JET_A1,Ja,Jet A-1,Jet A-1 1.07 GBP/l laut AeroPS,,https://aip.aero/uk/vfr/?EGKA,2026-08-17,2026-08-17
 1.2,EGKH:JET_A1,EGKH,JET_A1,Ja,JET A1,JET A1 0.91 GBP/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EGKH,2026-08-16,2026-08-16
 1.2,EHHV:JET_A1,EHHV,JET_A1,Ja,Jet A-1,Jet A-1 0.00 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EHHV,2026-08-16,2026-08-16
-1.2,EHTX:JET_A1,EHTX,JET_A1,Ja,Jet A-1,Jet A-1 2.89 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/EHTX,2026-08-16,2026-08-16
+1.2,EHTX:JET_A1,EHTX,JET_A1,Ja,Jet A-1,Jet A-1 2.89 EUR/l laut AeroPS,,https://aip.aero/nl/en/vfr/?EHTX,2026-08-17,2026-08-17
 1.2,LDLO:JET_A1,LDLO,JET_A1,Ja,Jet A-1,Jet A-1 2.80 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/LDLO,2026-08-16,2026-08-16
-1.2,LOWZ:JET_A1,LOWZ,JET_A1,Ja,Jet A-1,Jet A-1 2.05 EUR/l; Jet A-1 1.58 EUR/l laut AeroPS,,https://gat.aerops.com/prices/calculator/LOWZ,2026-08-16,2026-08-16
+1.2,LOWZ:JET_A1,LOWZ,JET_A1,Ja,Jet A-1,Jet A-1 2.05 EUR/l; Jet A-1 1.58 EUR/l laut AeroPS,,https://aip.aero/at/en/vfr/?LOWZ,2026-08-17,2026-08-17
+1.2,EBSP:JET_A1:AIPAERO,EBSP,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/be/vfr/?EBSP,2026-08-17,2026-08-17
+1.2,EDAX:AVGAS:AIPAERO,EDAX,AVGAS,Ja,AVGAS,,,https://aip.aero/de/en/vfr/?EDAX,2026-08-17,2026-08-17
+1.2,EDCG:JET_A1:AIPAERO,EDCG,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/de/en/vfr/?EDCG,2026-08-17,2026-08-17
+1.2,EDFE:JET_A1:AIPAERO,EDFE,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDFE,2026-08-17,2026-08-17
+1.2,EDFE:UL91:AIPAERO,EDFE,UL91,Ja,AVGAS UL91,,,https://aip.aero/de/en/vfr/?EDFE,2026-08-17,2026-08-17
+1.2,EDFE:AVGAS:AIPAERO,EDFE,AVGAS,Ja,AVGAS 100LL,,,https://aip.aero/de/en/vfr/?EDFE,2026-08-17,2026-08-17
+1.2,EDFR:JET_A1:AIPAERO,EDFR,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDFR,2026-08-17,2026-08-17
+1.2,EDHL:JET_A1:AIPAERO,EDHL,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDHL,2026-08-17,2026-08-17
+1.2,EDKM:JET_A1:AIPAERO,EDKM,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDKM,2026-08-17,2026-08-17
+1.2,EDLA:JET_A1:AIPAERO,EDLA,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDLA,2026-08-17,2026-08-17
+1.2,EDLA:AVGAS:AIPAERO,EDLA,AVGAS,Ja,AVGAS 100LL,,,https://aip.aero/de/en/vfr/?EDLA,2026-08-17,2026-08-17
+1.2,EDLD:JET_A1:AIPAERO,EDLD,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDLD,2026-08-17,2026-08-17
+1.2,EDLE:JET_A1:AIPAERO,EDLE,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDLE,2026-08-17,2026-08-17
+1.2,EDLN:JET_A1:AIPAERO,EDLN,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/de/en/vfr/?EDLN,2026-08-17,2026-08-17
+1.2,EDLS:JET_A1:AIPAERO,EDLS,JET_A1,Ja,"Super PLUS, AVGAS, Jet A-1",,,https://aip.aero/de/en/vfr/?EDLS,2026-08-17,2026-08-17
+1.2,EDME:JET_A1:AIPAERO,EDME,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDME,2026-08-17,2026-08-17
+1.2,EDML:JET_A1:AIPAERO,EDML,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDML,2026-08-17,2026-08-17
+1.2,EDMV:JET_A1:AIPAERO,EDMV,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/de/en/vfr/?EDMV,2026-08-17,2026-08-17
+1.2,EDNL:JET_A1:AIPAERO,EDNL,JET_A1,Ja,"Super PLUS, AVGAS, Jet A-1",,,https://aip.aero/de/en/vfr/?EDNL,2026-08-17,2026-08-17
+1.2,EDPA:JET_A1:AIPAERO,EDPA,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDPA,2026-08-17,2026-08-17
+1.2,EDQA:JET_A1:AIPAERO,EDQA,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDQA,2026-08-17,2026-08-17
+1.2,EDRK:JET_A1:AIPAERO,EDRK,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDRK,2026-08-17,2026-08-17
+1.2,EDRY:JET_A1:AIPAERO,EDRY,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDRY,2026-08-17,2026-08-17
+1.2,EDRY:AVGAS:AIPAERO,EDRY,AVGAS,Ja,AVGAS 100LL,,,https://aip.aero/de/en/vfr/?EDRY,2026-08-17,2026-08-17
+1.2,EDVE:JET_A1:AIPAERO,EDVE,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDVE,2026-08-17,2026-08-17
+1.2,EDVE:UL91:AIPAERO,EDVE,UL91,Ja,AVGAS UL91,,,https://aip.aero/de/en/vfr/?EDVE,2026-08-17,2026-08-17
+1.2,EDVE:AVGAS:AIPAERO,EDVE,AVGAS,Ja,AVGAS 100LL,,,https://aip.aero/de/en/vfr/?EDVE,2026-08-17,2026-08-17
+1.2,EDVM:JET_A1:AIPAERO,EDVM,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDVM,2026-08-17,2026-08-17
+1.2,EDWF:JET_A1:AIPAERO,EDWF,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDWF,2026-08-17,2026-08-17
+1.2,EDXB:MOGAS_SUPER:AIPAERO,EDXB,MOGAS_SUPER,Ja,"Super PLUS, AVGAS",,,https://aip.aero/de/en/vfr/?EDXB,2026-08-17,2026-08-17
+1.2,EDXB:AVGAS:AIPAERO,EDXB,AVGAS,Ja,"Super PLUS, AVGAS",,,https://aip.aero/de/en/vfr/?EDXB,2026-08-17,2026-08-17
+1.2,EDXF:JET_A1:AIPAERO,EDXF,JET_A1,Ja,Jet A-1,,,https://aip.aero/de/en/vfr/?EDXF,2026-08-17,2026-08-17
+1.2,EDXF:AVGAS:AIPAERO,EDXF,AVGAS,Ja,AVGAS 100LL,,,https://aip.aero/de/en/vfr/?EDXF,2026-08-17,2026-08-17
+1.2,EHLE:JET_A1:AIPAERO,EHLE,JET_A1,Ja,Jet A-1,,,https://aip.aero/nl/en/vfr/?EHLE,2026-08-17,2026-08-17
+1.2,EHMZ:JET_A1:AIPAERO,EHMZ,JET_A1,Ja,"Super PLUS, AVGAS, Jet A-1",,,https://aip.aero/nl/en/vfr/?EHMZ,2026-08-17,2026-08-17
+1.2,EKRN:JET_A1:AIPAERO,EKRN,JET_A1,Ja,Jet A-1,,,https://aip.aero/dk/en/vfr/?EKRN,2026-08-17,2026-08-17
+1.2,EKSB:JET_A1:AIPAERO,EKSB,JET_A1,Ja,Jet A-1,,,https://aip.aero/dk/en/vfr/?EKSB,2026-08-17,2026-08-17
+1.2,EKVJ:JET_A1:AIPAERO,EKVJ,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/dk/en/vfr/?EKVJ,2026-08-17,2026-08-17
+1.2,ETSI:JET_A1:AIPAERO,ETSI,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/de/en/vfr/?ETSI,2026-08-17,2026-08-17
+1.2,LFAT:JET_A1:AIPAERO,LFAT,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFAT,2026-08-17,2026-08-17
+1.2,LFGA:JET_A1:AIPAERO,LFGA,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFGA,2026-08-17,2026-08-17
+1.2,LFKB:JET_A1:AIPAERO,LFKB,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFKB,2026-08-17,2026-08-17
+1.2,LFKF:JET_A1:AIPAERO,LFKF,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFKF,2026-08-17,2026-08-17
+1.2,LFKJ:JET_A1:AIPAERO,LFKJ,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFKJ,2026-08-17,2026-08-17
+1.2,LFLP:JET_A1:AIPAERO,LFLP,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFLP,2026-08-17,2026-08-17
+1.2,LFMD:JET_A1:AIPAERO,LFMD,JET_A1,Ja,Jet A-1,,,https://aip.aero/fr/en/aeroports/?LFMD,2026-08-17,2026-08-17
+1.2,LFMP:JET_A1:AIPAERO,LFMP,JET_A1,Ja,"AVGAS, Jet A-1, AVGAS UL91",,,https://aip.aero/fr/en/aeroports/?LFMP,2026-08-17,2026-08-17
+1.2,LFMU:JET_A1:AIPAERO,LFMU,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFMU,2026-08-17,2026-08-17
+1.2,LFRD:JET_A1:AIPAERO,LFRD,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFRD,2026-08-17,2026-08-17
+1.2,LFRG:JET_A1:AIPAERO,LFRG,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/fr/en/aeroports/?LFRG,2026-08-17,2026-08-17
+1.2,LIPB:JET_A1:AIPAERO,LIPB,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/it/en/vfr/?LIPB,2026-08-17,2026-08-17
+1.2,LIPV:JET_A1:AIPAERO,LIPV,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/it/en/vfr/?LIPV,2026-08-17,2026-08-17
+1.2,LJPZ:JET_A1:AIPAERO,LJPZ,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/si/en/vfr/?LJPZ,2026-08-17,2026-08-17
+1.2,LKKV:JET_A1:AIPAERO,LKKV,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/cz/en/vfr/?LKKV,2026-08-17,2026-08-17
+1.2,LOAN:MOGAS_SUPER:AIPAERO,LOAN,MOGAS_SUPER,Ja,MOGAS (car petrol),,,https://aip.aero/at/en/vfr/?LOAN,2026-08-17,2026-08-17
+1.2,LOAN:JET_A1:AIPAERO,LOAN,JET_A1,Ja,Jet A-1,,,https://aip.aero/at/en/vfr/?LOAN,2026-08-17,2026-08-17
+1.2,LOAN:AVGAS:AIPAERO,LOAN,AVGAS,Ja,AVGAS 100LL,,,https://aip.aero/at/en/vfr/?LOAN,2026-08-17,2026-08-17
+1.2,LOIH:JET_A1:AIPAERO,LOIH,JET_A1,Ja,Jet A-1,,,https://aip.aero/at/en/vfr/?LOIH,2026-08-17,2026-08-17
+1.2,LOKL:JET_A1:AIPAERO,LOKL,JET_A1,Ja,"Super PLUS, AVGAS, Jet A-1",,,https://aip.aero/at/en/vfr/?LOKL,2026-08-17,2026-08-17
+1.2,LOWK:JET_A1:AIPAERO,LOWK,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/at/en/vfr/?LOWK,2026-08-17,2026-08-17
+1.2,LSGL:JET_A1:AIPAERO,LSGL,JET_A1,Ja,"AVGAS, Jet A-1, AVGAS UL91",,,https://aip.aero/ch/en/vfr/?LSGL,2026-08-17,2026-08-17
+1.2,LSGN:JET_A1:AIPAERO,LSGN,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSGN,2026-08-17,2026-08-17
+1.2,LSGR:JET_A1:AIPAERO,LSGR,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSGR,2026-08-17,2026-08-17
+1.2,LSGS:JET_A1:AIPAERO,LSGS,JET_A1,Ja,"AVGAS, Jet A-1, AVGAS UL91",,,https://aip.aero/ch/en/vfr/?LSGS,2026-08-17,2026-08-17
+1.2,LSGT:JET_A1:AIPAERO,LSGT,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSGT,2026-08-17,2026-08-17
+1.2,LSGY:JET_A1:AIPAERO,LSGY,JET_A1,Ja,"Super PLUS, AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSGY,2026-08-17,2026-08-17
+1.2,LSZA:JET_A1:AIPAERO,LSZA,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSZA,2026-08-17,2026-08-17
+1.2,LSZB:JET_A1:AIPAERO,LSZB,JET_A1,Ja,"Super PLUS, AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSZB,2026-08-17,2026-08-17
+1.2,LSZG:JET_A1:AIPAERO,LSZG,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSZG,2026-08-17,2026-08-17
+1.2,LSZL:JET_A1:AIPAERO,LSZL,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSZL,2026-08-17,2026-08-17
+1.2,LSZM:JET_A1:AIPAERO,LSZM,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSZM,2026-08-17,2026-08-17
+1.2,LSZR:JET_A1:AIPAERO,LSZR,JET_A1,Ja,"AVGAS, Jet A-1",,,https://aip.aero/ch/en/vfr/?LSZR,2026-08-17,2026-08-17
