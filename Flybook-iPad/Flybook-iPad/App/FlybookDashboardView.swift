@@ -35,6 +35,9 @@ struct FlybookDashboardView: View {
     @State private var intermediateStopCount = 0
     @State private var intermediateStop1ICAO = ""
     @State private var intermediateStop2ICAO = ""
+    @State private var returnIntermediateStopCount = 0
+    @State private var returnIntermediateStop1ICAO = ""
+    @State private var returnIntermediateStop2ICAO = ""
     @State private var showsRouteMap = false
     @State private var showsFuelCalculator = false
     @State private var isFlightPlanningExpanded = false
@@ -75,6 +78,12 @@ struct FlybookDashboardView: View {
     private var selectedIntermediateAirports: [Airport] {
         [intermediateStop1ICAO, intermediateStop2ICAO]
             .prefix(intermediateStopCount)
+            .compactMap { icao in airports.first { $0.icao == icao } }
+    }
+
+    private var selectedReturnIntermediateAirports: [Airport] {
+        [returnIntermediateStop1ICAO, returnIntermediateStop2ICAO]
+            .prefix(returnIntermediateStopCount)
             .compactMap { icao in airports.first { $0.icao == icao } }
     }
 
@@ -612,7 +621,9 @@ struct FlybookDashboardView: View {
     }
 
     private var returnRouteWaypoints: [Airport] {
-        Array(routeWaypoints.reversed())
+        [flightArrivalAirport]
+            + selectedReturnIntermediateAirports
+            + [flightDepartureAirport]
     }
 
     private var returnRouteCourseDegrees: Double {
@@ -638,16 +649,47 @@ struct FlybookDashboardView: View {
     private var returnRouteMinutes: Int {
         IPadFlightMath.minutes(
             directNM: directRouteDistanceNM,
-            stopCount: intermediateStopCount,
+            stopCount: returnIntermediateStopCount,
             headwindKnots: returnRouteWindModel.wind?.headwindKnots,
             tankStopMinutes: tankStopMinutes,
             altitudeFeet: returnSelectedAltitudeFeet,
             departureElevationFeet: flightArrivalAirport.elevationFeet,
             performance: activeAircraftPerformance,
-            trackMilesNM: routeDistanceNM,
+            trackMilesNM: returnRouteDistanceNM,
             preTakeoffGroundMinutes: preTakeoffGroundMinutes,
             postLandingGroundMinutes: postLandingGroundMinutes
         )
+    }
+
+    private var returnRouteBlockMinutes: Int {
+        IPadFlightMath.minutes(
+            directNM: directRouteDistanceNM,
+            stopCount: returnIntermediateStopCount,
+            headwindKnots: returnRouteWindModel.wind?.headwindKnots,
+            tankStopMinutes: 0,
+            altitudeFeet: returnSelectedAltitudeFeet,
+            departureElevationFeet: flightArrivalAirport.elevationFeet,
+            performance: activeAircraftPerformance,
+            trackMilesNM: returnRouteDistanceNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
+        )
+    }
+
+    private var returnRouteDistanceNM: Double {
+        let selected = selectedReturnIntermediateAirports
+        if returnIntermediateStopCount > 0,
+           selected.count == returnIntermediateStopCount {
+            let points = [flightArrivalAirport] + selected + [flightDepartureAirport]
+            let legMiles = zip(points, points.dropFirst()).reduce(0.0) {
+                $0 + FlightGeometry.nauticalMiles(from: $1.0, to: $1.1)
+            }
+            return legMiles * 1.05 + 10
+        }
+        let extra: Double = returnIntermediateStopCount == 0
+            ? 10
+            : (returnIntermediateStopCount == 1 ? 30 : 50)
+        return directRouteDistanceNM * 1.05 + extra
     }
 
     private var fuelConsumptionLitersPerHour: Double {
@@ -711,7 +753,7 @@ struct FlybookDashboardView: View {
             ?? activeAircraftPerformance.fallbackFuelLitersPerHour
         return fuelPlanOutboundLegs + fuelLegs(
             waypoints: returnRouteWaypoints,
-            totalMinutes: returnRouteMinutes,
+            totalMinutes: returnRouteBlockMinutes,
             idPrefix: "rueck",
             consumptionLitersPerHour: returnConsumption
         )
@@ -850,7 +892,10 @@ struct FlybookDashboardView: View {
     }
 
     private var returnFlightDataRequestKey: String {
-        "\(flightArrivalAirport.icao)-\(flightDepartureAirport.icao)-\(Int(returnDeparture.timeIntervalSince1970 / 900))-\(returnSelectedAltitudeFeet)-\(activeAircraft)-\(isFlightPlanningExpanded)"
+        returnRouteWaypoints.map(\.icao).joined(separator: "-")
+            + "-\(Int(returnDeparture.timeIntervalSince1970 / 900))"
+            + "-\(returnRouteMinutes)-\(returnSelectedAltitudeFeet)"
+            + "-\(activeAircraft)-\(isFlightPlanningExpanded)"
     }
 
     var body: some View {
@@ -1027,10 +1072,10 @@ struct FlybookDashboardView: View {
             featureStrip.frame(height: 32)
             airportInformationRow.frame(height: 104)
             if isFlightPlanningExpanded {
-                expandedFlightPlanningContent.frame(height: 782, alignment: .top)
+                expandedFlightPlanningContent.frame(height: 796, alignment: .top)
             } else {
                 fiveDayOverview.frame(height: 146, alignment: .top)
-                oneWayFlightSection.frame(height: 362, alignment: .top)
+                oneWayFlightSection.frame(height: 340, alignment: .top)
                 intermediateStopSection.frame(height: 52, alignment: .top)
                 fuelCalculationSection.frame(height: 176, alignment: .top)
             }
@@ -1346,12 +1391,12 @@ struct FlybookDashboardView: View {
                     destinationICAO = airport.icao
                 }
             )
-            .frame(height: 316)
+            .frame(height: 294)
         }
     }
 
     private var expandedFlightPlanningContent: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
                 SectionTitle(
                     title: "FLUGPLANUNG · HIN- UND RÜCKFLUG",
@@ -1373,6 +1418,13 @@ struct FlybookDashboardView: View {
                 .controlSize(.small)
                 .tint(Color.dashboardBlue)
             }
+            .frame(height: 28)
+
+            expandedFlightDateControls(
+                title: "HINFLUG",
+                date: $outboundDeparture,
+                airport: flightDepartureAirport
+            )
             .frame(height: 28)
 
             EditableFlightLegCard(
@@ -1408,31 +1460,16 @@ struct FlybookDashboardView: View {
                 ),
                 onArrivalSelected: { destinationICAO = $0.icao }
             )
-            .frame(height: 316)
+            .frame(height: 294)
 
             intermediateStopSection.frame(height: 52, alignment: .top)
 
-            HStack(spacing: 8) {
-                Text("RÜCKFLUG")
-                    .font(.caption.bold())
-                    .foregroundStyle(Color.dashboardNavy)
-                DatePicker(
-                    "Datum",
-                    selection: $returnDeparture,
-                    displayedComponents: .date
-                )
-                .labelsHidden()
-                .frame(width: 112)
-                DatePicker(
-                    "Startzeit",
-                    selection: $returnDeparture,
-                    displayedComponents: .hourAndMinute
-                )
-                .labelsHidden()
-                .frame(width: 78)
-                Spacer()
-            }
-            .frame(height: 30)
+            expandedFlightDateControls(
+                title: "RÜCKFLUG",
+                date: $returnDeparture,
+                airport: flightArrivalAirport
+            )
+            .frame(height: 28)
 
             EditableFlightLegCard(
                 airports: airports,
@@ -1451,12 +1488,12 @@ struct FlybookDashboardView: View {
                 durationMinutes: returnRouteMinutes,
                 etopsLegMinutes: IPadFlightMath.perLegMinutes(
                     totalMinutes: returnRouteMinutes,
-                    stopCount: intermediateStopCount,
+                    stopCount: returnIntermediateStopCount,
                     tankStopMinutes: tankStopMinutes
                 ),
                 etopsGreenYellowMinutes: activeETOPSGreenYellowMinutes,
                 etopsOrangeRedMinutes: activeETOPSOrangeRedMinutes,
-                distanceNM: routeDistanceNM,
+                distanceNM: returnRouteDistanceNM,
                 selectedAltitudeFeet: $returnSelectedAltitudeFeet,
                 altitudeOptions: returnAltitudeOptions,
                 courseDegrees: returnRouteCourseDegrees,
@@ -1480,7 +1517,46 @@ struct FlybookDashboardView: View {
                 ),
                 onArrivalSelected: { _ in }
             )
-            .frame(height: 316)
+            .frame(height: 294)
+
+            returnIntermediateStopSection.frame(height: 52, alignment: .top)
+        }
+    }
+
+    private func expandedFlightDateControls(
+        title: String,
+        date: Binding<Date>,
+        airport: Airport
+    ) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption.bold())
+                .foregroundStyle(Color.dashboardNavy)
+                .frame(width: 72, alignment: .leading)
+            DatePicker("Datum", selection: date, displayedComponents: .date)
+                .labelsHidden()
+                .frame(width: 112)
+            DatePicker("Startzeit", selection: date, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+                .frame(width: 78)
+            flightTimeStepButton(
+                systemName: "minus",
+                minutes: -15,
+                date: date
+            )
+            flightTimeStepButton(
+                systemName: "plus",
+                minutes: 15,
+                date: date
+            )
+            departureShortcut("Jetzt") { date.wrappedValue = Date() }
+            departureShortcut("Heute") {
+                setFlightDay(date, airport: airport, offset: 0)
+            }
+            departureShortcut("Morgen") {
+                setFlightDay(date, airport: airport, offset: 1)
+            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -1497,12 +1573,24 @@ struct FlybookDashboardView: View {
     }
 
     private func departureTimeStepButton(systemName: String, minutes: Int) -> some View {
+        flightTimeStepButton(
+            systemName: systemName,
+            minutes: minutes,
+            date: $outboundDeparture
+        )
+    }
+
+    private func flightTimeStepButton(
+        systemName: String,
+        minutes: Int,
+        date: Binding<Date>
+    ) -> some View {
         Button {
-            outboundDeparture = Calendar.current.date(
+            date.wrappedValue = Calendar.current.date(
                 byAdding: .minute,
                 value: minutes,
-                to: outboundDeparture
-            ) ?? outboundDeparture
+                to: date.wrappedValue
+            ) ?? date.wrappedValue
         } label: {
             Image(systemName: systemName)
                 .font(.system(size: 11, weight: .heavy))
@@ -1523,13 +1611,25 @@ struct FlybookDashboardView: View {
     }
 
     private func setDepartureDay(offset: Int) {
+        setFlightDay(
+            $outboundDeparture,
+            airport: flightDepartureAirport,
+            offset: offset
+        )
+    }
+
+    private func setFlightDay(
+        _ date: Binding<Date>,
+        airport: Airport,
+        offset: Int
+    ) {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: flightDepartureAirport.timeZoneIdentifier) ?? .current
+        calendar.timeZone = TimeZone(identifier: airport.timeZoneIdentifier) ?? .current
         let now = Date()
         guard let day = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: now)),
               let standard = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day)
         else { return }
-        outboundDeparture = offset == 0 && standard <= now ? now : standard
+        date.wrappedValue = offset == 0 && standard <= now ? now : standard
     }
 
     private func swapFlightEndpoints() {
@@ -1720,13 +1820,42 @@ struct FlybookDashboardView: View {
     }
 
     private var intermediateStopSection: some View {
+        stopSection(
+            count: $intermediateStopCount,
+            firstICAO: $intermediateStop1ICAO,
+            secondICAO: $intermediateStop2ICAO,
+            origin: flightDepartureAirport,
+            destination: flightArrivalAirport,
+            showsOutboundActions: true
+        )
+    }
+
+    private var returnIntermediateStopSection: some View {
+        stopSection(
+            count: $returnIntermediateStopCount,
+            firstICAO: $returnIntermediateStop1ICAO,
+            secondICAO: $returnIntermediateStop2ICAO,
+            origin: flightArrivalAirport,
+            destination: flightDepartureAirport,
+            showsOutboundActions: false
+        )
+    }
+
+    private func stopSection(
+        count: Binding<Int>,
+        firstICAO: Binding<String>,
+        secondICAO: Binding<String>,
+        origin: Airport,
+        destination: Airport,
+        showsOutboundActions: Bool
+    ) -> some View {
         DashboardCard {
             HStack(spacing: 8) {
                 Text("Stops:")
                     .font(.caption.bold())
                     .foregroundStyle(Color.dashboardNavy)
 
-                Picker("Anzahl Zwischenstopps", selection: $intermediateStopCount) {
+                Picker("Anzahl Zwischenstopps", selection: count) {
                     Text("0").tag(0)
                     Text("1").tag(1)
                     Text("2").tag(2)
@@ -1736,16 +1865,16 @@ struct FlybookDashboardView: View {
                 .frame(width: 120)
 
                 Group {
-                    if intermediateStopCount >= 1 {
+                    if count.wrappedValue >= 1 {
                         StopAirportPicker(
                             title: "STOP 1",
-                            selection: $intermediateStop1ICAO,
+                            selection: firstICAO,
                             airports: airports,
-                            excluding: [flightDepartureICAO, flightArrivalICAO]
-                                + (intermediateStopCount == 2 ? [intermediateStop2ICAO] : []),
-                            origin: flightDepartureAirport,
-                            destination: flightArrivalAirport,
-                            stopCount: intermediateStopCount,
+                            excluding: [origin.icao, destination.icao]
+                                + (count.wrappedValue == 2 ? [secondICAO.wrappedValue] : []),
+                            origin: origin,
+                            destination: destination,
+                            stopCount: count.wrappedValue,
                             stopIndex: 1
                         )
                     } else {
@@ -1757,15 +1886,15 @@ struct FlybookDashboardView: View {
                 .frame(width: 220, alignment: .leading)
 
                 Group {
-                    if intermediateStopCount == 2 {
+                    if count.wrappedValue == 2 {
                             StopAirportPicker(
                                 title: "STOP 2",
-                                selection: $intermediateStop2ICAO,
+                                selection: secondICAO,
                                 airports: airports,
-                                excluding: [flightDepartureICAO, flightArrivalICAO, intermediateStop1ICAO],
-                                origin: flightDepartureAirport,
-                                destination: flightArrivalAirport,
-                                stopCount: intermediateStopCount,
+                                excluding: [origin.icao, destination.icao, firstICAO.wrappedValue],
+                                origin: origin,
+                                destination: destination,
+                                stopCount: count.wrappedValue,
                                 stopIndex: 2
                             )
                     } else {
@@ -1776,33 +1905,40 @@ struct FlybookDashboardView: View {
 
                 Spacer(minLength: 0)
 
-                Button {
-                    applyAutomaticETOPSRoute()
-                } label: {
-                    Image(systemName: "wand.and.stars")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color.dashboardBlue)
-                        .frame(width: 38, height: 32)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("ETOPS-Route automatisch planen")
+                if showsOutboundActions {
+                    Button {
+                        applyAutomaticETOPSRoute()
+                    } label: {
+                        Image(systemName: "wand.and.stars")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(Color.dashboardBlue)
+                            .frame(width: 38, height: 32)
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("ETOPS-Route automatisch planen")
 
-                Button {
-                    showsRouteMap = true
-                } label: {
-                    Image(systemName: "globe.europe.africa.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 38, height: 32)
-                        .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 10))
+                    Button {
+                        showsRouteMap = true
+                    } label: {
+                        Image(systemName: "globe.europe.africa.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 38, height: 32)
+                            .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Streckenkarte öffnen")
+                } else {
+                    Text("Rückflugroute")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 82, alignment: .trailing)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Streckenkarte öffnen")
             }
         }
         .zIndex(12)
@@ -2797,7 +2933,6 @@ private struct IPadFuelPlanCalculatorView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         fuelHeader(compact: isPortraitLayout)
-                        fuelControls(compact: isPortraitLayout)
 
                         LazyVStack(spacing: 10) {
                             ForEach(Array(plan.rows.enumerated()), id: \.element.id) {
@@ -2864,6 +2999,8 @@ private struct IPadFuelPlanCalculatorView: View {
                         .font(.subheadline.bold())
                         .foregroundStyle(.secondary)
                     Spacer()
+                    minimumPlanButton
+                    fullPlanButton
                     resetActualButton
                 }
             }
@@ -2876,6 +3013,8 @@ private struct IPadFuelPlanCalculatorView: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(.secondary)
                 Spacer()
+                minimumPlanButton
+                fullPlanButton
                 resetActualButton
                 Button("Schließen") { dismiss() }
                     .buttonStyle(.borderedProminent)
@@ -2893,58 +3032,16 @@ private struct IPadFuelPlanCalculatorView: View {
         .buttonStyle(.bordered)
     }
 
-    @ViewBuilder
-    private func fuelControls(compact: Bool) -> some View {
-        if compact {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    fuelControl(
-                        title: "PLAN START",
-                        value: $planStartingFuelLiters,
-                        tint: Color.dashboardBlue
-                    )
-                    Button("Minimum") {
-                        planStartingFuelLiters = template.minimumStartingFuelLiters
-                    }
-                    .buttonStyle(.bordered)
-                    Button("Voll") { planStartingFuelLiters = usableFuelLiters }
-                        .buttonStyle(.bordered)
-                    Spacer()
-                    fuelControl(
-                        title: "IST START",
-                        value: actualStartBinding,
-                        tint: actual.hasWarning ? .red : .green
-                    )
-                }
-                Text("Ein IST-Wert ersetzt ab diesem Punkt die Hochrechnung. Die nötige Tankmenge wird sofort aus dem Planminimum neu berechnet.")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-            }
-        } else {
-            HStack(spacing: 10) {
-                fuelControl(
-                    title: "PLAN START",
-                    value: $planStartingFuelLiters,
-                    tint: Color.dashboardBlue
-                )
-                Button("Minimum") {
-                    planStartingFuelLiters = template.minimumStartingFuelLiters
-                }
-                .buttonStyle(.bordered)
-                Button("Voll") { planStartingFuelLiters = usableFuelLiters }
-                    .buttonStyle(.bordered)
-                Divider().frame(height: 42)
-                fuelControl(
-                    title: "IST START",
-                    value: actualStartBinding,
-                    tint: actual.hasWarning ? .red : .green
-                )
-                Text("Ein IST-Wert ersetzt ab diesem Punkt die Hochrechnung; die nötige Tankmenge wird aus dem Planminimum neu berechnet.")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
+    private var minimumPlanButton: some View {
+        Button("Plan Minimum") {
+            planStartingFuelLiters = template.minimumStartingFuelLiters
         }
+        .buttonStyle(.bordered)
+    }
+
+    private var fullPlanButton: some View {
+        Button("Plan Voll") { planStartingFuelLiters = usableFuelLiters }
+            .buttonStyle(.bordered)
     }
 
     private func responsiveFuelRow(
@@ -2968,7 +3065,11 @@ private struct IPadFuelPlanCalculatorView: View {
                     compactFuelLine("LDG", row.minimumArrivalLiters)
                 }
                 fuelStatePanel(title: "PLAN", tint: Color.dashboardBlue) {
-                    compactFuelLine("T/O", row.plannedDepartureLiters)
+                    if index == 0 {
+                        editableFuelLine("T/O", value: $planStartingFuelLiters)
+                    } else {
+                        compactFuelLine("T/O", row.plannedDepartureLiters)
+                    }
                     compactFuelLine("LDG", row.plannedArrivalLiters)
                     compactFuelLine("TANK", plannedRefuels[index] ?? 0, prefix: "+")
                 }
@@ -2976,7 +3077,11 @@ private struct IPadFuelPlanCalculatorView: View {
                     title: "IST",
                     tint: actual.hasWarning ? .red : .green
                 ) {
-                    compactFuelLine("T/O", actualRow.actualDepartureLiters)
+                    if index == 0 {
+                        editableFuelLine("T/O", value: actualStartBinding)
+                    } else {
+                        compactFuelLine("T/O", actualRow.actualDepartureLiters)
+                    }
                     HStack(spacing: 5) {
                         Text("LDG").font(.caption.bold())
                         Spacer(minLength: 2)
@@ -3034,6 +3139,17 @@ private struct IPadFuelPlanCalculatorView: View {
         .foregroundStyle(Color.dashboardNavy)
     }
 
+    private func editableFuelLine(
+        _ title: String,
+        value: Binding<Double>
+    ) -> some View {
+        HStack(spacing: 5) {
+            Text(title).font(.caption.bold())
+            Spacer(minLength: 2)
+            fuelTableInput(value, width: 82)
+        }
+    }
+
     private func refuelRow(index: Int, row: FuelPlanRow) -> some View {
         let enabled = refuelAfterLegIndices.contains(index)
         return HStack {
@@ -3063,19 +3179,6 @@ private struct IPadFuelPlanCalculatorView: View {
         .padding(.horizontal, 10)
         .frame(height: 38)
         .background(Color.dashboardBlue.opacity(enabled ? 0.10 : 0.035))
-    }
-
-    private func fuelControl(
-        title: String,
-        value: Binding<Double>,
-        tint: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title).font(.caption2.bold()).foregroundStyle(.secondary)
-            fuelTableInput(value, width: 110)
-        }
-        .padding(8)
-        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func fuelTableInput(
@@ -3282,7 +3385,7 @@ private struct EditableFlightLegCard: View {
                     }
                     .zIndex(2)
 
-                    Color.clear.frame(height: 76)
+                    Color.clear.frame(height: 58)
                 }
 
                 UniformFlightMetricBox(
@@ -3335,8 +3438,7 @@ private struct EditableFlightLegCard: View {
                     sample: departureWeatherSample
                 )
                 Image(systemName: departureWeather.symbolName)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(departureWeather.symbolColor)
+                    .symbolRenderingMode(.multicolor)
                     .font(.system(size: 25, weight: .bold))
                     .frame(width: 48, height: 48)
                     .offset(x: -208, y: 43)
@@ -3391,8 +3493,7 @@ private struct EditableFlightLegCard: View {
                     sample: arrivalWeatherSample
                 )
                 Image(systemName: arrivalWeather.symbolName)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(arrivalWeather.symbolColor)
+                    .symbolRenderingMode(.multicolor)
                     .font(.system(size: 25, weight: .bold))
                     .frame(width: 48, height: 48)
                     .offset(x: 208, y: 43)
@@ -3403,10 +3504,10 @@ private struct EditableFlightLegCard: View {
                     .foregroundStyle(routeWind.color)
                     .lineLimit(1)
                     .frame(width: 128, height: 16)
-                    .offset(y: 78)
+                    .offset(y: 75)
                     .zIndex(4)
                 }
-                .frame(height: 188)
+                .frame(height: 170)
 
                 HStack(spacing: 0) {
                     FlightWeatherMetrics(
@@ -4013,7 +4114,9 @@ private struct FlightWeatherMetrics: View {
         }()
         return WeatherMetric(
             title: title,
-            value: meters.map { "\($0)m" + (percentage.map { " \($0)%" } ?? "") } ?? "—",
+            value: meters.map {
+                "\($0)m" + (percentage.map { " (\($0)%)" } ?? "")
+            } ?? "—",
             valueColor: color,
             backgroundColor: percentage.map { value in
                 if isFiftyFeet { return value >= 100 ? Color.red.opacity(0.14) : nil }
@@ -4043,8 +4146,7 @@ private struct AirportWeatherColumn: View {
                     .foregroundStyle(weather.categoryColor)
                 Spacer(minLength: 2)
                 Image(systemName: weather.symbolName)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(weather.symbolColor)
+                    .symbolRenderingMode(.multicolor)
                     .font(.system(size: 20, weight: .bold))
                     .frame(width: 24)
             }
