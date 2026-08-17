@@ -801,26 +801,39 @@ struct FlybookDashboardView: View {
         return additions
     }
 
-    private var fuelPlanResult: FuelPlanResult {
+    private var compactFuelRefuelIndices: Set<Int> {
+        guard fuelPlanOutboundLegs.count > 1 else { return [] }
+        return Set(fuelRefuelAfterLegIndices.filter {
+            $0 >= 0 && $0 < fuelPlanOutboundLegs.count - 1
+        })
+    }
+
+    private var compactPlannedRefuelsByLegIndex: [Int: Double] {
+        plannedRefuelsByLegIndex.filter {
+            compactFuelRefuelIndices.contains($0.key)
+        }
+    }
+
+    private var compactFuelPlanResult: FuelPlanResult {
         FuelPlanCalculator.calculate(
-            legs: fuelPlanLegs,
+            legs: fuelPlanOutboundLegs,
             reserveMinutes: reserveMinutes,
             usableFuelLiters: activeAircraftPerformance.usableFuelLiters,
             startingFuelLiters: effectiveFuelPlanStartLiters,
-            refuelsByLegIndex: plannedRefuelsByLegIndex
+            refuelsByLegIndex: compactPlannedRefuelsByLegIndex
         )
     }
 
-    private var fuelActualResult: FuelActualResult {
+    private var compactFuelActualResult: FuelActualResult {
         FuelActualCalculator.calculate(
-            plan: fuelPlanResult,
+            plan: compactFuelPlanResult,
             actualStartingFuelLiters: actualStartingFuelLiters > 0
                 ? actualStartingFuelLiters
                 : effectiveFuelPlanStartLiters,
             actualArrivalOverridesByLegIndex: actualArrivalOverrides,
             actualDepartureOverridesByLegIndex: actualDepartureOverrides,
             actualRefuelOverridesByLegIndex: actualRefuelOverrides,
-            refuelAfterLegIndices: fuelRefuelAfterLegIndices
+            refuelAfterLegIndices: compactFuelRefuelIndices
         )
     }
 
@@ -863,15 +876,9 @@ struct FlybookDashboardView: View {
         }
     }
 
-    private var outboundDestinationFuelRowIndex: Int? {
+    private var compactFuelDestinationRowIndex: Int? {
         guard !fuelPlanOutboundLegs.isEmpty else { return nil }
         return fuelPlanOutboundLegs.count - 1
-    }
-
-    private var outboundPlannedBurnLiters: Int {
-        fuelPlanResult.rows.prefix(fuelPlanOutboundLegs.count).reduce(0) {
-            $0 + FuelPlanCalculator.roundedLitersForDisplay($1.leg.burnLiters)
-        }
     }
 
     private func actualArrivalBinding(index: Int) -> Binding<Double> {
@@ -880,10 +887,10 @@ struct FlybookDashboardView: View {
                 if let override = actualArrivalOverrides[index] {
                     return override
                 }
-                guard fuelActualResult.rows.indices.contains(index) else {
+                guard compactFuelActualResult.rows.indices.contains(index) else {
                     return 0
                 }
-                return fuelActualResult.rows[index].actualArrivalLiters
+                return compactFuelActualResult.rows[index].actualArrivalLiters
             },
             set: { value in
                 actualArrivalOverrides[index] = floor(max(0, value))
@@ -1150,6 +1157,11 @@ struct FlybookDashboardView: View {
                             Image(systemName: "cloud.sun.fill")
                                 .symbolRenderingMode(.multicolor)
                                 .font(.system(size: 29, weight: .bold))
+                                .frame(width: 36, height: 36)
+                                .background(
+                                    Color.gray.opacity(0.12),
+                                    in: Circle()
+                                )
                         }
                         Text("NOW!")
                             .font(.caption2.weight(.black))
@@ -1961,6 +1973,9 @@ struct FlybookDashboardView: View {
         VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
             HStack {
                 SectionTitle(title: "TANKKALKULATION", systemName: "fuelpump.fill")
+                Text("\(flightDepartureAirport.icao) → \(flightArrivalAirport.icao)")
+                    .font(.caption.bold().monospaced())
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Button {
                     showsFuelCalculator = true
@@ -1975,99 +1990,75 @@ struct FlybookDashboardView: View {
             .frame(height: 27)
 
             DashboardCard {
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("PLAN")
-                            .font(.caption.bold())
-                            .foregroundStyle(Color.dashboardBlue)
-                        HStack(spacing: 6) {
-                            FuelCompactMetric(
-                                title: "START",
-                                value: "\(Int(effectiveFuelPlanStartLiters)) L"
-                            )
-                            FuelCompactMetric(
-                                title: "HINFLUG",
-                                value: "−\(outboundPlannedBurnLiters) L"
-                            )
-                            FuelCompactMetric(
-                                title: "RESERVE",
-                                value: "\(Int(fuelPlanResult.finalReserveLiters)) L"
-                            )
-                            FuelCompactMetric(
-                                title: "TANKEN AM ZIEL",
-                                value: outboundDestinationFuelRowIndex.map {
-                                    "+\(Int(plannedRefuelsByLegIndex[$0] ?? 0)) L"
-                                } ?? "—"
-                            )
-                        }
+                HStack(alignment: .top, spacing: 8) {
+                    compactFuelStatePanel(title: "MINIMUM", tint: .gray) {
+                        FuelCompactMetric(
+                            title: "T/O",
+                            value: compactFuelPlanResult.rows.first.map {
+                                "\(Int($0.minimumDepartureLiters)) L"
+                            } ?? "—"
+                        )
+                        FuelCompactMetric(
+                            title: "LDG",
+                            value: compactFuelPlanResult.rows.last.map {
+                                "\(Int($0.minimumArrivalLiters)) L"
+                            } ?? "—"
+                        )
                     }
-                    .padding(7)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        Color.dashboardBlue.opacity(0.08),
-                        in: RoundedRectangle(cornerRadius: 10)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.dashboardBlue.opacity(0.40), lineWidth: 1)
+                    compactFuelStatePanel(title: "PLAN", tint: Color.dashboardBlue) {
+                        FuelCompactMetric(
+                            title: "T/O",
+                            value: "\(Int(effectiveFuelPlanStartLiters)) L"
+                        )
+                        FuelCompactMetric(
+                            title: "LDG",
+                            value: compactFuelPlanResult.rows.last.map {
+                                "\(Int($0.plannedArrivalLiters)) L"
+                            } ?? "—"
+                        )
                     }
-
-                    Divider().frame(height: 82)
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack {
-                            Text("IST")
-                                .font(.caption.bold())
-                                .foregroundStyle(
-                                    fuelActualResult.hasWarning ? .red : .green
-                                )
-                            Spacer()
-                            Text("Messwerte ändern die Folgemenge sofort")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        HStack(spacing: 6) {
+                    compactFuelStatePanel(
+                        title: "IST",
+                        tint: compactFuelActualResult.hasWarning ? .red : .green
+                    ) {
+                        FuelCompactInput(
+                            title: "T/O",
+                            value: $actualStartingFuelLiters
+                        )
+                        if let index = compactFuelDestinationRowIndex {
                             FuelCompactInput(
-                                title: "START IST",
-                                value: $actualStartingFuelLiters
+                                title: "LDG",
+                                value: actualArrivalBinding(index: index)
                             )
-                            if let index = outboundDestinationFuelRowIndex {
-                                FuelCompactInput(
-                                    title: "REST AM ZIEL",
-                                    value: actualArrivalBinding(index: index)
-                                )
-                                FuelCompactMetric(
-                                    title: "JETZT TANKEN",
-                                    value: "+\(Int(fuelActualResult.rows[index].actualRefuelAfterArrivalLiters)) L",
-                                    accent: Color.dashboardBlue
-                                )
-                            }
-                            FuelCompactMetric(
-                                title: "ENDE IST",
-                                value: "\(Int(fuelActualResult.finalFuelLiters)) L",
-                                accent: fuelActualResult.hasFinalReserveShortfall
-                                    ? .red : .green
-                            )
+                        } else {
+                            FuelCompactMetric(title: "LDG", value: "—")
                         }
-                    }
-                    .padding(7)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        (fuelActualResult.hasWarning ? Color.red : Color.green)
-                            .opacity(0.08),
-                        in: RoundedRectangle(cornerRadius: 10)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(
-                                (fuelActualResult.hasWarning ? Color.red : Color.green)
-                                    .opacity(0.45),
-                                lineWidth: 1
-                            )
                     }
                 }
             }
             .frame(height: 145)
+        }
+    }
+
+    private func compactFuelStatePanel<Content: View>(
+        title: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.caption.weight(.black))
+                .foregroundStyle(tint)
+            HStack(spacing: 6) {
+                content()
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, minHeight: 106, maxHeight: 106)
+        .background(tint.opacity(0.09), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(tint.opacity(0.45), lineWidth: 1)
         }
     }
 
@@ -2209,6 +2200,8 @@ struct FlybookDashboardView: View {
                     Image(systemName: "cloud.sun.fill")
                         .symbolRenderingMode(.multicolor)
                         .font(.system(size: 30, weight: .bold))
+                        .frame(width: 38, height: 38)
+                        .background(Color.gray.opacity(0.12), in: Circle())
                     Text("NOW!")
                         .font(.caption2.weight(.black))
                         .foregroundStyle(Color.dashboardNavy)
@@ -2818,7 +2811,11 @@ private struct FuelCompactMetric: View {
         }
         .padding(.horizontal, 5)
         .frame(maxWidth: .infinity, minHeight: 48)
-        .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
+        }
     }
 }
 
@@ -3595,6 +3592,10 @@ private struct EditableFlightLegCard: View {
                     .symbolRenderingMode(.multicolor)
                     .font(.system(size: 25, weight: .bold))
                     .frame(width: 48, height: 48)
+                    .background(
+                        Color.gray.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
                     .offset(x: -208, y: 43)
                     .accessibilityLabel("Abflugwetter")
 
@@ -3650,6 +3651,10 @@ private struct EditableFlightLegCard: View {
                     .symbolRenderingMode(.multicolor)
                     .font(.system(size: 25, weight: .bold))
                     .frame(width: 48, height: 48)
+                    .background(
+                        Color.gray.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
                     .offset(x: 208, y: 43)
                     .accessibilityLabel("Ankunftswetter")
 
@@ -4302,7 +4307,11 @@ private struct AirportWeatherColumn: View {
                 Image(systemName: weather.symbolName)
                     .symbolRenderingMode(.multicolor)
                     .font(.system(size: 20, weight: .bold))
-                    .frame(width: 24)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Color.gray.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 7)
+                    )
             }
             HStack(spacing: 5) {
                 WeatherMetricGroup {
@@ -4633,6 +4642,10 @@ private struct ForecastPlaceholderTile: View {
                         .symbolRenderingMode(.multicolor)
                         .font(.system(size: 18, weight: .semibold))
                         .frame(width: 20, height: 22)
+                        .background(
+                            Color.gray.opacity(0.12),
+                            in: RoundedRectangle(cornerRadius: 5)
+                        )
                 }
             }
             Text(temperatureText)
