@@ -15,6 +15,8 @@ struct Airport: Identifiable, Hashable {
     let runwaySurface: String
     let portOfEntry: String
     let airportFilter: String
+    let aipAeroURL: String
+    let aipAeroCheckedAt: String
 
     var id: String { icao }
 
@@ -73,7 +75,9 @@ enum AirportCatalog {
                     operatingNotes: value("operating_notes", in: row),
                     airportNote: value("airport_note", in: row)
                 ),
-                airportFilter: value("airport_filter", in: row)
+                airportFilter: value("airport_filter", in: row),
+                aipAeroURL: value("aip_aero_url", in: row),
+                aipAeroCheckedAt: value("aip_aero_checked_at", in: row)
             )
         }
 
@@ -112,7 +116,9 @@ extension Airport {
         runwayWidthMeters: 22,
         runwaySurface: "Asphalt",
         portOfEntry: "?",
-        airportFilter: "Heimatflugplatz"
+        airportFilter: "Heimatflugplatz",
+        aipAeroURL: "https://aip.aero/de/en/vfr/?EDFZ",
+        aipAeroCheckedAt: ""
     )
 
     fileprivate static let edfz = fallbackEDFZ

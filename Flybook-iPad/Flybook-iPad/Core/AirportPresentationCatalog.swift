@@ -14,6 +14,12 @@ struct AirportFuelPrices: Hashable {
 struct AirportFuelPriceCatalog {
     private let values: [String: AirportFuelPrices]
 
+    private struct Candidate {
+        let point: FuelPricePoint
+        let source: String
+        let date: Date?
+    }
+
     static let referenceEDFZ = AirportFuelPrices(
         avgas: FuelPricePoint(eurosPerLiter: 3.03, checkedAt: "13.05.2026"),
         ul91: nil,
@@ -39,7 +45,7 @@ struct AirportFuelPriceCatalog {
             return row[index].trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        var values: [String: AirportFuelPrices] = [:]
+        var candidates: [String: [String: [Candidate]]] = [:]
         for row in rows.dropFirst() {
             let icao = value("airport_id", in: row).uppercased()
             let type = value("fuel_type", in: row).uppercased()
@@ -47,20 +53,70 @@ struct AirportFuelPriceCatalog {
                   let price = Double(value("price_eur_per_litre", in: row))
             else { continue }
 
-            let point = FuelPricePoint(
+            let checkedAt = value("price_checked_at", in: row)
+            let candidate = Candidate(
+                point: FuelPricePoint(
                 eurosPerLiter: price,
-                checkedAt: displayDate(value("price_checked_at", in: row))
+                    checkedAt: displayDate(checkedAt)
+                ),
+                source: value("source", in: row),
+                date: sourceDate(checkedAt)
             )
-            var airport = values[icao] ?? AirportFuelPrices()
             switch type {
-            case "AVGAS": airport.avgas = point
-            case "UL91": airport.ul91 = point
-            case "MOGAS", "MOGAS_SUPER": airport.mogas = point
+            case "AVGAS", "UL91", "MOGAS", "MOGAS_SUPER":
+                candidates[icao, default: [:]][type, default: []].append(candidate)
             default: continue
             }
-            values[icao] = airport
+        }
+
+        var values: [String: AirportFuelPrices] = [:]
+        for (icao, byType) in candidates {
+            values[icao] = AirportFuelPrices(
+                avgas: preferred(byType["AVGAS", default: []])?.point,
+                ul91: preferred(byType["UL91", default: []])?.point,
+                mogas: preferred(
+                    byType["MOGAS_SUPER", default: []]
+                        + byType["MOGAS", default: []]
+                )?.point
+            )
         }
         return AirportFuelPriceCatalog(values: values)
+    }
+
+    private static func preferred(_ rawCandidates: [Candidate]) -> Candidate? {
+        let usable = rawCandidates.filter {
+            !$0.source.lowercased().contains("aviation-fuel-prices.com")
+        }
+        guard let newest = usable.max(by: { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }),
+              let newestDate = newest.date,
+              let cutoff = Calendar(identifier: .gregorian).date(
+                byAdding: .day,
+                value: -7,
+                to: newestDate
+              )
+        else { return usable.last }
+
+        return usable
+            .filter { isAuthoritative($0.source) && ($0.date ?? .distantPast) >= cutoff }
+            .max(by: { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) })
+            ?? newest
+    }
+
+    private static func isAuthoritative(_ source: String) -> Bool {
+        let normalized = source.lowercased()
+        return !normalized.isEmpty
+            && !normalized.contains("aip.aero")
+            && !normalized.contains("gat.aerops.com")
+            && !normalized.contains("spritpreisliste.de")
+            && !normalized.contains("aviation-fuel-prices.com")
+    }
+
+    private static func sourceDate(_ rawValue: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: rawValue)
     }
 
     private static func displayDate(_ rawValue: String) -> String {

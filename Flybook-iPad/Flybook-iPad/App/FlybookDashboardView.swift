@@ -574,13 +574,20 @@ struct FlybookDashboardView: View {
                     Text(destination.runwaySurface.isEmpty ? "Belag unklar" : destination.runwaySurface)
                         .font(.subheadline.bold())
                         .foregroundStyle(Color.dashboardBlue)
-                    Text("POE \(destination.portOfEntry)")
-                        .font(.caption.bold())
-                        .foregroundStyle(
-                            destination.portOfEntry == "Ja"
-                                ? Color.green
-                                : Color.secondary
-                        )
+                    HStack(spacing: 8) {
+                        Text("POE \(destination.portOfEntry)")
+                            .foregroundStyle(
+                                destination.portOfEntry == "Ja"
+                                    ? Color.green
+                                    : Color.secondary
+                            )
+                        if let url = URL(string: destination.aipAeroURL),
+                           !destination.aipAeroURL.isEmpty {
+                            Link("AIP:Aero", destination: url)
+                                .foregroundStyle(Color.dashboardBlue)
+                        }
+                    }
+                    .font(.caption.bold())
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
