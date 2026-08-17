@@ -43,6 +43,7 @@ struct FlybookDashboardView: View {
     @State private var isFlightPlanningExpanded = false
     @State private var fuelPlanStartingLiters = 0.0
     @State private var actualStartingFuelLiters = 0.0
+    @State private var actualStartingFuelWasEdited = false
     @State private var actualArrivalOverrides: [Int: Double] = [:]
     @State private var actualDepartureOverrides: [Int: Double] = [:]
     @State private var plannedRefuelOverrides: [Int: Double] = [:]
@@ -837,6 +838,49 @@ struct FlybookDashboardView: View {
         )
     }
 
+    private var compactFuelPlanCheckpointIndex: Int? {
+        var checkpoints: [Int] = []
+        if actualStartingFuelWasEdited { checkpoints.append(0) }
+        checkpoints.append(contentsOf: actualDepartureOverrides.keys)
+        checkpoints.append(contentsOf: actualArrivalOverrides.keys)
+        checkpoints.append(contentsOf: actualRefuelOverrides.keys.map { $0 + 1 })
+        return checkpoints
+            .filter { compactFuelActualResult.rows.indices.contains($0) }
+            .min()
+    }
+
+    private var compactDisplayedPlanArrivalLiters: Double? {
+        guard let lastIndex = compactFuelPlanResult.rows.indices.last else {
+            return nil
+        }
+        if let checkpoint = compactFuelPlanCheckpointIndex,
+           lastIndex >= checkpoint,
+           compactFuelActualResult.rows.indices.contains(lastIndex) {
+            return compactFuelActualResult.rows[lastIndex].actualArrivalLiters
+        }
+        return compactFuelPlanResult.rows[lastIndex].plannedArrivalLiters
+    }
+
+    private var compactPlanReserveShortfallLiters: Double {
+        max(
+            0,
+            compactFuelPlanResult.finalReserveLiters
+                - (compactDisplayedPlanArrivalLiters ?? 0)
+        )
+    }
+
+    private var compactActualStartingFuelBinding: Binding<Double> {
+        Binding(
+            get: { actualStartingFuelLiters },
+            set: { value in
+                let normalized = floor(max(0, value))
+                actualStartingFuelWasEdited = true
+                actualStartingFuelLiters = normalized
+                fuelPlanStartingLiters = normalized
+            }
+        )
+    }
+
     private var fuelPlanningStateSignature: String {
         fuelPlanLegs.map {
             "\($0.id):\($0.flightMinutes):\($0.consumptionLitersPerHour)"
@@ -864,6 +908,7 @@ struct FlybookDashboardView: View {
         )
         fuelPlanStartingLiters = template.minimumStartingFuelLiters
         actualStartingFuelLiters = template.minimumStartingFuelLiters
+        actualStartingFuelWasEdited = false
         actualArrivalOverrides = [:]
         actualDepartureOverrides = [:]
         plannedRefuelOverrides = [:]
@@ -963,6 +1008,7 @@ struct FlybookDashboardView: View {
                 aircraftName: activeAircraft,
                 planStartingFuelLiters: $fuelPlanStartingLiters,
                 actualStartingFuelLiters: $actualStartingFuelLiters,
+                actualStartingFuelWasEdited: $actualStartingFuelWasEdited,
                 actualArrivalOverrides: $actualArrivalOverrides,
                 actualDepartureOverrides: $actualDepartureOverrides,
                 plannedRefuelOverrides: $plannedRefuelOverrides,
@@ -1976,6 +2022,15 @@ struct FlybookDashboardView: View {
                 Text("\(flightDepartureAirport.icao) → \(flightArrivalAirport.icao)")
                     .font(.caption.bold().monospaced())
                     .foregroundStyle(.secondary)
+                if compactPlanReserveShortfallLiters > 0.000_1 {
+                    Label(
+                        "PLAN: Reserve fehlt \(FuelPlanCalculator.roundedLitersForDisplay(compactPlanReserveShortfallLiters)) L",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.caption2.bold())
+                    .foregroundStyle(.red)
+                    .lineLimit(1)
+                }
                 Spacer()
                 Button {
                     showsFuelCalculator = true
@@ -2005,15 +2060,20 @@ struct FlybookDashboardView: View {
                             } ?? "—"
                         )
                     }
-                    compactFuelStatePanel(title: "PLAN", tint: Color.dashboardBlue) {
+                    compactFuelStatePanel(
+                        title: "PLAN",
+                        tint: compactPlanReserveShortfallLiters > 0.000_1
+                            ? .red
+                            : Color.dashboardBlue
+                    ) {
                         FuelCompactMetric(
                             title: "T/O",
                             value: "\(Int(effectiveFuelPlanStartLiters)) L"
                         )
                         FuelCompactMetric(
                             title: "LDG",
-                            value: compactFuelPlanResult.rows.last.map {
-                                "\(Int($0.plannedArrivalLiters)) L"
+                            value: compactDisplayedPlanArrivalLiters.map {
+                                "\(FuelPlanCalculator.roundedLitersForDisplay($0)) L"
                             } ?? "—"
                         )
                     }
@@ -2023,7 +2083,7 @@ struct FlybookDashboardView: View {
                     ) {
                         FuelCompactInput(
                             title: "T/O",
-                            value: $actualStartingFuelLiters
+                            value: compactActualStartingFuelBinding
                         )
                         if let index = compactFuelDestinationRowIndex {
                             FuelCompactInput(
@@ -2049,6 +2109,8 @@ struct FlybookDashboardView: View {
             Text(title)
                 .font(.caption.weight(.black))
                 .foregroundStyle(tint)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             HStack(spacing: 6) {
                 content()
             }
@@ -2811,7 +2873,7 @@ private struct FuelCompactMetric: View {
         }
         .padding(.horizontal, 5)
         .frame(maxWidth: .infinity, minHeight: 48)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+        .background(Color.gray.opacity(0.13), in: RoundedRectangle(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
@@ -2853,12 +2915,12 @@ private struct IPadFuelPlanCalculatorView: View {
     let aircraftName: String
     @Binding var planStartingFuelLiters: Double
     @Binding var actualStartingFuelLiters: Double
+    @Binding var actualStartingFuelWasEdited: Bool
     @Binding var actualArrivalOverrides: [Int: Double]
     @Binding var actualDepartureOverrides: [Int: Double]
     @Binding var plannedRefuelOverrides: [Int: Double]
     @Binding var actualRefuelOverrides: [Int: Double]
     @Binding var refuelAfterLegIndices: Set<Int>
-    @State private var actualStartWasEdited = false
 
     private var candidates: [Int] {
         FuelPlanCalculator.refuelCandidateIndices(legs: legs)
@@ -2924,6 +2986,46 @@ private struct IPadFuelPlanCalculatorView: View {
         )
     }
 
+    private var planCheckpointIndex: Int? {
+        var checkpoints: [Int] = []
+        if actualStartingFuelWasEdited { checkpoints.append(0) }
+        checkpoints.append(contentsOf: actualDepartureOverrides.keys)
+        checkpoints.append(contentsOf: actualArrivalOverrides.keys)
+        checkpoints.append(contentsOf: actualRefuelOverrides.keys.map { $0 + 1 })
+        return checkpoints.filter { plan.rows.indices.contains($0) }.min()
+    }
+
+    private func displayedPlanDepartureLiters(
+        index: Int,
+        row: FuelPlanRow
+    ) -> Double {
+        guard let checkpoint = planCheckpointIndex,
+              index >= checkpoint,
+              actual.rows.indices.contains(index)
+        else { return row.plannedDepartureLiters }
+        return actual.rows[index].actualDepartureLiters
+    }
+
+    private func displayedPlanArrivalLiters(
+        index: Int,
+        row: FuelPlanRow
+    ) -> Double {
+        guard let checkpoint = planCheckpointIndex,
+              index >= checkpoint,
+              actual.rows.indices.contains(index)
+        else { return row.plannedArrivalLiters }
+        return actual.rows[index].actualArrivalLiters
+    }
+
+    private var displayedPlanFinalFuelLiters: Double {
+        guard let index = plan.rows.indices.last else { return 0 }
+        return displayedPlanArrivalLiters(index: index, row: plan.rows[index])
+    }
+
+    private var displayedPlanReserveShortfallLiters: Double {
+        max(0, plan.finalReserveLiters - displayedPlanFinalFuelLiters)
+    }
+
     private func actualArrivalBinding(_ index: Int) -> Binding<Double> {
         Binding(
             get: {
@@ -2960,9 +3062,10 @@ private struct IPadFuelPlanCalculatorView: View {
             },
             set: { value in
                 let normalized = floor(max(0, value))
-                actualStartWasEdited = true
+                actualStartingFuelWasEdited = true
                 if index == 0 {
                     actualStartingFuelLiters = normalized
+                    planStartingFuelLiters = normalized
                 } else {
                     actualDepartureOverrides[index] = normalized
                     let previousIndex = index - 1
@@ -3023,21 +3126,33 @@ private struct IPadFuelPlanCalculatorView: View {
                             }
                         }
 
-                        HStack {
-                            Label(
-                                actual.hasWarning
-                                    ? "IST-Verlauf unterschreitet Reserve, wird negativ oder überschreitet die Tankkapazität."
-                                    : "IST-Verlauf erfüllt die Endreserve.",
-                                systemImage: actual.hasWarning
-                                    ? "exclamationmark.triangle.fill"
-                                    : "checkmark.circle.fill"
-                            )
+                        HStack(alignment: .bottom) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                if displayedPlanReserveShortfallLiters > 0.000_1 {
+                                    Label(
+                                        "PLAN-WARNUNG: Die Endreserve wird um \(FuelPlanCalculator.roundedLitersForDisplay(displayedPlanReserveShortfallLiters)) L unterschritten.",
+                                        systemImage: "exclamationmark.triangle.fill"
+                                    )
+                                    .foregroundStyle(.red)
+                                }
+                                Label(
+                                    actual.hasWarning
+                                        ? "IST-Verlauf unterschreitet Reserve, wird negativ oder überschreitet die Tankkapazität."
+                                        : "IST-Verlauf erfüllt die Endreserve.",
+                                    systemImage: actual.hasWarning
+                                        ? "exclamationmark.triangle.fill"
+                                        : "checkmark.circle.fill"
+                                )
+                                .foregroundStyle(actual.hasWarning ? .red : .green)
+                            }
                             .font(.subheadline.bold())
-                            .foregroundStyle(actual.hasWarning ? .red : .green)
                             Spacer()
-                            Text("IST ENDE  \(Int(actual.finalFuelLiters)) L")
-                                .font(.title3.bold().monospacedDigit())
-                                .foregroundStyle(Color.dashboardNavy)
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text("PLAN ENDE  \(FuelPlanCalculator.roundedLitersForDisplay(displayedPlanFinalFuelLiters)) L")
+                                Text("IST ENDE  \(FuelPlanCalculator.roundedLitersForDisplay(actual.finalFuelLiters)) L")
+                            }
+                            .font(.headline.bold().monospacedDigit())
+                            .foregroundStyle(Color.dashboardNavy)
                         }
                     }
                     .padding(isPortraitLayout ? 12 : 18)
@@ -3055,7 +3170,9 @@ private struct IPadFuelPlanCalculatorView: View {
                 }
             }
             .onChange(of: planStartingFuelLiters) { _, value in
-                if !actualStartWasEdited { actualStartingFuelLiters = value }
+                if !actualStartingFuelWasEdited {
+                    actualStartingFuelLiters = value
+                }
             }
         }
     }
@@ -3104,7 +3221,7 @@ private struct IPadFuelPlanCalculatorView: View {
 
     private var resetActualButton: some View {
         Button("IST aus Plan") {
-            actualStartWasEdited = false
+            actualStartingFuelWasEdited = false
             actualStartingFuelLiters = effectivePlanStart
             actualArrivalOverrides = [:]
             actualDepartureOverrides = [:]
@@ -3133,6 +3250,17 @@ private struct IPadFuelPlanCalculatorView: View {
         index: Int,
         row: FuelPlanRow
     ) -> some View {
+        let displayedDeparture = displayedPlanDepartureLiters(
+            index: index,
+            row: row
+        )
+        let displayedArrival = displayedPlanArrivalLiters(
+            index: index,
+            row: row
+        )
+        let planHasShortfall = displayedDeparture + 0.000_1
+            < row.minimumDepartureLiters
+            || displayedArrival + 0.000_1 < row.minimumArrivalLiters
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
@@ -3148,13 +3276,16 @@ private struct IPadFuelPlanCalculatorView: View {
                     compactFuelLine("T/O", row.minimumDepartureLiters)
                     compactFuelLine("LDG", row.minimumArrivalLiters)
                 }
-                fuelStatePanel(title: "PLAN", tint: Color.dashboardBlue) {
+                fuelStatePanel(
+                    title: "PLAN",
+                    tint: planHasShortfall ? .red : Color.dashboardBlue
+                ) {
                     if index == 0 {
                         editableFuelLine("T/O", value: $planStartingFuelLiters)
                     } else {
-                        compactFuelLine("T/O", row.plannedDepartureLiters)
+                        compactFuelLine("T/O", displayedDeparture)
                     }
-                    compactFuelLine("LDG", row.plannedArrivalLiters)
+                    compactFuelLine("LDG", displayedArrival)
                 }
                 fuelStatePanel(
                     title: "IST",
@@ -3186,6 +3317,8 @@ private struct IPadFuelPlanCalculatorView: View {
             Text(title)
                 .font(.caption.weight(.black))
                 .foregroundStyle(tint)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Divider().overlay(tint.opacity(0.7))
             content()
@@ -3294,7 +3427,10 @@ private struct IPadFuelPlanCalculatorView: View {
 
     private func refuelValue(title: String, value: Double) -> some View {
         HStack(spacing: 5) {
-            Text(title).font(.caption2.weight(.black))
+            Text(title)
+                .font(.caption2.weight(.black))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             fuelTableMetric(value, prefix: "+", width: 82)
         }
         .foregroundStyle(Color.dashboardNavy)
@@ -3308,6 +3444,8 @@ private struct IPadFuelPlanCalculatorView: View {
         HStack(spacing: 5) {
             Text(title).font(.caption2.weight(.black))
                 .foregroundStyle(tint)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             fuelTableInput(value, width: 82)
         }
     }
@@ -3342,7 +3480,7 @@ private struct IPadFuelPlanCalculatorView: View {
         }
         .padding(.horizontal, 6)
         .frame(width: width, height: 30)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 7))
+        .background(Color.gray.opacity(0.13), in: RoundedRectangle(cornerRadius: 7))
         .overlay {
             RoundedRectangle(cornerRadius: 7)
                 .stroke(Color.dashboardBlue.opacity(0.48), lineWidth: 1)
