@@ -296,6 +296,50 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertEqual(actual.finalFuelLiters, 15)
     }
 
+    func testMeasuredRefuelControlsTheFollowingTakeoffFuel() {
+        let plan = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelsByLegIndex: [0: 20]
+        )
+        let actual = FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: 25,
+            actualArrivalOverridesByLegIndex: [0: 18],
+            actualRefuelOverridesByLegIndex: [0: 25],
+            refuelAfterLegIndices: [0]
+        )
+
+        XCTAssertEqual(actual.rows[0].actualRefuelAfterArrivalLiters, 25)
+        XCTAssertTrue(actual.rows[0].refuelWasMeasured)
+        XCTAssertEqual(actual.rows[1].actualDepartureLiters, 43)
+        XCTAssertEqual(actual.rows[1].actualArrivalLiters, 33)
+    }
+
+    func testMeasuredTakeoffFuelReanchorsAFollowingLeg() {
+        let plan = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelsByLegIndex: [0: 20]
+        )
+        let actual = FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: 25,
+            actualArrivalOverridesByLegIndex: [:],
+            actualDepartureOverridesByLegIndex: [1: 42],
+            refuelAfterLegIndices: [0]
+        )
+
+        XCTAssertEqual(actual.rows[1].actualDepartureLiters, 42)
+        XCTAssertTrue(actual.rows[1].departureWasMeasured)
+        XCTAssertEqual(actual.rows[1].actualArrivalLiters, 32)
+        XCTAssertEqual(actual.rows[2].actualDepartureLiters, 32)
+    }
+
     func testActualStateWarnsWhenFinalReserveIsMissed() {
         let plan = FuelPlanCalculator.calculate(
             legs: legs,

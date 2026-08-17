@@ -44,6 +44,9 @@ struct FlybookDashboardView: View {
     @State private var fuelPlanStartingLiters = 0.0
     @State private var actualStartingFuelLiters = 0.0
     @State private var actualArrivalOverrides: [Int: Double] = [:]
+    @State private var actualDepartureOverrides: [Int: Double] = [:]
+    @State private var plannedRefuelOverrides: [Int: Double] = [:]
+    @State private var actualRefuelOverrides: [Int: Double] = [:]
     @State private var fuelRefuelAfterLegIndices: Set<Int> = []
     @State private var fuelPlanSignature = ""
     @State private var returnSelectedAltitudeFeet = 6_500
@@ -790,7 +793,9 @@ struct FlybookDashboardView: View {
                 refuelsByLegIndex: additions
             )
             for index in fuelRefuelAfterLegIndices {
-                additions[index] = draft.minimumRefuelLitersByLegIndex[index] ?? 0
+                additions[index] = plannedRefuelOverrides[index]
+                    ?? draft.minimumRefuelLitersByLegIndex[index]
+                    ?? 0
             }
         }
         return additions
@@ -813,6 +818,8 @@ struct FlybookDashboardView: View {
                 ? actualStartingFuelLiters
                 : effectiveFuelPlanStartLiters,
             actualArrivalOverridesByLegIndex: actualArrivalOverrides,
+            actualDepartureOverridesByLegIndex: actualDepartureOverrides,
+            actualRefuelOverridesByLegIndex: actualRefuelOverrides,
             refuelAfterLegIndices: fuelRefuelAfterLegIndices
         )
     }
@@ -845,6 +852,9 @@ struct FlybookDashboardView: View {
         fuelPlanStartingLiters = template.minimumStartingFuelLiters
         actualStartingFuelLiters = template.minimumStartingFuelLiters
         actualArrivalOverrides = [:]
+        actualDepartureOverrides = [:]
+        plannedRefuelOverrides = [:]
+        actualRefuelOverrides = [:]
         let outboundArrival = outboundDeparture.addingTimeInterval(
             TimeInterval(routeMinutes * 60)
         )
@@ -947,6 +957,9 @@ struct FlybookDashboardView: View {
                 planStartingFuelLiters: $fuelPlanStartingLiters,
                 actualStartingFuelLiters: $actualStartingFuelLiters,
                 actualArrivalOverrides: $actualArrivalOverrides,
+                actualDepartureOverrides: $actualDepartureOverrides,
+                plannedRefuelOverrides: $plannedRefuelOverrides,
+                actualRefuelOverrides: $actualRefuelOverrides,
                 refuelAfterLegIndices: $fuelRefuelAfterLegIndices
             )
         }
@@ -2025,7 +2038,7 @@ struct FlybookDashboardView: View {
                                 )
                                 FuelCompactMetric(
                                     title: "JETZT TANKEN",
-                                    value: "+\(Int(fuelActualResult.rows[index].requiredRefuelAfterArrivalLiters)) L",
+                                    value: "+\(Int(fuelActualResult.rows[index].actualRefuelAfterArrivalLiters)) L",
                                     accent: Color.dashboardBlue
                                 )
                             }
@@ -2840,6 +2853,9 @@ private struct IPadFuelPlanCalculatorView: View {
     @Binding var planStartingFuelLiters: Double
     @Binding var actualStartingFuelLiters: Double
     @Binding var actualArrivalOverrides: [Int: Double]
+    @Binding var actualDepartureOverrides: [Int: Double]
+    @Binding var plannedRefuelOverrides: [Int: Double]
+    @Binding var actualRefuelOverrides: [Int: Double]
     @Binding var refuelAfterLegIndices: Set<Int>
     @State private var actualStartWasEdited = false
 
@@ -2878,7 +2894,9 @@ private struct IPadFuelPlanCalculatorView: View {
                 refuelsByLegIndex: additions
             )
             for index in refuelAfterLegIndices {
-                additions[index] = draft.minimumRefuelLitersByLegIndex[index] ?? 0
+                additions[index] = plannedRefuelOverrides[index]
+                    ?? draft.minimumRefuelLitersByLegIndex[index]
+                    ?? 0
             }
         }
         return additions
@@ -2899,17 +2917,9 @@ private struct IPadFuelPlanCalculatorView: View {
             plan: plan,
             actualStartingFuelLiters: actualStartingFuelLiters,
             actualArrivalOverridesByLegIndex: actualArrivalOverrides,
+            actualDepartureOverridesByLegIndex: actualDepartureOverrides,
+            actualRefuelOverridesByLegIndex: actualRefuelOverrides,
             refuelAfterLegIndices: refuelAfterLegIndices
-        )
-    }
-
-    private var actualStartBinding: Binding<Double> {
-        Binding(
-            get: { actualStartingFuelLiters },
-            set: {
-                actualStartWasEdited = true
-                actualStartingFuelLiters = floor(max(0, $0))
-            }
         )
     }
 
@@ -2922,7 +2932,75 @@ private struct IPadFuelPlanCalculatorView: View {
                 guard actual.rows.indices.contains(index) else { return 0 }
                 return actual.rows[index].actualArrivalLiters
             },
-            set: { actualArrivalOverrides[index] = floor(max(0, $0)) }
+            set: { value in
+                let normalized = floor(max(0, value))
+                actualArrivalOverrides[index] = normalized
+                let nextIndex = index + 1
+                if refuelAfterLegIndices.contains(index),
+                   let measuredDeparture = actualDepartureOverrides[nextIndex] {
+                    actualRefuelOverrides[index] = floor(max(
+                        0,
+                        measuredDeparture - normalized
+                    ))
+                }
+            }
+        )
+    }
+
+    private func actualDepartureBinding(_ index: Int) -> Binding<Double> {
+        Binding(
+            get: {
+                if index == 0 { return actualStartingFuelLiters }
+                if let override = actualDepartureOverrides[index] {
+                    return override
+                }
+                guard actual.rows.indices.contains(index) else { return 0 }
+                return actual.rows[index].actualDepartureLiters
+            },
+            set: { value in
+                let normalized = floor(max(0, value))
+                actualStartWasEdited = true
+                if index == 0 {
+                    actualStartingFuelLiters = normalized
+                } else {
+                    actualDepartureOverrides[index] = normalized
+                    let previousIndex = index - 1
+                    if refuelAfterLegIndices.contains(previousIndex),
+                       actual.rows.indices.contains(previousIndex) {
+                        actualRefuelOverrides[previousIndex] = floor(max(
+                            0,
+                            normalized - actual.rows[previousIndex].actualArrivalLiters
+                        ))
+                    }
+                }
+            }
+        )
+    }
+
+    private func plannedRefuelBinding(_ index: Int) -> Binding<Double> {
+        Binding(
+            get: { plannedRefuels[index] ?? 0 },
+            set: { plannedRefuelOverrides[index] = floor(max(0, $0)) }
+        )
+    }
+
+    private func actualRefuelBinding(_ index: Int) -> Binding<Double> {
+        Binding(
+            get: {
+                actualRefuelOverrides[index]
+                    ?? actual.rows[index].actualRefuelAfterArrivalLiters
+            },
+            set: { value in
+                let normalized = floor(max(0, value))
+                actualRefuelOverrides[index] = normalized
+                let nextIndex = index + 1
+                if plan.rows.indices.contains(nextIndex) {
+                    actualDepartureOverrides[nextIndex] = floor(max(
+                        0,
+                        actual.rows[index].actualArrivalLiters + normalized
+                    ))
+                }
+            }
         )
     }
 
@@ -3028,6 +3106,8 @@ private struct IPadFuelPlanCalculatorView: View {
             actualStartWasEdited = false
             actualStartingFuelLiters = effectivePlanStart
             actualArrivalOverrides = [:]
+            actualDepartureOverrides = [:]
+            actualRefuelOverrides = [:]
         }
         .buttonStyle(.bordered)
     }
@@ -3035,12 +3115,16 @@ private struct IPadFuelPlanCalculatorView: View {
     private var minimumPlanButton: some View {
         Button("Plan Minimum") {
             planStartingFuelLiters = template.minimumStartingFuelLiters
+            plannedRefuelOverrides = [:]
         }
         .buttonStyle(.bordered)
     }
 
     private var fullPlanButton: some View {
-        Button("Plan Voll") { planStartingFuelLiters = usableFuelLiters }
+        Button("Plan Voll") {
+            planStartingFuelLiters = usableFuelLiters
+            plannedRefuelOverrides = [:]
+        }
             .buttonStyle(.bordered)
     }
 
@@ -3048,7 +3132,6 @@ private struct IPadFuelPlanCalculatorView: View {
         index: Int,
         row: FuelPlanRow
     ) -> some View {
-        let actualRow = actual.rows[index]
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
@@ -3071,27 +3154,17 @@ private struct IPadFuelPlanCalculatorView: View {
                         compactFuelLine("T/O", row.plannedDepartureLiters)
                     }
                     compactFuelLine("LDG", row.plannedArrivalLiters)
-                    compactFuelLine("TANK", plannedRefuels[index] ?? 0, prefix: "+")
                 }
                 fuelStatePanel(
                     title: "IST",
                     tint: actual.hasWarning ? .red : .green
                 ) {
-                    if index == 0 {
-                        editableFuelLine("T/O", value: actualStartBinding)
-                    } else {
-                        compactFuelLine("T/O", actualRow.actualDepartureLiters)
-                    }
+                    editableFuelLine("T/O", value: actualDepartureBinding(index))
                     HStack(spacing: 5) {
                         Text("LDG").font(.caption.bold())
                         Spacer(minLength: 2)
                         fuelTableInput(actualArrivalBinding(index), width: 82)
                     }
-                    compactFuelLine(
-                        "TANK",
-                        actualRow.requiredRefuelAfterArrivalLiters,
-                        prefix: "+"
-                    )
                 }
             }
         }
@@ -3117,7 +3190,7 @@ private struct IPadFuelPlanCalculatorView: View {
             content()
         }
         .padding(9)
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 116, maxHeight: 116, alignment: .topLeading)
         .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
         .overlay {
             RoundedRectangle(cornerRadius: 10)
@@ -3152,13 +3225,19 @@ private struct IPadFuelPlanCalculatorView: View {
 
     private func refuelRow(index: Int, row: FuelPlanRow) -> some View {
         let enabled = refuelAfterLegIndices.contains(index)
-        return HStack {
+        return HStack(spacing: 10) {
             Button {
-                if enabled { refuelAfterLegIndices.remove(index) }
-                else { refuelAfterLegIndices.insert(index) }
+                if enabled {
+                    refuelAfterLegIndices.remove(index)
+                    plannedRefuelOverrides[index] = nil
+                    actualRefuelOverrides[index] = nil
+                    actualDepartureOverrides[index + 1] = nil
+                } else {
+                    refuelAfterLegIndices.insert(index)
+                }
             } label: {
                 Label(
-                    enabled ? "Tankstopp aktiv" : "Tankstopp hinzufügen",
+                    enabled ? "TANKEN" : "Tankstopp hinzufügen",
                     systemImage: enabled ? "fuelpump.fill" : "fuelpump"
                 )
                 .font(.caption.bold())
@@ -3168,17 +3247,54 @@ private struct IPadFuelPlanCalculatorView: View {
             Text(row.leg.destinationICAO)
                 .font(.caption.bold().monospaced())
             if enabled {
-                Text(
-                    "Plan +\(Int(plannedRefuels[index] ?? 0)) L · IST jetzt +\(Int(actual.rows[index].requiredRefuelAfterArrivalLiters)) L"
+                refuelMetric(
+                    title: "MIN",
+                    value: plan.minimumRefuelLitersByLegIndex[index] ?? 0
                 )
-                .font(.caption.bold().monospacedDigit())
-                .foregroundStyle(Color.dashboardNavy)
+                refuelInput(
+                    title: "PLAN",
+                    value: plannedRefuelBinding(index),
+                    tint: Color.dashboardBlue
+                )
+                refuelInput(
+                    title: "IST",
+                    value: actualRefuelBinding(index),
+                    tint: actual.hasWarning ? .red : .green
+                )
             }
             Spacer()
         }
         .padding(.horizontal, 10)
-        .frame(height: 38)
-        .background(Color.dashboardBlue.opacity(enabled ? 0.10 : 0.035))
+        .frame(height: 48)
+        .background(Color.dashboardBlue.opacity(enabled ? 0.10 : 0.035), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.dashboardBlue.opacity(enabled ? 0.45 : 0.12), lineWidth: 1)
+        }
+    }
+
+    private func refuelMetric(title: String, value: Double) -> some View {
+        HStack(spacing: 5) {
+            Text(title).font(.caption2.weight(.black))
+            Text("+\(FuelPlanCalculator.roundedLitersForDisplay(value)) L")
+                .font(.caption.bold().monospacedDigit())
+        }
+        .foregroundStyle(Color.dashboardNavy)
+        .padding(.horizontal, 9)
+        .frame(height: 30)
+        .background(Color.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 7))
+    }
+
+    private func refuelInput(
+        title: String,
+        value: Binding<Double>,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 5) {
+            Text(title).font(.caption2.weight(.black))
+                .foregroundStyle(tint)
+            fuelTableInput(value, width: 82)
+        }
     }
 
     private func fuelTableInput(

@@ -60,7 +60,10 @@ struct FuelActualRow: Equatable, Identifiable {
     let actualDepartureLiters: Double
     let actualArrivalLiters: Double
     let requiredRefuelAfterArrivalLiters: Double
+    let actualRefuelAfterArrivalLiters: Double
     let arrivalWasMeasured: Bool
+    let departureWasMeasured: Bool
+    let refuelWasMeasured: Bool
 }
 
 struct FuelActualResult: Equatable {
@@ -85,6 +88,8 @@ enum FuelActualCalculator {
         plan: FuelPlanResult,
         actualStartingFuelLiters: Double,
         actualArrivalOverridesByLegIndex: [Int: Double],
+        actualDepartureOverridesByLegIndex: [Int: Double] = [:],
+        actualRefuelOverridesByLegIndex: [Int: Double] = [:],
         refuelAfterLegIndices: Set<Int>
     ) -> FuelActualResult {
         let capacity = floor(max(0, plan.usableFuelLiters) + 0.000_001)
@@ -95,6 +100,13 @@ enum FuelActualCalculator {
 
         for index in plan.rows.indices {
             let planned = plan.rows[index]
+            let measuredDeparture = actualDepartureOverridesByLegIndex[index].map {
+                floor(max(0, $0) + 0.000_001)
+            }
+            if let measuredDeparture {
+                currentFuel = measuredDeparture
+                if currentFuel > capacity + 0.000_1 { hasOverfill = true }
+            }
             let burn = Double(
                 FuelPlanCalculator.roundedLitersForDisplay(
                     planned.leg.burnLiters
@@ -120,6 +132,12 @@ enum FuelActualCalculator {
             } else {
                 requiredRefuel = 0
             }
+            let measuredRefuel = actualRefuelOverridesByLegIndex[index].map {
+                floor(max(0, $0) + 0.000_001)
+            }
+            let actualRefuel = refuelAfterLegIndices.contains(index)
+                ? (measuredRefuel ?? requiredRefuel)
+                : 0
 
             rows.append(FuelActualRow(
                 id: planned.id,
@@ -127,9 +145,12 @@ enum FuelActualCalculator {
                 actualDepartureLiters: currentFuel,
                 actualArrivalLiters: actualArrival,
                 requiredRefuelAfterArrivalLiters: requiredRefuel,
-                arrivalWasMeasured: measured != nil
+                actualRefuelAfterArrivalLiters: actualRefuel,
+                arrivalWasMeasured: measured != nil,
+                departureWasMeasured: measuredDeparture != nil,
+                refuelWasMeasured: measuredRefuel != nil
             ))
-            currentFuel = actualArrival + requiredRefuel
+            currentFuel = actualArrival + actualRefuel
             if currentFuel > capacity + 0.000_1 { hasOverfill = true }
         }
 
