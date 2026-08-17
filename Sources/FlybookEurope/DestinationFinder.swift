@@ -14,6 +14,13 @@ enum DestinationFinderMinimumWeather: String, CaseIterable, Identifiable {
     }
 }
 
+enum DestinationFinderBlueSkyCoverageScope: String, CaseIterable, Identifiable {
+    case perDay = "Pro Tag"
+    case entirePeriod = "Gesamter Zeitraum"
+
+    var id: String { rawValue }
+}
+
 struct DestinationFinderCriteria {
     let originICAO: String
     let from: Date
@@ -52,6 +59,7 @@ struct DestinationFinderCriteria {
     var usesMinimumWeatherCoverageRule = true
     var requiresBlueSkyCoverage = false
     var minimumBlueSkyCoverage = 1.0
+    var blueSkyCoverageScope = DestinationFinderBlueSkyCoverageScope.perDay
     let requiresRainFree: Bool
     var requiresRainFreeCoverage = false
     var minimumRainFreeCoverage = 1.0
@@ -116,6 +124,7 @@ private final class DestinationFinderSession {
     var usesMinimumWeatherCoverageRule = true
     var requiresBlueSkyCoverage = false
     var minimumBlueSkyCoverage = 1.0
+    var blueSkyCoverageScope = DestinationFinderBlueSkyCoverageScope.perDay
     var requiresRainFree = false
     var requiresRainFreeCoverage = false
     var minimumRainFreeCoverage = 1.0
@@ -185,6 +194,7 @@ private final class DestinationFinderSession {
         usesMinimumWeatherCoverageRule = true
         requiresBlueSkyCoverage = false
         minimumBlueSkyCoverage = 1
+        blueSkyCoverageScope = .perDay
         requiresRainFree = false
         requiresRainFreeCoverage = false
         minimumRainFreeCoverage = 1
@@ -405,7 +415,8 @@ enum DestinationFinderEvaluator {
                 until: criteria.until,
                 destination: destination,
                 daylightOnly: criteria.daylightOnly,
-                minimumCoverage: criteria.minimumBlueSkyCoverage
+                minimumCoverage: criteria.minimumBlueSkyCoverage,
+                scope: criteria.blueSkyCoverageScope
             ) else { return false }
         }
 
@@ -521,10 +532,37 @@ enum DestinationFinderEvaluator {
         until: Date,
         destination: AirportReference,
         daylightOnly: Bool = true,
-        minimumCoverage: Double = 1.0
+        minimumCoverage: Double = 1.0,
+        scope: DestinationFinderBlueSkyCoverageScope = .perDay
     ) -> Bool {
         guard until >= from, (0...1).contains(minimumCoverage)
         else { return false }
+
+        if scope == .entirePeriod {
+            let samples = hours.filter { hour in
+                guard hour.instant >= from, hour.instant <= until else {
+                    return false
+                }
+                guard daylightOnly else { return true }
+                guard let events = SolarCalculator.events(
+                    forLocalDayContaining: hour.instant,
+                    latitude: destination.latitude,
+                    longitude: destination.longitude,
+                    timeZone: destination.timeZone
+                ) else { return false }
+                return hour.instant >= events.sunrise
+                    && hour.instant <= events.sunset
+            }
+            guard !samples.isEmpty else { return false }
+            let blueSkySamples = samples.filter {
+                guard let cloudCover = $0.totalCloudCoverPercent else {
+                    return false
+                }
+                return cloudCover <= 50
+            }.count
+            return Double(blueSkySamples) / Double(samples.count)
+                >= minimumCoverage
+        }
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = destination.timeZone
@@ -1649,6 +1687,7 @@ struct DestinationFinderView: View {
     @State private var usesMinimumWeatherCoverageRule = true
     @State private var requiresBlueSkyCoverage = false
     @State private var minimumBlueSkyCoverage = 100.0
+    @State private var blueSkyCoverageScope = DestinationFinderBlueSkyCoverageScope.perDay
     @State private var requiresRainFreeCoverage = false
     @State private var minimumRainFreeCoverage = 100.0
     @State private var daylightOnly = true
@@ -1725,6 +1764,9 @@ struct DestinationFinderView: View {
         )
         _minimumBlueSkyCoverage = State(
             initialValue: session.minimumBlueSkyCoverage * 100
+        )
+        _blueSkyCoverageScope = State(
+            initialValue: session.blueSkyCoverageScope
         )
         _requiresRainFreeCoverage = State(
             initialValue: session.requiresRainFreeCoverage
@@ -2332,12 +2374,25 @@ struct DestinationFinderView: View {
                     )
                 )
                 .help(
-                    daylightOnly
-                        ? "Eine Stunde zählt, wenn über alle Wolkenschichten mindestens 50 % blauer Himmel sichtbar sind. Der gewählte Anteil muss an jedem Kalendertag in den Tageslichtstunden erreicht werden."
-                        : "Eine Stunde zählt, wenn über alle Wolkenschichten mindestens 50 % blauer Himmel sichtbar sind. Der gewählte Anteil muss an jedem Kalendertag im gewählten Zeitraum erreicht werden."
+                    "Eine Stunde zählt, wenn über alle Wolkenschichten mindestens 50 % blauer Himmel sichtbar sind."
                 )
+                GridRow {
+                    criterionLabel("Auswertung")
+                    Picker("Auswertung", selection: $blueSkyCoverageScope) {
+                        ForEach(DestinationFinderBlueSkyCoverageScope.allCases) { scope in
+                            Text(scope.rawValue).tag(scope)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 350)
+                    .disabled(!requiresBlueSkyCoverage)
+                    Color.clear.frame(width: 210, height: 1)
+                }
                 Text(
-                    "Legende: Eine Stunde zählt als blauer Himmel, wenn die Gesamtbewölkung höchstens 50 % beträgt. Die gewählte Quote gilt für jeden Tag einzeln."
+                    blueSkyCoverageScope == .perDay
+                        ? "Legende: Eine Stunde zählt als blauer Himmel, wenn die Gesamtbewölkung höchstens 50 % beträgt. Die gewählte Quote gilt für jeden Tag einzeln."
+                        : "Legende: Eine Stunde zählt als blauer Himmel, wenn die Gesamtbewölkung höchstens 50 % beträgt. Die gewählte Quote gilt für alle berücksichtigten Stunden zusammen."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -2448,10 +2503,14 @@ struct DestinationFinderView: View {
             let percentage = coveragePercentageText(
                 minimumBlueSkyCoverage
             )
+            let period = daylightOnly
+                ? "der Tageslichtstunden"
+                : "der Stunden im gewählten Zeitraum"
+            let scope = blueSkyCoverageScope == .perDay
+                ? "pro Tag"
+                : "insgesamt"
             conditions.append(
-                daylightOnly
-                    ? "pro Tag in mind. \(percentage) der Tageslichtstunden mind. 50 % blauer Himmel"
-                    : "pro Tag in mind. \(percentage) des gewählten Zeitraums mind. 50 % blauer Himmel"
+                "\(scope) in mind. \(percentage) \(period) mind. 50 % blauer Himmel"
             )
         }
         return conditions.isEmpty
@@ -2824,6 +2883,7 @@ struct DestinationFinderView: View {
         session.usesMinimumWeatherCoverageRule = usesMinimumWeatherCoverageRule
         session.requiresBlueSkyCoverage = requiresBlueSkyCoverage
         session.minimumBlueSkyCoverage = minimumBlueSkyCoverage / 100
+        session.blueSkyCoverageScope = blueSkyCoverageScope
         session.requiresRainFree = false
         session.requiresRainFreeCoverage = requiresRainFreeCoverage
         session.minimumRainFreeCoverage = minimumRainFreeCoverage / 100
@@ -2877,6 +2937,7 @@ struct DestinationFinderView: View {
         usesMinimumWeatherCoverageRule = session.usesMinimumWeatherCoverageRule
         requiresBlueSkyCoverage = session.requiresBlueSkyCoverage
         minimumBlueSkyCoverage = session.minimumBlueSkyCoverage * 100
+        blueSkyCoverageScope = session.blueSkyCoverageScope
         requiresRainFreeCoverage = session.requiresRainFreeCoverage
         minimumRainFreeCoverage = session.minimumRainFreeCoverage * 100
         daylightOnly = session.daylightOnly
@@ -2935,6 +2996,7 @@ struct DestinationFinderView: View {
             usesMinimumWeatherCoverageRule: usesMinimumWeatherCoverageRule,
             requiresBlueSkyCoverage: requiresBlueSkyCoverage,
             minimumBlueSkyCoverage: minimumBlueSkyCoverage / 100,
+            blueSkyCoverageScope: blueSkyCoverageScope,
             requiresRainFree: false,
             requiresRainFreeCoverage: requiresRainFreeCoverage,
             minimumRainFreeCoverage: minimumRainFreeCoverage / 100,

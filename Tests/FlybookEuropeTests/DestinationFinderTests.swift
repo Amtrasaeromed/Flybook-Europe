@@ -188,6 +188,23 @@ final class DestinationFinderTests: XCTestCase {
         )
     }
 
+    func testEntirePeriodBlueSkyCoverageAllowsClearDayToCompensate() {
+        let firstDay = utcDate(year: 2026, month: 8, day: 17)
+        let secondDay = utcDate(year: 2026, month: 8, day: 18)
+
+        XCTAssertTrue(
+            DestinationFinderEvaluator.blueSkyCoverageMatches(
+                cloudHours(on: firstDay, acceptableHours: 1, overcastHours: 9)
+                    + cloudHours(on: secondDay, acceptableHours: 11, overcastHours: 0),
+                from: firstDay,
+                until: secondDay.addingTimeInterval(23 * 3600),
+                destination: destination,
+                minimumCoverage: 0.125,
+                scope: .entirePeriod
+            )
+        )
+    }
+
     func testMissingCloudValuesCountAgainstBlueSkyCoverage() {
         let day = utcDate(year: 2026, month: 8, day: 17)
         var samples = cloudHours(on: day, acceptableHours: 8, overcastHours: 3)
