@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum DashboardLayout {
     static let sectionGap: CGFloat = 4
@@ -1266,9 +1267,10 @@ struct FlybookDashboardView: View {
 
     private var oneWayFlightSection: some View {
         VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
-            ZStack {
+            HStack(spacing: 10) {
                 SectionTitle(title: "FLUGPLANUNG", systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(2)
+                Spacer(minLength: 8)
                 HStack(spacing: 4) {
                     Text("ABFLUG")
                         .font(.caption.bold())
@@ -1850,7 +1852,16 @@ struct FlybookDashboardView: View {
                             )
                         }
                     }
+                    .padding(7)
                     .frame(maxWidth: .infinity)
+                    .background(
+                        Color.dashboardBlue.opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.dashboardBlue.opacity(0.40), lineWidth: 1)
+                    }
 
                     Divider().frame(height: 82)
 
@@ -1890,7 +1901,21 @@ struct FlybookDashboardView: View {
                             )
                         }
                     }
+                    .padding(7)
                     .frame(maxWidth: .infinity)
+                    .background(
+                        (fuelActualResult.hasWarning ? Color.red : Color.green)
+                            .opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                (fuelActualResult.hasWarning ? Color.red : Color.green)
+                                    .opacity(0.45),
+                                lineWidth: 1
+                            )
+                    }
                 }
             }
             .frame(height: 145)
@@ -2562,6 +2587,65 @@ private struct CharterValueBox: View {
     }
 }
 
+private struct SelectAllFuelField: UIViewRepresentable {
+    @Binding var value: Double
+    var fontSize: CGFloat = 14
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: SelectAllFuelField
+
+        init(_ parent: SelectAllFuelField) {
+            self.parent = parent
+        }
+
+        @objc func valueChanged(_ field: UITextField) {
+            let normalized = (field.text ?? "")
+                .replacingOccurrences(of: ",", with: ".")
+            if let number = Double(normalized) {
+                parent.value = max(0, number)
+            }
+        }
+
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            DispatchQueue.main.async {
+                textField.selectAll(nil)
+            }
+        }
+
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            valueChanged(textField)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.delegate = context.coordinator
+        field.keyboardType = .numberPad
+        field.textAlignment = .right
+        field.font = .monospacedDigitSystemFont(
+            ofSize: fontSize,
+            weight: .heavy
+        )
+        field.adjustsFontSizeToFitWidth = true
+        field.minimumFontSize = 10
+        field.addTarget(
+            context.coordinator,
+            action: #selector(Coordinator.valueChanged(_:)),
+            for: .editingChanged
+        )
+        return field
+    }
+
+    func updateUIView(_ field: UITextField, context: Context) {
+        context.coordinator.parent = self
+        guard !field.isFirstResponder else { return }
+        let displayed = String(Int(floor(max(0, value) + 0.000_001)))
+        if field.text != displayed { field.text = displayed }
+    }
+}
+
 private struct FuelCompactMetric: View {
     let title: String
     let value: String
@@ -2595,14 +2679,7 @@ private struct FuelCompactInput: View {
                 .font(.system(size: 7.5, weight: .bold))
                 .foregroundStyle(.secondary)
             HStack(spacing: 2) {
-                TextField(
-                    "0",
-                    value: $value,
-                    format: .number.precision(.fractionLength(0))
-                )
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.trailing)
-                .font(.system(size: 15, weight: .heavy).monospacedDigit())
+                SelectAllFuelField(value: $value, fontSize: 15)
                 Text("L")
                     .font(.system(size: 10, weight: .bold))
             }
@@ -2715,93 +2792,46 @@ private struct IPadFuelPlanCalculatorView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    Label("TANKKALKULATOR", systemImage: "fuelpump.fill")
-                        .font(.system(size: 25, weight: .heavy))
-                        .foregroundStyle(Color.dashboardNavy)
-                    Text(
-                        "\(aircraftName) · \(Int(usableFuelLiters)) L nutzbar · Reserve \(reserveMinutes) min"
-                    )
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("IST aus Plan") {
-                        actualStartWasEdited = false
-                        actualStartingFuelLiters = effectivePlanStart
-                        actualArrivalOverrides = [:]
-                    }
-                    .buttonStyle(.bordered)
-                    Button("Schließen") { dismiss() }
-                        .buttonStyle(.borderedProminent)
-                        .tint(Color.dashboardBlue)
-                }
+            GeometryReader { geometry in
+                let isPortraitLayout = geometry.size.width < 850
+                ScrollView {
+                    VStack(spacing: 12) {
+                        fuelHeader(compact: isPortraitLayout)
+                        fuelControls(compact: isPortraitLayout)
 
-                HStack(spacing: 10) {
-                    fuelControl(
-                        title: "PLAN START",
-                        value: $planStartingFuelLiters,
-                        tint: Color.dashboardBlue
-                    )
-                    Button("Minimum") {
-                        planStartingFuelLiters = template.minimumStartingFuelLiters
-                    }
-                    .buttonStyle(.bordered)
-                    Button("Voll") { planStartingFuelLiters = usableFuelLiters }
-                        .buttonStyle(.bordered)
-                    Divider().frame(height: 42)
-                    fuelControl(
-                        title: "IST START",
-                        value: actualStartBinding,
-                        tint: actual.hasWarning ? .red : .green
-                    )
-                    Text("Jeder IST-Wert ersetzt ab diesem Punkt die Hochrechnung; die nötige Tankmenge wird aus dem Planminimum neu berechnet.")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-
-                VStack(spacing: 0) {
-                    tableHeader
-                    Divider()
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
+                        LazyVStack(spacing: 10) {
                             ForEach(Array(plan.rows.enumerated()), id: \.element.id) {
                                 index, row in
-                                fuelRow(index: index, row: row)
+                                responsiveFuelRow(index: index, row: row)
                                 if candidates.contains(index) {
                                     refuelRow(index: index, row: row)
                                 }
-                                if index < plan.rows.count - 1 { Divider() }
                             }
                         }
-                    }
-                }
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.black.opacity(0.10), lineWidth: 1)
-                }
 
-                HStack {
-                    Label(
-                        actual.hasWarning
-                            ? "IST-Verlauf unterschreitet Reserve, wird negativ oder überschreitet die Tankkapazität."
-                            : "IST-Verlauf erfüllt die Endreserve.",
-                        systemImage: actual.hasWarning
-                            ? "exclamationmark.triangle.fill"
-                            : "checkmark.circle.fill"
-                    )
-                    .font(.subheadline.bold())
-                    .foregroundStyle(actual.hasWarning ? .red : .green)
-                    Spacer()
-                    Text("IST ENDE  \(Int(actual.finalFuelLiters)) L")
-                        .font(.title3.bold().monospacedDigit())
-                        .foregroundStyle(Color.dashboardNavy)
+                        HStack {
+                            Label(
+                                actual.hasWarning
+                                    ? "IST-Verlauf unterschreitet Reserve, wird negativ oder überschreitet die Tankkapazität."
+                                    : "IST-Verlauf erfüllt die Endreserve.",
+                                systemImage: actual.hasWarning
+                                    ? "exclamationmark.triangle.fill"
+                                    : "checkmark.circle.fill"
+                            )
+                            .font(.subheadline.bold())
+                            .foregroundStyle(actual.hasWarning ? .red : .green)
+                            Spacer()
+                            Text("IST ENDE  \(Int(actual.finalFuelLiters)) L")
+                                .font(.title3.bold().monospacedDigit())
+                                .foregroundStyle(Color.dashboardNavy)
+                        }
+                    }
+                    .padding(isPortraitLayout ? 12 : 18)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
+                .background(Color.dashboardBackground.ignoresSafeArea())
+                .scrollDismissesKeyboard(.interactively)
             }
-            .padding(18)
-            .background(Color.dashboardBackground.ignoresSafeArea())
             .onAppear {
                 if planStartingFuelLiters <= 0 {
                     planStartingFuelLiters = template.minimumStartingFuelLiters
@@ -2816,50 +2846,192 @@ private struct IPadFuelPlanCalculatorView: View {
         }
     }
 
-    private var tableHeader: some View {
-        HStack(spacing: 6) {
-            fuelHeading("ABSCHNITT", width: 150, alignment: .leading)
-            fuelHeading("MIN T/O", width: 82)
-            fuelHeading("MIN LDG", width: 82)
-            fuelHeading("PLAN T/O", width: 88)
-            fuelHeading("PLAN LDG", width: 88)
-            fuelHeading("PLAN TANK", width: 88)
-            fuelHeading("IST T/O", width: 92)
-            fuelHeading("IST LDG", width: 105)
-            fuelHeading("IST TANK", width: 90)
-            fuelHeading("ZEIT", width: 65)
+    @ViewBuilder
+    private func fuelHeader(compact: Bool) -> some View {
+        if compact {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack {
+                    Label("TANKKALKULATOR", systemImage: "fuelpump.fill")
+                        .font(.system(size: 22, weight: .heavy))
+                        .foregroundStyle(Color.dashboardNavy)
+                    Spacer()
+                    Button("Schließen") { dismiss() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.dashboardBlue)
+                }
+                HStack {
+                    Text("\(aircraftName) · \(Int(usableFuelLiters)) L nutzbar · Reserve \(reserveMinutes) min")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    resetActualButton
+                }
+            }
+        } else {
+            HStack(spacing: 12) {
+                Label("TANKKALKULATOR", systemImage: "fuelpump.fill")
+                    .font(.system(size: 25, weight: .heavy))
+                    .foregroundStyle(Color.dashboardNavy)
+                Text("\(aircraftName) · \(Int(usableFuelLiters)) L nutzbar · Reserve \(reserveMinutes) min")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                Spacer()
+                resetActualButton
+                Button("Schließen") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.dashboardBlue)
+            }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 34)
-        .background(Color.dashboardBlue.opacity(0.08))
     }
 
-    private func fuelRow(index: Int, row: FuelPlanRow) -> some View {
-        let actualRow = actual.rows[index]
-        return HStack(spacing: 6) {
-            Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
-                .font(.system(size: 13, weight: .bold))
-                .frame(width: 150, alignment: .leading)
-            fuelValue(row.minimumDepartureLiters, width: 82)
-            fuelValue(row.minimumArrivalLiters, width: 82)
-            fuelValue(row.plannedDepartureLiters, width: 88, emphasized: true)
-            fuelValue(row.plannedArrivalLiters, width: 88, emphasized: true)
-            fuelValue(plannedRefuels[index] ?? 0, width: 88)
-            fuelValue(actualRow.actualDepartureLiters, width: 92, tint: .green)
-            fuelTableInput(actualArrivalBinding(index), width: 105)
-            fuelValue(
-                actualRow.requiredRefuelAfterArrivalLiters,
-                width: 90,
-                tint: Color.dashboardBlue
-            )
-            Text("\(row.leg.flightMinutes) min")
-                .font(.caption.bold().monospacedDigit())
-                .frame(width: 65)
+    private var resetActualButton: some View {
+        Button("IST aus Plan") {
+            actualStartWasEdited = false
+            actualStartingFuelLiters = effectivePlanStart
+            actualArrivalOverrides = [:]
         }
-        .padding(.horizontal, 10)
-        .frame(height: 45)
+        .buttonStyle(.bordered)
+    }
+
+    @ViewBuilder
+    private func fuelControls(compact: Bool) -> some View {
+        if compact {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    fuelControl(
+                        title: "PLAN START",
+                        value: $planStartingFuelLiters,
+                        tint: Color.dashboardBlue
+                    )
+                    Button("Minimum") {
+                        planStartingFuelLiters = template.minimumStartingFuelLiters
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Voll") { planStartingFuelLiters = usableFuelLiters }
+                        .buttonStyle(.bordered)
+                    Spacer()
+                    fuelControl(
+                        title: "IST START",
+                        value: actualStartBinding,
+                        tint: actual.hasWarning ? .red : .green
+                    )
+                }
+                Text("Ein IST-Wert ersetzt ab diesem Punkt die Hochrechnung. Die nötige Tankmenge wird sofort aus dem Planminimum neu berechnet.")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            HStack(spacing: 10) {
+                fuelControl(
+                    title: "PLAN START",
+                    value: $planStartingFuelLiters,
+                    tint: Color.dashboardBlue
+                )
+                Button("Minimum") {
+                    planStartingFuelLiters = template.minimumStartingFuelLiters
+                }
+                .buttonStyle(.bordered)
+                Button("Voll") { planStartingFuelLiters = usableFuelLiters }
+                    .buttonStyle(.bordered)
+                Divider().frame(height: 42)
+                fuelControl(
+                    title: "IST START",
+                    value: actualStartBinding,
+                    tint: actual.hasWarning ? .red : .green
+                )
+                Text("Ein IST-Wert ersetzt ab diesem Punkt die Hochrechnung; die nötige Tankmenge wird aus dem Planminimum neu berechnet.")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+    }
+
+    private func responsiveFuelRow(
+        index: Int,
+        row: FuelPlanRow
+    ) -> some View {
+        let actualRow = actual.rows[index]
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
+                    .font(.headline.bold().monospaced())
+                Spacer()
+                Text("\(row.leg.flightMinutes) min")
+                    .font(.subheadline.bold().monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(alignment: .top, spacing: 8) {
+                fuelStatePanel(title: "MINIMUM", tint: .gray) {
+                    compactFuelLine("T/O", row.minimumDepartureLiters)
+                    compactFuelLine("LDG", row.minimumArrivalLiters)
+                }
+                fuelStatePanel(title: "PLAN", tint: Color.dashboardBlue) {
+                    compactFuelLine("T/O", row.plannedDepartureLiters)
+                    compactFuelLine("LDG", row.plannedArrivalLiters)
+                    compactFuelLine("TANK", plannedRefuels[index] ?? 0, prefix: "+")
+                }
+                fuelStatePanel(
+                    title: "IST",
+                    tint: actual.hasWarning ? .red : .green
+                ) {
+                    compactFuelLine("T/O", actualRow.actualDepartureLiters)
+                    HStack(spacing: 5) {
+                        Text("LDG").font(.caption.bold())
+                        Spacer(minLength: 2)
+                        fuelTableInput(actualArrivalBinding(index), width: 82)
+                    }
+                    compactFuelLine(
+                        "TANK",
+                        actualRow.requiredRefuelAfterArrivalLiters,
+                        prefix: "+"
+                    )
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.black.opacity(0.10), lineWidth: 1)
+        }
+    }
+
+    private func fuelStatePanel<Content: View>(
+        title: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.black))
+                .foregroundStyle(tint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Divider().overlay(tint.opacity(0.7))
+            content()
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(tint.opacity(0.55), lineWidth: 1.2)
+        }
+    }
+
+    private func compactFuelLine(
+        _ title: String,
+        _ value: Double,
+        prefix: String = ""
+    ) -> some View {
+        HStack {
+            Text(title).font(.caption.bold())
+            Spacer(minLength: 2)
+            Text("\(prefix)\(FuelPlanCalculator.roundedLitersForDisplay(value)) L")
+                .font(.subheadline.bold().monospacedDigit())
+        }
         .foregroundStyle(Color.dashboardNavy)
-        .background(actualRow.arrivalWasMeasured ? Color.green.opacity(0.07) : .clear)
     }
 
     private func refuelRow(index: Int, row: FuelPlanRow) -> some View {
@@ -2906,42 +3078,12 @@ private struct IPadFuelPlanCalculatorView: View {
         .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func fuelHeading(
-        _ title: String,
-        width: CGFloat,
-        alignment: Alignment = .center
-    ) -> some View {
-        Text(title)
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(.secondary)
-            .frame(width: width, alignment: alignment)
-    }
-
-    private func fuelValue(
-        _ value: Double,
-        width: CGFloat,
-        emphasized: Bool = false,
-        tint: Color = Color.dashboardNavy
-    ) -> some View {
-        Text("\(FuelPlanCalculator.roundedLitersForDisplay(value)) L")
-            .font(.system(size: 13, weight: emphasized ? .heavy : .bold).monospacedDigit())
-            .foregroundStyle(tint)
-            .frame(width: width)
-    }
-
     private func fuelTableInput(
         _ value: Binding<Double>,
         width: CGFloat
     ) -> some View {
         HStack(spacing: 2) {
-            TextField(
-                "0",
-                value: value,
-                format: .number.precision(.fractionLength(0))
-            )
-            .keyboardType(.numberPad)
-            .multilineTextAlignment(.trailing)
-            .font(.system(size: 13, weight: .heavy).monospacedDigit())
+            SelectAllFuelField(value: value, fontSize: 13)
             Text("L").font(.caption2.bold())
         }
         .padding(.horizontal, 6)
@@ -3459,12 +3601,12 @@ private struct RunwayRecommendationPanel: View {
                     .foregroundStyle(Color.dashboardNavy)
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.62)
-                    .frame(width: 82, height: 40)
+                    .minimumScaleFactor(0.82)
+                    .frame(width: 106, height: 40)
                     .background(metarBoxFill, in: RoundedRectangle(cornerRadius: 8))
                     .overlay { RoundedRectangle(cornerRadius: 8).stroke(metarBoxBorder, lineWidth: 1.3) }
             }
-            .offset(x: mirrored ? -118 : 118, y: -9)
+            .offset(x: mirrored ? -130 : 130, y: -9)
         }
         .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
         .accessibilityLabel("Runway \(airport.referenceRunway), bevorzugt \(recommendation?.label ?? "unbekannt")")
@@ -3797,18 +3939,30 @@ private struct FlightWeatherMetrics: View {
         DashboardWeatherPreview.snapshot(for: airport, sample: sample)
     }
 
+    private var mirrored: Bool {
+        performance?.isDeparture == false
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 5) {
-            VStack(spacing: 3) {
-                WeatherMetricGroup {
-                    WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
-                    WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
-                    densityAltitudeMetric
-                }
-                WeatherMetricGroup {
-                    performanceMetric(isFiftyFeet: false)
-                    performanceMetric(isFiftyFeet: true)
-                }
+            if mirrored {
+                performanceGroup
+            }
+            primaryWeatherColumn
+            if !mirrored {
+                performanceGroup
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 8)
+    }
+
+    private var primaryWeatherColumn: some View {
+        VStack(spacing: 3) {
+            WeatherMetricGroup {
+                WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
+                WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
+                densityAltitudeMetric
             }
             WeatherMetricGroup {
                 WeatherMetric(title: "WOLKEN", value: weather.clouds)
@@ -3817,7 +3971,14 @@ private struct FlightWeatherMetrics: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 8)
+    }
+
+    private var performanceGroup: some View {
+        WeatherMetricGroup {
+            performanceMetric(isFiftyFeet: false)
+            performanceMetric(isFiftyFeet: true)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var densityAltitudeMetric: some View {
