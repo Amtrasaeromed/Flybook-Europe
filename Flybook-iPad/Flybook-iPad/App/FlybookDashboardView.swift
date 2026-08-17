@@ -2789,6 +2789,10 @@ private struct SelectAllFuelField: UIViewRepresentable {
 
     func updateUIView(_ field: UITextField, context: Context) {
         context.coordinator.parent = self
+        if field.keyboardType != .numberPad {
+            field.keyboardType = .numberPad
+            if field.isFirstResponder { field.reloadInputViews() }
+        }
         guard !field.isFirstResponder else { return }
         let displayed = String(Int(floor(max(0, value) + 0.000_001)))
         if field.text != displayed { field.text = displayed }
@@ -3203,11 +3207,10 @@ private struct IPadFuelPlanCalculatorView: View {
         _ value: Double,
         prefix: String = ""
     ) -> some View {
-        HStack {
+        HStack(spacing: 5) {
             Text(title).font(.caption.bold())
             Spacer(minLength: 2)
-            Text("\(prefix)\(FuelPlanCalculator.roundedLitersForDisplay(value)) L")
-                .font(.subheadline.bold().monospacedDigit())
+            fuelTableMetric(value, prefix: prefix, width: 82)
         }
         .foregroundStyle(Color.dashboardNavy)
     }
@@ -3247,7 +3250,7 @@ private struct IPadFuelPlanCalculatorView: View {
             Text(row.leg.destinationICAO)
                 .font(.caption.bold().monospaced())
             if enabled {
-                refuelMetric(
+                refuelValue(
                     title: "MIN",
                     value: plan.minimumRefuelLitersByLegIndex[index] ?? 0
                 )
@@ -3261,28 +3264,43 @@ private struct IPadFuelPlanCalculatorView: View {
                     value: actualRefuelBinding(index),
                     tint: actual.hasWarning ? .red : .green
                 )
+                Button("Minimum") {
+                    plannedRefuelOverrides[index] = floor(max(
+                        0,
+                        plan.minimumRefuelLitersByLegIndex[index] ?? 0
+                    ))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                Button("Voll") {
+                    plannedRefuelOverrides[index] = floor(max(
+                        0,
+                        usableFuelLiters - max(0, row.plannedArrivalLiters)
+                    ))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
             Spacer()
         }
         .padding(.horizontal, 10)
         .frame(height: 48)
-        .background(Color.dashboardBlue.opacity(enabled ? 0.10 : 0.035), in: RoundedRectangle(cornerRadius: 10))
+        .background(
+            Color.dashboardBlue.opacity(enabled ? 0.10 : 0.035),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
         .overlay {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.dashboardBlue.opacity(enabled ? 0.45 : 0.12), lineWidth: 1)
         }
     }
 
-    private func refuelMetric(title: String, value: Double) -> some View {
+    private func refuelValue(title: String, value: Double) -> some View {
         HStack(spacing: 5) {
             Text(title).font(.caption2.weight(.black))
-            Text("+\(FuelPlanCalculator.roundedLitersForDisplay(value)) L")
-                .font(.caption.bold().monospacedDigit())
+            fuelTableMetric(value, prefix: "+", width: 82)
         }
         .foregroundStyle(Color.dashboardNavy)
-        .padding(.horizontal, 9)
-        .frame(height: 30)
-        .background(Color.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 7))
     }
 
     private func refuelInput(
@@ -3303,6 +3321,26 @@ private struct IPadFuelPlanCalculatorView: View {
     ) -> some View {
         HStack(spacing: 2) {
             SelectAllFuelField(value: value, fontSize: 13)
+            Text("L").font(.caption2.bold())
+        }
+        .padding(.horizontal, 6)
+        .frame(width: width, height: 30)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.dashboardBlue.opacity(0.48), lineWidth: 1)
+        }
+    }
+
+    private func fuelTableMetric(
+        _ value: Double,
+        prefix: String = "",
+        width: CGFloat
+    ) -> some View {
+        HStack(spacing: 2) {
+            Spacer(minLength: 0)
+            Text("\(prefix)\(FuelPlanCalculator.roundedLitersForDisplay(value))")
+                .font(.system(size: 13, weight: .heavy).monospacedDigit())
             Text("L").font(.caption2.bold())
         }
         .padding(.horizontal, 6)
