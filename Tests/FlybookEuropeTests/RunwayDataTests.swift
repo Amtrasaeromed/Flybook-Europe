@@ -107,6 +107,16 @@ final class RunwayDataTests: XCTestCase {
         XCTAssertEqual(yverdon.ul91, "Ja")
         XCTAssertTrue(yverdon.features.isSuperset(of: [.lakeNature, .wellness]))
 
+        let gruyeres = try XCTUnwrap(byICAO["LSGT"])
+        XCTAssertTrue(gruyeres.airportFeeNote.contains("bis 600 kg CHF 20"))
+        XCTAssertTrue(gruyeres.airportFeeNote.contains("jeweils CHF 10"))
+        XCTAssertEqual(
+            gruyeres.airportFeeURL,
+            "https://www.aerodrome-gruyere.ch/kiosque/"
+        )
+        XCTAssertTrue(gruyeres.airportNote.contains("spätestens 1 Stunde"))
+        XCTAssertTrue(gruyeres.airportNote.contains("spätestens 2 Stunden"))
+
         let reichenbach = try XCTUnwrap(byICAO["LSGR"])
         XCTAssertEqual(reichenbach.referenceRunway, "03/21")
         XCTAssertEqual(reichenbach.runwayM, 805)

@@ -218,6 +218,58 @@ final class CharterMathTests: XCTestCase {
         )
     }
 
+    func testGruyeresFeesUsePublishedWeightBandsAndAncillaryRates() throws {
+        let profile = AirportLandingFeeProfile.lsgt
+        let rate = 1.05
+
+        for (weight, expectedEUR) in [
+            (600.0, 21.0),
+            (601.0, 24.0),
+            (1_500.0, 26.0),
+            (2_000.0, 28.0),
+            (2_500.0, 37.0),
+            (3_500.0, 48.0)
+        ] {
+            XCTAssertEqual(
+                try XCTUnwrap(AirportLandingFeeCalculator.feeEUR(
+                    profile: profile,
+                    mtowKilograms: weight,
+                    hasIncreasedNoiseProtection: true,
+                    chfToEURRate: rate
+                )),
+                expectedEUR,
+                accuracy: 0.001
+            )
+        }
+
+        XCTAssertNil(AirportLandingFeeCalculator.feeEUR(
+            profile: profile,
+            mtowKilograms: 3_501,
+            hasIncreasedNoiseProtection: true,
+            chfToEURRate: rate
+        ))
+        XCTAssertEqual(
+            try XCTUnwrap(AirportLandingFeeCalculator.ancillaryFeeEUR(
+                profile: profile,
+                amountText: profile.overnightParkingPerNightEUR,
+                count: 2,
+                chfToEURRate: rate
+            )),
+            22,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(AirportLandingFeeCalculator.ancillaryFeeEUR(
+                profile: profile,
+                amountText: profile.customsClearancePerControlEUR,
+                count: 2,
+                chfToEURRate: rate
+            )),
+            22,
+            accuracy: 0.001
+        )
+    }
+
     func testReichenbachFeesUseExactWeightLimitsAndWinterSurcharge() throws {
         let profile = AirportLandingFeeProfile.lsgr
         let rate = 1.05

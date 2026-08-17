@@ -293,6 +293,7 @@ final class DestinationStore: ObservableObject {
                     ),
                     airportNote: airportNote(airport: airport, techstop: techstopRow),
                     airportFeeNote: airport["fee_note", default: ""],
+                    airportFeeURL: airport["fee_url", default: ""],
                     status: nonEmpty(
                         airport["verification_status", default: ""],
                         destinationRow["tourism_confidence", default: ""],

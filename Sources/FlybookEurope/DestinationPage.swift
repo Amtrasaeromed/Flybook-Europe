@@ -5620,6 +5620,14 @@ private struct AirportInformationPopover: View {
                                 in: destination.airportFeeNote
                             )
                         )
+                        if let url = URL(string: destination.airportFeeURL),
+                           !destination.airportFeeURL.isEmpty {
+                            Link(
+                                "Flugmeldung ausfüllen & Gebühren bezahlen",
+                                destination: url
+                            )
+                            .font(.system(size: 12, weight: .bold))
+                        }
                     }
                 }
 

@@ -1911,6 +1911,51 @@ struct AirportLandingFeeProfile: Codable, Equatable {
         currencyCode: "CHF"
     )
 
+    static let lsgt = AirportLandingFeeProfile(
+        bands: [
+            AirportLandingFeeBand(
+                weightBand: "bis 600 kg",
+                withoutNoiseProtectionEUR: "20",
+                normalNoiseProtectionEUR: "20",
+                enhancedNoiseProtectionEUR: "20"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "601–1.000 kg",
+                withoutNoiseProtectionEUR: "22",
+                normalNoiseProtectionEUR: "22",
+                enhancedNoiseProtectionEUR: "22"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "1.001–1.500 kg",
+                withoutNoiseProtectionEUR: "24",
+                normalNoiseProtectionEUR: "24",
+                enhancedNoiseProtectionEUR: "24"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "1.501–2.000 kg",
+                withoutNoiseProtectionEUR: "26",
+                normalNoiseProtectionEUR: "26",
+                enhancedNoiseProtectionEUR: "26"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "2.001–2.500 kg",
+                withoutNoiseProtectionEUR: "35",
+                normalNoiseProtectionEUR: "35",
+                enhancedNoiseProtectionEUR: "35"
+            ),
+            AirportLandingFeeBand(
+                weightBand: "2.501–3.500 kg",
+                withoutNoiseProtectionEUR: "45",
+                normalNoiseProtectionEUR: "45",
+                enhancedNoiseProtectionEUR: "45"
+            )
+        ],
+        basicTrainingLandingFeeEUR: "18",
+        overnightParkingPerNightEUR: "10",
+        customsClearancePerControlEUR: "10",
+        currencyCode: "CHF"
+    )
+
     static let lsgr = AirportLandingFeeProfile(
         bands: [
             AirportLandingFeeBand(
@@ -1959,6 +2004,7 @@ enum AirportLandingFeeStore {
             if normalized == "EDKA", saved.isCompletelyEmpty { return .edka }
             if normalized == "EDTG", saved.isCompletelyEmpty { return .edtg }
             if normalized == "LSGN", saved.isCompletelyEmpty { return .lsgn }
+            if normalized == "LSGT", saved.isCompletelyEmpty { return .lsgt }
             if normalized == "LSGR", saved.isCompletelyEmpty { return .lsgr }
             var migrated = saved
             if normalized.hasPrefix("LS"), migrated.currencyCode == nil {
@@ -1976,6 +2022,7 @@ enum AirportLandingFeeStore {
         if normalized == "EDKA" { return .edka }
         if normalized == "EDTG" { return .edtg }
         if normalized == "LSGN" { return .lsgn }
+        if normalized == "LSGT" { return .lsgt }
         if normalized == "LSGR" { return .lsgr }
         var profile = AirportLandingFeeProfile()
         if normalized.hasPrefix("LS") { profile.currencyCode = "CHF" }

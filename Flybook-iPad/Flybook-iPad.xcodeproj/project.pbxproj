@@ -31,6 +31,7 @@
 		A10000000000000000000016 /* IPadMenuPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000017 /* IPadMenuPages.swift */; };
 		A10000000000000000000017 /* ../Sources/FlybookEurope/DWDICONCeilingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000018 /* ../Sources/FlybookEurope/DWDICONCeilingService.swift */; };
 		A10000000000000000000018 /* ../Sources/FlybookEurope/DWDMOSMIXService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000019 /* ../Sources/FlybookEurope/DWDMOSMIXService.swift */; };
+		A10000000000000000000019 /* IPadDestinationFinderWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001A /* IPadDestinationFinderWeather.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +60,7 @@
 		B10000000000000000000017 /* IPadMenuPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadMenuPages.swift; sourceTree = "<group>"; };
 		B10000000000000000000018 /* ../Sources/FlybookEurope/DWDICONCeilingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/DWDICONCeilingService.swift; sourceTree = SOURCE_ROOT; };
 		B10000000000000000000019 /* ../Sources/FlybookEurope/DWDMOSMIXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/DWDMOSMIXService.swift; sourceTree = SOURCE_ROOT; };
+		B1000000000000000000001A /* IPadDestinationFinderWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPadDestinationFinderWeather.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +122,7 @@
 				B10000000000000000000014 /* FlightPlanningCore.swift */,
 				B10000000000000000000015 /* IPadWeatherViewModel.swift */,
 				B10000000000000000000016 /* IPadRouteWind.swift */,
+				B1000000000000000000001A /* IPadDestinationFinderWeather.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -235,6 +238,7 @@
 				A10000000000000000000014 /* IPadWeatherViewModel.swift in Sources */,
 				A10000000000000000000015 /* IPadRouteWind.swift in Sources */,
 				A10000000000000000000016 /* IPadMenuPages.swift in Sources */,
+				A10000000000000000000019 /* IPadDestinationFinderWeather.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

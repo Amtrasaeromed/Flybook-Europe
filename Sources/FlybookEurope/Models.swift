@@ -276,6 +276,7 @@ struct Destination: Identifiable, Hashable {
     let activities: String
     let airportNote: String
     var airportFeeNote: String = ""
+    var airportFeeURL: String = ""
     let status: String
     let airportSource: String
     let tourismSource: String

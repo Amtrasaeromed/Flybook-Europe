@@ -62,7 +62,8 @@ struct IPadMenuPageView: View {
                 case .destinationFinder:
                     IPadDestinationFinderPage(
                         airports: airports,
-                        selectedDestinationICAO: $selectedDestinationICAO
+                        selectedDestinationICAO: $selectedDestinationICAO,
+                        initialFrom: plannedDeparture
                     )
                 case .alternates:
                     IPadAlternatesPage(
@@ -110,11 +111,30 @@ private struct MenuCard<Content: View>: View {
 private struct IPadDestinationFinderPage: View {
     let airports: [Airport]
     @Binding var selectedDestinationICAO: String
+    @StateObject private var blueSkyWeather = IPadDestinationFinderWeather()
     @State private var search = ""
     @State private var category = "Alle"
     @State private var minimumRunway = 300.0
     @State private var voucherOnly = false
+    @State private var requiresBlueSkyCoverage = false
+    @State private var minimumBlueSkyCoverage = 12.5
+    @State private var blueSkyCoverageScope = IPadBlueSkyCoverageScope.perDay
+    @State private var from: Date
+    @State private var until: Date
     private let features = AirportFeatureCatalog.load()
+
+    init(
+        airports: [Airport],
+        selectedDestinationICAO: Binding<String>,
+        initialFrom: Date
+    ) {
+        self.airports = airports
+        _selectedDestinationICAO = selectedDestinationICAO
+        _from = State(initialValue: initialFrom)
+        _until = State(
+            initialValue: initialFrom.addingTimeInterval(48 * 60 * 60)
+        )
+    }
 
     private var results: [Airport] {
         airports.filter { airport in
@@ -124,8 +144,17 @@ private struct IPadDestinationFinderPage: View {
             let runwayMatches = Double(airport.runwayLengthMeters ?? 0) >= minimumRunway
             let featureMatches = category == "Alle"
                 || features.features(for: airport.icao).contains { $0.title == category }
+            let blueSkyMatches = !requiresBlueSkyCoverage
+                || blueSkyWeather.matches(
+                    airport: airport,
+                    from: from,
+                    until: until,
+                    minimumCoverage: minimumBlueSkyCoverage / 100,
+                    scope: blueSkyCoverageScope
+                )
             return queryMatches && runwayMatches && featureMatches
                 && (!voucherOnly || IPadLandingVoucherBook.includes(airport.icao))
+                && blueSkyMatches
         }
         .sorted { lhs, rhs in
             (lhs.distanceFromEDFZ ?? .max, lhs.icao) < (rhs.distanceFromEDFZ ?? .max, rhs.icao)
@@ -135,31 +164,92 @@ private struct IPadDestinationFinderPage: View {
     var body: some View {
         VStack(spacing: 10) {
             MenuCard {
-                HStack(spacing: 12) {
-                    TextField("ICAO oder Flugplatz", text: $search)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 210)
-                    Picker("Kategorie", selection: $category) {
-                        ForEach(["Alle", "TechStop", "Frühstück", "Stadt", "Meer", "See / Natur", "Berge"], id: \.self) {
-                            Text($0).tag($0)
+                VStack(spacing: 9) {
+                    HStack(spacing: 12) {
+                        TextField("ICAO oder Flugplatz", text: $search)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 210)
+                        Picker("Kategorie", selection: $category) {
+                            ForEach(["Alle", "TechStop", "Frühstück", "Stadt", "Meer", "See / Natur", "Berge"], id: \.self) {
+                                Text($0).tag($0)
+                            }
+                        }
+                        .frame(width: 150)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("MINIMUM RUNWAY  \(Int(minimumRunway)) m")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.secondary)
+                            Slider(value: $minimumRunway, in: 300...1_000, step: 100)
+                        }
+                        Toggle("Gutschein", isOn: $voucherOnly)
+                            .toggleStyle(.button)
+                            .tint(Color.dashboardBlue)
+                        Text("\(results.count) Ziele")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+
+                    HStack(spacing: 10) {
+                        Toggle("Blaue-Himmel-Quote", isOn: $requiresBlueSkyCoverage)
+                            .toggleStyle(.button)
+                            .tint(Color.dashboardBlue)
+                        Slider(
+                            value: $minimumBlueSkyCoverage,
+                            in: 12.5...100,
+                            step: 12.5
+                        )
+                        .frame(width: 125)
+                        .disabled(!requiresBlueSkyCoverage)
+                        Text(blueSkyPercentage)
+                            .font(.caption.monospacedDigit().bold())
+                            .frame(width: 45, alignment: .trailing)
+                        Picker("Auswertung", selection: $blueSkyCoverageScope) {
+                            ForEach(IPadBlueSkyCoverageScope.allCases) { scope in
+                                Text(scope.rawValue).tag(scope)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 245)
+                        .disabled(!requiresBlueSkyCoverage)
+                        Spacer()
+                        if blueSkyWeather.isLoading {
+                            ProgressView().controlSize(.small)
                         }
                     }
-                    .frame(width: 150)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("MINIMUM RUNWAY  \(Int(minimumRunway)) m")
+                    HStack(spacing: 10) {
+                        Text("ZEITRAUM")
                             .font(.caption2.bold())
                             .foregroundStyle(.secondary)
-                        Slider(value: $minimumRunway, in: 300...1_000, step: 100)
+                        DatePicker(
+                            "Von",
+                            selection: $from,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .labelsHidden()
+                        .frame(width: 130)
+                        DatePicker(
+                            "Bis",
+                            selection: $until,
+                            in: from...,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .labelsHidden()
+                        .frame(width: 130)
+                        Spacer()
                     }
-                    Toggle("Gutschein", isOn: $voucherOnly)
-                        .toggleStyle(.button)
-                        .tint(Color.dashboardBlue)
-                    Text("\(results.count) Ziele")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+                    if requiresBlueSkyCoverage,
+                       let errorMessage = blueSkyWeather.errorMessage
+                    {
+                        Text(errorMessage)
+                            .font(.caption2.bold())
+                            .foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
-            .frame(height: 82)
+            .frame(height: requiresBlueSkyCoverage ? 175 : 156)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                 ForEach(Array(results.prefix(12))) { airport in
@@ -176,6 +266,25 @@ private struct IPadDestinationFinderPage: View {
                 }
             }
         }
+        .task(id: weatherRequestKey) {
+            guard requiresBlueSkyCoverage else { return }
+            await blueSkyWeather.load(
+                airports: airports,
+                from: from,
+                until: until
+            )
+        }
+    }
+
+    private var blueSkyPercentage: String {
+        minimumBlueSkyCoverage.rounded() == minimumBlueSkyCoverage
+            ? "\(Int(minimumBlueSkyCoverage)) %"
+            : String(format: "%.1f %%", minimumBlueSkyCoverage)
+    }
+
+    private var weatherRequestKey: String {
+        guard requiresBlueSkyCoverage else { return "inactive" }
+        return "\(from.timeIntervalSince1970)-\(until.timeIntervalSince1970)"
     }
 }
 
