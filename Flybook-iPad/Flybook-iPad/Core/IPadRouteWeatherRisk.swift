@@ -43,7 +43,8 @@ final class IPadRouteWeatherRiskViewModel: ObservableObject {
         waypoints: [Airport],
         start: Date,
         end: Date,
-        cruiseAltitudeFeet: Int
+        cruiseAltitudeFeet: Int,
+        forceRefresh: Bool = false
     ) async {
         guard waypoints.count >= 2 else {
             segments = Array(repeating: .unavailable, count: 10)
@@ -55,7 +56,8 @@ final class IPadRouteWeatherRiskViewModel: ObservableObject {
                 waypoints: waypoints,
                 start: start,
                 end: end,
-                cruiseAltitudeFeet: cruiseAltitudeFeet
+                cruiseAltitudeFeet: cruiseAltitudeFeet,
+                forceRefresh: forceRefresh
             )
             foehnWarning = await Self.routeFoehnWarning(
                 waypoints: waypoints.map(\.sharedReference),
@@ -124,12 +126,15 @@ actor IPadRouteWeatherRiskService {
         waypoints: [Airport],
         start: Date,
         end: Date,
-        cruiseAltitudeFeet: Int
+        cruiseAltitudeFeet: Int,
+        forceRefresh: Bool = false
     ) async throws -> [IPadRouteWeatherRisk] {
         let key = waypoints.map(\.icao).joined(separator: "-")
             + "-\(Int(start.timeIntervalSince1970 / 1800))"
             + "-\(Int(end.timeIntervalSince1970 / 1800))-alt\(cruiseAltitudeFeet)"
-        if let cached = cache[key], Date().timeIntervalSince(cached.date) < cacheLifetime {
+        if !forceRefresh,
+           let cached = cache[key],
+           Date().timeIntervalSince(cached.date) < cacheLifetime {
             return cached.risks
         }
 

@@ -16,14 +16,18 @@ final class IPadRouteWindViewModel: ObservableObject {
         destination: Airport,
         start: Date,
         end: Date,
-        altitudeFeet: Int
+        altitudeFeet: Int,
+        forceRefresh: Bool = false,
+        priority: FlightNetworkPriority = .normal
     ) async {
         wind = try? await IPadRouteWindService.shared.wind(
             origin: origin,
             destination: destination,
             start: start,
             end: end,
-            altitudeFeet: altitudeFeet
+            altitudeFeet: altitudeFeet,
+            forceRefresh: forceRefresh,
+            priority: priority
         )
     }
 }
@@ -37,10 +41,14 @@ actor IPadRouteWindService {
         destination: Airport,
         start: Date,
         end: Date,
-        altitudeFeet: Int
+        altitudeFeet: Int,
+        forceRefresh: Bool = false,
+        priority: FlightNetworkPriority = .normal
     ) async throws -> IPadRouteWind {
         let key = "\(origin.icao)-\(destination.icao)-\(Int(start.timeIntervalSince1970 / 1800))-\(altitudeFeet)"
-        if let cached = cache[key], Date().timeIntervalSince(cached.0) < 30 * 60 {
+        if !forceRefresh,
+           let cached = cache[key],
+           Date().timeIntervalSince(cached.0) < 30 * 60 {
             return cached.1
         }
         let fractions = [0.25, 0.5, 0.75]
@@ -61,7 +69,8 @@ actor IPadRouteWindService {
                         destination: destination,
                         altitudeFeet: altitudeFeet,
                         endpoint: endpoint,
-                        model: model
+                        model: model,
+                        priority: priority
                     )
                     cache[key] = (Date(), result)
                     return result
@@ -74,7 +83,8 @@ actor IPadRouteWindService {
             let result = try await fetchMetNorway(
                 points: points,
                 origin: origin,
-                destination: destination
+                destination: destination,
+                priority: priority
             )
             cache[key] = (Date(), result)
             return result
@@ -86,7 +96,8 @@ actor IPadRouteWindService {
     private func fetchMetNorway(
         points: [((latitude: Double, longitude: Double), Date)],
         origin: Airport,
-        destination: Airport
+        destination: Airport,
+        priority: FlightNetworkPriority
     ) async throws -> IPadRouteWind {
         var values: [(speed: Double, direction: Double)] = []
         let parser = ISO8601DateFormatter()
@@ -99,7 +110,10 @@ actor IPadRouteWindService {
             guard let url = components?.url else { continue }
             var request = URLRequest(url: url)
             request.setValue("Flybook/1.0 flight-planning-weather-client", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await FlightNetwork.data(for: request, priority: .normal)
+            let (data, response) = try await FlightNetwork.data(
+                for: request,
+                priority: priority
+            )
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { continue }
             let decoded = try JSONDecoder().decode(MetResponse.self, from: data)
             guard let nearest = decoded.properties.timeseries.min(by: {
@@ -132,7 +146,8 @@ actor IPadRouteWindService {
         destination: Airport,
         altitudeFeet: Int,
         endpoint: String,
-        model: String
+        model: String,
+        priority: FlightNetworkPriority
     ) async throws -> IPadRouteWind {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -155,7 +170,10 @@ actor IPadRouteWindService {
             ].joined(separator: ","))
         ]
         guard let url = components?.url else { throw WindError.noData }
-        let (data, response) = try await FlightNetwork.data(from: url, priority: .normal)
+        let (data, response) = try await FlightNetwork.data(
+            from: url,
+            priority: priority
+        )
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw WindError.noData
         }

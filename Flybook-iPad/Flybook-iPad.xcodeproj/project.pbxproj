@@ -38,6 +38,7 @@
 		A1000000000000000000001D /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001E /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift */; };
 		A1000000000000000000001E /* ../Sources/FlybookEurope/AirportFeeCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000001F /* ../Sources/FlybookEurope/AirportFeeCore.swift */; };
 		A1000000000000000000001F /* ../Sources/FlybookEurope/ExchangeRateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000020 /* ../Sources/FlybookEurope/ExchangeRateService.swift */; };
+		A10000000000000000000020 /* ../Sources/FlybookEurope/FuelPlanCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000021 /* ../Sources/FlybookEurope/FuelPlanCore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,6 +74,7 @@
 		B1000000000000000000001E /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/AlpineFoehnWarning.swift; sourceTree = SOURCE_ROOT; };
 		B1000000000000000000001F /* ../Sources/FlybookEurope/AirportFeeCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/AirportFeeCore.swift; sourceTree = SOURCE_ROOT; };
 		B10000000000000000000020 /* ../Sources/FlybookEurope/ExchangeRateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/ExchangeRateService.swift; sourceTree = SOURCE_ROOT; };
+		B10000000000000000000021 /* ../Sources/FlybookEurope/FuelPlanCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/FlybookEurope/FuelPlanCore.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +143,7 @@
 				B1000000000000000000001E /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift */,
 				B1000000000000000000001F /* ../Sources/FlybookEurope/AirportFeeCore.swift */,
 				B10000000000000000000020 /* ../Sources/FlybookEurope/ExchangeRateService.swift */,
+				B10000000000000000000021 /* ../Sources/FlybookEurope/FuelPlanCore.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -263,6 +266,7 @@
 				A1000000000000000000001D /* ../Sources/FlybookEurope/AlpineFoehnWarning.swift in Sources */,
 				A1000000000000000000001E /* ../Sources/FlybookEurope/AirportFeeCore.swift in Sources */,
 				A1000000000000000000001F /* ../Sources/FlybookEurope/ExchangeRateService.swift in Sources */,
+				A10000000000000000000020 /* ../Sources/FlybookEurope/FuelPlanCore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

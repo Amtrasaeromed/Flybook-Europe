@@ -230,4 +230,89 @@ final class FuelPlanCalculatorTests: XCTestCase {
         XCTAssertEqual(result.rows.map(\.minimumArrivalLiters), [35, 25, 15])
         XCTAssertFalse(result.hasWarning)
     }
+
+    func testActualStateInitiallyFollowsTheConservativePlan() {
+        let plan = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelsByLegIndex: [0: 20]
+        )
+        let actual = FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: 25,
+            actualArrivalOverridesByLegIndex: [:],
+            refuelAfterLegIndices: [0]
+        )
+
+        XCTAssertEqual(actual.rows.map(\.actualArrivalLiters), [15, 25, 15])
+        XCTAssertEqual(
+            actual.rows.map(\.requiredRefuelAfterArrivalLiters),
+            [20, 0, 0]
+        )
+        XCTAssertEqual(actual.finalFuelLiters, 15)
+        XCTAssertFalse(actual.hasWarning)
+    }
+
+    func testExtraActualStartFuelReducesTheLaterRequiredUplift() {
+        let plan = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelsByLegIndex: [0: 20]
+        )
+        let actual = FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: 35,
+            actualArrivalOverridesByLegIndex: [:],
+            refuelAfterLegIndices: [0]
+        )
+
+        XCTAssertEqual(actual.rows[0].actualArrivalLiters, 25)
+        XCTAssertEqual(actual.rows[0].requiredRefuelAfterArrivalLiters, 10)
+        XCTAssertEqual(actual.finalFuelLiters, 15)
+    }
+
+    func testMeasuredArrivalRecalculatesUpliftAndAllFollowingLegs() {
+        let plan = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 25,
+            refuelsByLegIndex: [0: 20]
+        )
+        let actual = FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: 25,
+            actualArrivalOverridesByLegIndex: [0: 22],
+            refuelAfterLegIndices: [0]
+        )
+
+        XCTAssertTrue(actual.rows[0].arrivalWasMeasured)
+        XCTAssertEqual(actual.rows[0].requiredRefuelAfterArrivalLiters, 13)
+        XCTAssertEqual(actual.rows[1].actualDepartureLiters, 35)
+        XCTAssertEqual(actual.finalFuelLiters, 15)
+    }
+
+    func testActualStateWarnsWhenFinalReserveIsMissed() {
+        let plan = FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: 45,
+            usableFuelLiters: 60,
+            startingFuelLiters: 45,
+            refuelsByLegIndex: [:]
+        )
+        let actual = FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: 35,
+            actualArrivalOverridesByLegIndex: [:],
+            refuelAfterLegIndices: []
+        )
+
+        XCTAssertEqual(actual.finalFuelLiters, 5)
+        XCTAssertTrue(actual.hasFinalReserveShortfall)
+        XCTAssertTrue(actual.hasWarning)
+    }
 }

@@ -35,10 +35,22 @@ struct FlybookDashboardView: View {
     @State private var intermediateStop1ICAO = ""
     @State private var intermediateStop2ICAO = ""
     @State private var showsRouteMap = false
+    @State private var showsFuelCalculator = false
+    @State private var isFlightPlanningExpanded = false
+    @State private var fuelPlanStartingLiters = 0.0
+    @State private var actualStartingFuelLiters = 0.0
+    @State private var actualArrivalOverrides: [Int: Double] = [:]
+    @State private var fuelRefuelAfterLegIndices: Set<Int> = []
+    @State private var fuelPlanSignature = ""
+    @State private var returnSelectedAltitudeFeet = 6_500
+    @State private var isNowWeatherLoading = false
     @State private var selectedPage: IPadDashboardPage = .home
     @StateObject private var routeWeather = IPadRouteWeatherRiskViewModel()
     @StateObject private var airportWeather = IPadWeatherViewModel()
     @StateObject private var routeWindModel = IPadRouteWindViewModel()
+    @StateObject private var returnRouteWeather = IPadRouteWeatherRiskViewModel()
+    @StateObject private var returnAirportWeather = IPadWeatherViewModel()
+    @StateObject private var returnRouteWindModel = IPadRouteWindViewModel()
     @StateObject private var exchangeRateModel = ExchangeRateViewModel()
 
     private var homeAirport: Airport {
@@ -63,6 +75,48 @@ struct FlybookDashboardView: View {
         [intermediateStop1ICAO, intermediateStop2ICAO]
             .prefix(intermediateStopCount)
             .compactMap { icao in airports.first { $0.icao == icao } }
+    }
+
+    private var priorityAlternateAirports: [Airport] {
+        let excluded = Set(routeWaypoints.map(\.icao))
+        return Array(airports
+            .filter {
+                !excluded.contains($0.icao)
+                    && ($0.runwayLengthMeters ?? 0) >= 500
+            }
+            .sorted {
+                let lhs = FlightGeometry.nauticalMiles(
+                    from: $0,
+                    to: flightArrivalAirport
+                )
+                let rhs = FlightGeometry.nauticalMiles(
+                    from: $1,
+                    to: flightArrivalAirport
+                )
+                if abs(lhs - rhs) > 0.01 { return lhs < rhs }
+                return $0.icao < $1.icao
+            }
+            .prefix(3))
+    }
+
+    private var priorityWeatherRequests: [(airport: Airport, instant: Date)] {
+        let arrival = outboundDeparture.addingTimeInterval(
+            TimeInterval(routeMinutes * 60)
+        )
+        let stopRequests = selectedIntermediateAirports.enumerated().map {
+            index, airport in
+            let fraction = Double(index + 1)
+                / Double(selectedIntermediateAirports.count + 1)
+            return (
+                airport: airport,
+                instant: outboundDeparture.addingTimeInterval(
+                    arrival.timeIntervalSince(outboundDeparture) * fraction
+                )
+            )
+        }
+        return stopRequests + priorityAlternateAirports.map {
+            (airport: $0, instant: arrival)
+        }
     }
 
     private var routeDistanceNM: Double {
@@ -149,11 +203,9 @@ struct FlybookDashboardView: View {
         guard ["DEUKS", "DEZHS", "A211"].contains(normalized) else {
             return nil
         }
-        let storedMTOW = UserDefaults.standard.double(
-            forKey: "aircraft.a211.mtowKilograms"
-        )
         return RunwayPerformanceProfile(
-            maximumTakeoffWeightKilograms: storedMTOW > 0 ? storedMTOW : 750,
+            maximumTakeoffWeightKilograms:
+                activeAircraftPerformance.maximumTakeoffWeightKilograms,
             takeoffRollMeters: 250,
             takeoffOver50FeetMeters: 430,
             landingRollMeters: 210,
@@ -405,25 +457,11 @@ struct FlybookDashboardView: View {
     }
 
     private var charterHasIncreasedNoiseProtection: Bool {
-        let normalized = activeAircraft.uppercased()
-        guard ["DEUKS", "DEZHS", "A211"].contains(normalized) else {
-            return false
-        }
-        let key = "aircraft.a211.increasedNoiseProtection"
-        return UserDefaults.standard.object(forKey: key) == nil
-            ? true
-            : UserDefaults.standard.bool(forKey: key)
+        activeAircraftPerformance.hasIncreasedNoiseProtection
     }
 
     private var charterNoiseLevelDBA: Double? {
-        let normalized = activeAircraft.uppercased()
-        guard ["DEUKS", "DEZHS", "A211"].contains(normalized) else {
-            return nil
-        }
-        let stored = UserDefaults.standard.double(
-            forKey: "aircraft.a211.noiseLevelDBA"
-        )
-        return stored > 0 ? stored : 65.1
+        activeAircraftPerformance.noiseLevelDBA
     }
 
     private var charterArrivalDate: Date {
@@ -572,6 +610,234 @@ struct FlybookDashboardView: View {
         [flightDepartureAirport] + selectedIntermediateAirports + [flightArrivalAirport]
     }
 
+    private var returnRouteWaypoints: [Airport] {
+        Array(routeWaypoints.reversed())
+    }
+
+    private var returnRouteCourseDegrees: Double {
+        guard returnRouteWaypoints.count >= 2 else { return 0 }
+        return FlightGeometry.initialBearing(
+            from: returnRouteWaypoints[0],
+            to: returnRouteWaypoints[1]
+        )
+    }
+
+    private var returnAltitudeOptions: [Int] {
+        FlightAltitudeRules.options(forCourseDegrees: returnRouteCourseDegrees)
+    }
+
+    private var returnBestLevelFeet: Int {
+        FlightAltitudeRules.recommendedOptions(
+            forCourseDegrees: returnRouteCourseDegrees
+        ).min {
+            abs($0 - 7_000) < abs($1 - 7_000)
+        } ?? 3_500
+    }
+
+    private var returnRouteMinutes: Int {
+        IPadFlightMath.minutes(
+            directNM: directRouteDistanceNM,
+            stopCount: intermediateStopCount,
+            headwindKnots: returnRouteWindModel.wind?.headwindKnots,
+            tankStopMinutes: tankStopMinutes,
+            altitudeFeet: returnSelectedAltitudeFeet,
+            departureElevationFeet: flightArrivalAirport.elevationFeet,
+            performance: activeAircraftPerformance,
+            trackMilesNM: routeDistanceNM,
+            preTakeoffGroundMinutes: preTakeoffGroundMinutes,
+            postLandingGroundMinutes: postLandingGroundMinutes
+        )
+    }
+
+    private var fuelConsumptionLitersPerHour: Double {
+        activeAircraftPerformance.cruise.fuelLitersPerHour(
+            at: Double(selectedAltitudeFeet)
+        ) ?? activeAircraftPerformance.fallbackFuelLitersPerHour
+    }
+
+    private func fuelLegs(
+        waypoints: [Airport],
+        totalMinutes: Int,
+        idPrefix: String,
+        consumptionLitersPerHour: Double
+    ) -> [FuelPlanLeg] {
+        guard waypoints.count >= 2 else { return [] }
+        let distances = zip(waypoints, waypoints.dropFirst()).map {
+            FlightGeometry.nauticalMiles(from: $0.0, to: $0.1)
+        }
+        let totalDistance = distances.reduce(0, +)
+        let legCount = distances.count
+        var remainingMinutes = max(legCount, totalMinutes)
+        return distances.indices.map { index in
+            let remainingLegs = distances.count - index - 1
+            let minutes: Int
+            if index == distances.count - 1 {
+                minutes = remainingMinutes
+            } else if totalDistance > 0 {
+                minutes = min(
+                    remainingMinutes - remainingLegs,
+                    max(1, Int(round(
+                        Double(max(legCount, totalMinutes))
+                            * distances[index] / totalDistance
+                    )))
+                )
+            } else {
+                minutes = max(1, remainingMinutes / (remainingLegs + 1))
+            }
+            remainingMinutes -= minutes
+            return FuelPlanLeg(
+                id: "\(idPrefix)-\(index)-\(waypoints[index].icao)-\(waypoints[index + 1].icao)",
+                originICAO: waypoints[index].icao,
+                destinationICAO: waypoints[index + 1].icao,
+                flightMinutes: minutes,
+                consumptionLitersPerHour: consumptionLitersPerHour
+            )
+        }
+    }
+
+    private var fuelPlanOutboundLegs: [FuelPlanLeg] {
+        fuelLegs(
+            waypoints: routeWaypoints,
+            totalMinutes: routeBlockMinutes,
+            idPrefix: "hin",
+            consumptionLitersPerHour: fuelConsumptionLitersPerHour
+        )
+    }
+
+    private var fuelPlanLegs: [FuelPlanLeg] {
+        let returnConsumption = activeAircraftPerformance.cruise
+            .fuelLitersPerHour(at: Double(returnSelectedAltitudeFeet))
+            ?? activeAircraftPerformance.fallbackFuelLitersPerHour
+        return fuelPlanOutboundLegs + fuelLegs(
+            waypoints: returnRouteWaypoints,
+            totalMinutes: returnRouteMinutes,
+            idPrefix: "rueck",
+            consumptionLitersPerHour: returnConsumption
+        )
+    }
+
+    private var fuelMinimumTemplate: FuelPlanResult {
+        FuelPlanCalculator.calculate(
+            legs: fuelPlanLegs,
+            reserveMinutes: reserveMinutes,
+            usableFuelLiters: activeAircraftPerformance.usableFuelLiters,
+            startingFuelLiters: 0,
+            refuelsByLegIndex: Dictionary(
+                uniqueKeysWithValues: fuelRefuelAfterLegIndices.map { ($0, 0) }
+            )
+        )
+    }
+
+    private var effectiveFuelPlanStartLiters: Double {
+        fuelPlanStartingLiters > 0
+            ? fuelPlanStartingLiters
+            : fuelMinimumTemplate.minimumStartingFuelLiters
+    }
+
+    private var plannedRefuelsByLegIndex: [Int: Double] {
+        var additions = Dictionary(
+            uniqueKeysWithValues: fuelRefuelAfterLegIndices.map { ($0, 0.0) }
+        )
+        for _ in 0...fuelRefuelAfterLegIndices.count {
+            let draft = FuelPlanCalculator.calculate(
+                legs: fuelPlanLegs,
+                reserveMinutes: reserveMinutes,
+                usableFuelLiters: activeAircraftPerformance.usableFuelLiters,
+                startingFuelLiters: effectiveFuelPlanStartLiters,
+                refuelsByLegIndex: additions
+            )
+            for index in fuelRefuelAfterLegIndices {
+                additions[index] = draft.minimumRefuelLitersByLegIndex[index] ?? 0
+            }
+        }
+        return additions
+    }
+
+    private var fuelPlanResult: FuelPlanResult {
+        FuelPlanCalculator.calculate(
+            legs: fuelPlanLegs,
+            reserveMinutes: reserveMinutes,
+            usableFuelLiters: activeAircraftPerformance.usableFuelLiters,
+            startingFuelLiters: effectiveFuelPlanStartLiters,
+            refuelsByLegIndex: plannedRefuelsByLegIndex
+        )
+    }
+
+    private var fuelActualResult: FuelActualResult {
+        FuelActualCalculator.calculate(
+            plan: fuelPlanResult,
+            actualStartingFuelLiters: actualStartingFuelLiters > 0
+                ? actualStartingFuelLiters
+                : effectiveFuelPlanStartLiters,
+            actualArrivalOverridesByLegIndex: actualArrivalOverrides,
+            refuelAfterLegIndices: fuelRefuelAfterLegIndices
+        )
+    }
+
+    private var fuelPlanningStateSignature: String {
+        fuelPlanLegs.map {
+            "\($0.id):\($0.flightMinutes):\($0.consumptionLitersPerHour)"
+        }.joined(separator: "|")
+            + "|reserve:\(reserveMinutes)|tank:\(activeAircraftPerformance.usableFuelLiters)"
+    }
+
+    private func synchronizeFuelPlanDefaults(force: Bool = false) {
+        guard force || fuelPlanSignature != fuelPlanningStateSignature else {
+            return
+        }
+        fuelPlanSignature = fuelPlanningStateSignature
+        let destinationIndex = max(0, fuelPlanOutboundLegs.count - 1)
+        fuelRefuelAfterLegIndices = fuelPlanLegs.indices.contains(destinationIndex + 1)
+            ? [destinationIndex]
+            : []
+        let template = FuelPlanCalculator.calculate(
+            legs: fuelPlanLegs,
+            reserveMinutes: reserveMinutes,
+            usableFuelLiters: activeAircraftPerformance.usableFuelLiters,
+            startingFuelLiters: 0,
+            refuelsByLegIndex: Dictionary(
+                uniqueKeysWithValues: fuelRefuelAfterLegIndices.map { ($0, 0) }
+            )
+        )
+        fuelPlanStartingLiters = template.minimumStartingFuelLiters
+        actualStartingFuelLiters = template.minimumStartingFuelLiters
+        actualArrivalOverrides = [:]
+        let outboundArrival = outboundDeparture.addingTimeInterval(
+            TimeInterval(routeMinutes * 60)
+        )
+        if returnDeparture <= outboundArrival {
+            returnDeparture = outboundArrival.addingTimeInterval(4 * 60 * 60)
+        }
+    }
+
+    private var outboundDestinationFuelRowIndex: Int? {
+        guard !fuelPlanOutboundLegs.isEmpty else { return nil }
+        return fuelPlanOutboundLegs.count - 1
+    }
+
+    private var outboundPlannedBurnLiters: Int {
+        fuelPlanResult.rows.prefix(fuelPlanOutboundLegs.count).reduce(0) {
+            $0 + FuelPlanCalculator.roundedLitersForDisplay($1.leg.burnLiters)
+        }
+    }
+
+    private func actualArrivalBinding(index: Int) -> Binding<Double> {
+        Binding(
+            get: {
+                if let override = actualArrivalOverrides[index] {
+                    return override
+                }
+                guard fuelActualResult.rows.indices.contains(index) else {
+                    return 0
+                }
+                return fuelActualResult.rows[index].actualArrivalLiters
+            },
+            set: { value in
+                actualArrivalOverrides[index] = floor(max(0, value))
+            }
+        )
+    }
+
     private var routeWeatherRequestKey: String {
         routeWaypoints.map(\.icao).joined(separator: "-")
             + "-\(Int(outboundDeparture.timeIntervalSince1970 / 900))"
@@ -580,6 +846,10 @@ struct FlybookDashboardView: View {
 
     private var flightDataRequestKey: String {
         "\(flightDepartureAirport.icao)-\(flightArrivalAirport.icao)-\(Int(outboundDeparture.timeIntervalSince1970 / 900))-\(selectedAltitudeFeet)-\(activeAircraft)"
+    }
+
+    private var returnFlightDataRequestKey: String {
+        "\(flightArrivalAirport.icao)-\(flightDepartureAirport.icao)-\(Int(returnDeparture.timeIntervalSince1970 / 900))-\(returnSelectedAltitudeFeet)-\(activeAircraft)-\(isFlightPlanningExpanded)"
     }
 
     var body: some View {
@@ -622,6 +892,18 @@ struct FlybookDashboardView: View {
         .fullScreenCover(isPresented: $showsRouteMap) {
             IPadRouteMapSheet(waypoints: routeMapWaypoints)
         }
+        .fullScreenCover(isPresented: $showsFuelCalculator) {
+            IPadFuelPlanCalculatorView(
+                legs: fuelPlanLegs,
+                reserveMinutes: reserveMinutes,
+                usableFuelLiters: activeAircraftPerformance.usableFuelLiters,
+                aircraftName: activeAircraft,
+                planStartingFuelLiters: $fuelPlanStartingLiters,
+                actualStartingFuelLiters: $actualStartingFuelLiters,
+                actualArrivalOverrides: $actualArrivalOverrides,
+                refuelAfterLegIndices: $fuelRefuelAfterLegIndices
+            )
+        }
         .alert("Dieser Bereich folgt", isPresented: $showsMigrationNotice) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -632,6 +914,7 @@ struct FlybookDashboardView: View {
                 flightArrivalICAO = destination.icao
             }
             normalizeSelectedAltitude()
+            synchronizeFuelPlanDefaults()
         }
         .onChange(of: destinationICAO) { _, newValue in
             if flightDepartureICAO == "EDFZ" {
@@ -640,6 +923,9 @@ struct FlybookDashboardView: View {
         }
         .onChange(of: altitudeRuleKey) { _, _ in
             normalizeSelectedAltitude()
+        }
+        .onChange(of: fuelPlanningStateSignature) { _, _ in
+            synchronizeFuelPlanDefaults()
         }
         .task(id: routeWeatherRequestKey) {
             await routeWeather.load(
@@ -669,6 +955,39 @@ struct FlybookDashboardView: View {
                 arrival: calculatedEnd,
                 overviewAirport: destination
             )
+        }
+        .task(id: returnFlightDataRequestKey) {
+            guard isFlightPlanningExpanded else { return }
+            if !returnAltitudeOptions.contains(returnSelectedAltitudeFeet) {
+                returnSelectedAltitudeFeet = returnAltitudeOptions.min {
+                    abs($0 - returnSelectedAltitudeFeet)
+                        < abs($1 - returnSelectedAltitudeFeet)
+                } ?? returnBestLevelFeet
+            }
+            let end = returnDeparture.addingTimeInterval(
+                TimeInterval(returnRouteMinutes * 60)
+            )
+            async let wind: Void = returnRouteWindModel.load(
+                origin: flightArrivalAirport,
+                destination: flightDepartureAirport,
+                start: returnDeparture,
+                end: end,
+                altitudeFeet: returnSelectedAltitudeFeet
+            )
+            async let weather: Void = returnAirportWeather.load(
+                departureAirport: flightArrivalAirport,
+                arrivalAirport: flightDepartureAirport,
+                departure: returnDeparture,
+                arrival: end,
+                overviewAirport: flightArrivalAirport
+            )
+            async let risk: Void = returnRouteWeather.load(
+                waypoints: returnRouteWaypoints,
+                start: returnDeparture,
+                end: end,
+                cruiseAltitudeFeet: returnSelectedAltitudeFeet
+            )
+            _ = await (wind, weather, risk)
         }
     }
 
@@ -706,10 +1025,14 @@ struct FlybookDashboardView: View {
                 .zIndex(20)
             featureStrip.frame(height: 32)
             airportInformationRow.frame(height: 104)
-            fiveDayOverview.frame(height: 146, alignment: .top)
-            oneWayFlightSection.frame(height: 340, alignment: .top)
-            intermediateStopSection.frame(height: 52, alignment: .top)
-            charterCalculationSection.frame(height: 146, alignment: .top)
+            if isFlightPlanningExpanded {
+                expandedFlightPlanningContent.frame(height: 782, alignment: .top)
+            } else {
+                fiveDayOverview.frame(height: 146, alignment: .top)
+                oneWayFlightSection.frame(height: 362, alignment: .top)
+                intermediateStopSection.frame(height: 52, alignment: .top)
+                fuelCalculationSection.frame(height: 176, alignment: .top)
+            }
         }
     }
 
@@ -757,12 +1080,18 @@ struct FlybookDashboardView: View {
                 Spacer()
 
                 Button {
-                    showsMigrationNotice = true
+                    Task { await refreshNowWeather() }
                 } label: {
                     VStack(spacing: 1) {
-                        Image(systemName: "cloud.sun.fill")
-                            .symbolRenderingMode(.multicolor)
-                            .font(.system(size: 29, weight: .bold))
+                        if isNowWeatherLoading {
+                            ProgressView()
+                                .tint(Color.dashboardBlue)
+                                .frame(width: 29, height: 29)
+                        } else {
+                            Image(systemName: "cloud.sun.fill")
+                                .symbolRenderingMode(.multicolor)
+                                .font(.system(size: 29, weight: .bold))
+                        }
                         Text("NOW!")
                             .font(.caption2.weight(.black))
                             .foregroundStyle(Color.dashboardNavy)
@@ -772,6 +1101,7 @@ struct FlybookDashboardView: View {
                     .overlay { Circle().stroke(Color.dashboardBlue, lineWidth: 2) }
                 }
                 .buttonStyle(.plain)
+                .disabled(isNowWeatherLoading)
                 .accessibilityLabel("Wetter jetzt vollständig aktualisieren")
             }
 
@@ -954,6 +1284,28 @@ struct FlybookDashboardView: View {
                     departureShortcut("Jetzt") { setDepartureNow() }
                     departureShortcut("Heute") { setDepartureDay(offset: 0) }
                     departureShortcut("Morgen") { setDepartureDay(offset: 1) }
+                    Button(action: swapFlightEndpoints) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 13, weight: .heavy))
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.small)
+                    .tint(Color.dashboardBlue)
+                    .accessibilityLabel("Abflug und Ziel umdrehen")
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            isFlightPlanningExpanded = true
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 12, weight: .heavy))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.small)
+                    .tint(Color.dashboardBlue)
+                    .accessibilityLabel("Flugplanung vergrößern")
                 }
             }
             .frame(height: 42)
@@ -988,16 +1340,145 @@ struct FlybookDashboardView: View {
                     sample: airportWeather.arrivalSample,
                     isDeparture: false
                 ),
-                onSwap: {
-                    let previousDeparture = flightDepartureICAO
-                    flightDepartureICAO = flightArrivalICAO
-                    flightArrivalICAO = previousDeparture
-                },
                 onArrivalSelected: { airport in
                     destinationICAO = airport.icao
                 }
             )
-            .frame(height: 294)
+            .frame(height: 316)
+        }
+    }
+
+    private var expandedFlightPlanningContent: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                SectionTitle(
+                    title: "FLUGPLANUNG · HIN- UND RÜCKFLUG",
+                    systemName: "arrow.left.arrow.right"
+                )
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        isFlightPlanningExpanded = false
+                    }
+                } label: {
+                    Label(
+                        "Verkleinern",
+                        systemImage: "arrow.down.right.and.arrow.up.left"
+                    )
+                    .font(.caption.bold())
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(Color.dashboardBlue)
+            }
+            .frame(height: 28)
+
+            EditableFlightLegCard(
+                airports: airports,
+                departureICAO: $flightDepartureICAO,
+                arrivalICAO: $flightArrivalICAO,
+                departure: $outboundDeparture,
+                durationMinutes: routeMinutes,
+                etopsLegMinutes: etopsLegMinutes,
+                etopsGreenYellowMinutes: activeETOPSGreenYellowMinutes,
+                etopsOrangeRedMinutes: activeETOPSOrangeRedMinutes,
+                distanceNM: routeDistanceNM,
+                selectedAltitudeFeet: $selectedAltitudeFeet,
+                altitudeOptions: altitudeOptions,
+                courseDegrees: routeCourseDegrees,
+                bestLevelFeet: bestLevelFeet,
+                departureAirport: flightDepartureAirport,
+                arrivalAirport: flightArrivalAirport,
+                routeRisks: routeWeather.segments,
+                foehnWarning: routeWeather.foehnWarning,
+                routeHeadwindKnots: routeWindModel.wind?.headwindKnots,
+                departureWeatherSample: airportWeather.departureSample,
+                arrivalWeatherSample: airportWeather.arrivalSample,
+                departurePerformance: runwayPerformance(
+                    airport: flightDepartureAirport,
+                    sample: airportWeather.departureSample,
+                    isDeparture: true
+                ),
+                arrivalPerformance: runwayPerformance(
+                    airport: flightArrivalAirport,
+                    sample: airportWeather.arrivalSample,
+                    isDeparture: false
+                ),
+                onArrivalSelected: { destinationICAO = $0.icao }
+            )
+            .frame(height: 316)
+
+            intermediateStopSection.frame(height: 52, alignment: .top)
+
+            HStack(spacing: 8) {
+                Text("RÜCKFLUG")
+                    .font(.caption.bold())
+                    .foregroundStyle(Color.dashboardNavy)
+                DatePicker(
+                    "Datum",
+                    selection: $returnDeparture,
+                    displayedComponents: .date
+                )
+                .labelsHidden()
+                .frame(width: 112)
+                DatePicker(
+                    "Startzeit",
+                    selection: $returnDeparture,
+                    displayedComponents: .hourAndMinute
+                )
+                .labelsHidden()
+                .frame(width: 78)
+                Spacer()
+            }
+            .frame(height: 30)
+
+            EditableFlightLegCard(
+                airports: airports,
+                departureICAO: Binding(
+                    get: { flightArrivalICAO },
+                    set: {
+                        flightArrivalICAO = $0
+                        destinationICAO = $0
+                    }
+                ),
+                arrivalICAO: Binding(
+                    get: { flightDepartureICAO },
+                    set: { flightDepartureICAO = $0 }
+                ),
+                departure: $returnDeparture,
+                durationMinutes: returnRouteMinutes,
+                etopsLegMinutes: IPadFlightMath.perLegMinutes(
+                    totalMinutes: returnRouteMinutes,
+                    stopCount: intermediateStopCount,
+                    tankStopMinutes: tankStopMinutes
+                ),
+                etopsGreenYellowMinutes: activeETOPSGreenYellowMinutes,
+                etopsOrangeRedMinutes: activeETOPSOrangeRedMinutes,
+                distanceNM: routeDistanceNM,
+                selectedAltitudeFeet: $returnSelectedAltitudeFeet,
+                altitudeOptions: returnAltitudeOptions,
+                courseDegrees: returnRouteCourseDegrees,
+                bestLevelFeet: returnBestLevelFeet,
+                departureAirport: flightArrivalAirport,
+                arrivalAirport: flightDepartureAirport,
+                routeRisks: returnRouteWeather.segments,
+                foehnWarning: returnRouteWeather.foehnWarning,
+                routeHeadwindKnots: returnRouteWindModel.wind?.headwindKnots,
+                departureWeatherSample: returnAirportWeather.departureSample,
+                arrivalWeatherSample: returnAirportWeather.arrivalSample,
+                departurePerformance: runwayPerformance(
+                    airport: flightArrivalAirport,
+                    sample: returnAirportWeather.departureSample,
+                    isDeparture: true
+                ),
+                arrivalPerformance: runwayPerformance(
+                    airport: flightDepartureAirport,
+                    sample: returnAirportWeather.arrivalSample,
+                    isDeparture: false
+                ),
+                onArrivalSelected: { _ in }
+            )
+            .frame(height: 316)
         }
     }
 
@@ -1047,6 +1528,61 @@ struct FlybookDashboardView: View {
               let standard = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day)
         else { return }
         outboundDeparture = offset == 0 && standard <= now ? now : standard
+    }
+
+    private func swapFlightEndpoints() {
+        let previousDeparture = flightDepartureICAO
+        flightDepartureICAO = flightArrivalICAO
+        flightArrivalICAO = previousDeparture
+        if let selected = airports.first(where: {
+            $0.icao == flightArrivalICAO
+        }) {
+            destinationICAO = selected.icao
+        }
+    }
+
+    @MainActor
+    private func refreshNowWeather() async {
+        guard !isNowWeatherLoading else { return }
+        isNowWeatherLoading = true
+        defer { isNowWeatherLoading = false }
+
+        let arrival = outboundDeparture.addingTimeInterval(
+            TimeInterval(routeMinutes * 60)
+        )
+
+        // Phase 1: the operational endpoints become visible first. These
+        // point forecasts use the high-priority ICON-Seamless path.
+        await airportWeather.loadCriticalEndpoints(
+            departureAirport: flightDepartureAirport,
+            arrivalAirport: flightArrivalAirport,
+            departure: outboundDeparture,
+            arrival: arrival
+        )
+
+        // Phase 2: real stops and the three nearest usable alternates warm the
+        // same cache before route-wide, substantially larger downloads begin.
+        await airportWeather.prefetchCriticalAirports(priorityWeatherRequests)
+
+        // Phase 3: corridor weather and winds deliberately run at low network
+        // priority so EDGE reception cannot delay endpoint weather.
+        async let wind: Void = routeWindModel.load(
+            origin: flightDepartureAirport,
+            destination: flightArrivalAirport,
+            start: outboundDeparture,
+            end: arrival,
+            altitudeFeet: selectedAltitudeFeet,
+            forceRefresh: true,
+            priority: .low
+        )
+        async let risk: Void = routeWeather.load(
+            waypoints: routeWaypoints,
+            start: outboundDeparture,
+            end: arrival,
+            cruiseAltitudeFeet: selectedAltitudeFeet,
+            forceRefresh: true
+        )
+        _ = await (wind, risk)
     }
 
     private struct AutomaticRoute {
@@ -1268,6 +1804,97 @@ struct FlybookDashboardView: View {
             }
         }
         .zIndex(12)
+    }
+
+    private var fuelCalculationSection: some View {
+        VStack(alignment: .leading, spacing: DashboardLayout.sectionGap) {
+            HStack {
+                SectionTitle(title: "TANKKALKULATION", systemName: "fuelpump.fill")
+                Spacer()
+                Button {
+                    showsFuelCalculator = true
+                } label: {
+                    Label("Tankrechner öffnen", systemImage: "fuelpump.fill")
+                        .font(.caption.bold())
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(Color.dashboardBlue)
+            }
+            .frame(height: 27)
+
+            DashboardCard {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("PLAN")
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.dashboardBlue)
+                        HStack(spacing: 6) {
+                            FuelCompactMetric(
+                                title: "START",
+                                value: "\(Int(effectiveFuelPlanStartLiters)) L"
+                            )
+                            FuelCompactMetric(
+                                title: "HINFLUG",
+                                value: "−\(outboundPlannedBurnLiters) L"
+                            )
+                            FuelCompactMetric(
+                                title: "RESERVE",
+                                value: "\(Int(fuelPlanResult.finalReserveLiters)) L"
+                            )
+                            FuelCompactMetric(
+                                title: "TANKEN AM ZIEL",
+                                value: outboundDestinationFuelRowIndex.map {
+                                    "+\(Int(plannedRefuelsByLegIndex[$0] ?? 0)) L"
+                                } ?? "—"
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Divider().frame(height: 82)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack {
+                            Text("IST")
+                                .font(.caption.bold())
+                                .foregroundStyle(
+                                    fuelActualResult.hasWarning ? .red : .green
+                                )
+                            Spacer()
+                            Text("Messwerte ändern die Folgemenge sofort")
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack(spacing: 6) {
+                            FuelCompactInput(
+                                title: "START IST",
+                                value: $actualStartingFuelLiters
+                            )
+                            if let index = outboundDestinationFuelRowIndex {
+                                FuelCompactInput(
+                                    title: "REST AM ZIEL",
+                                    value: actualArrivalBinding(index: index)
+                                )
+                                FuelCompactMetric(
+                                    title: "JETZT TANKEN",
+                                    value: "+\(Int(fuelActualResult.rows[index].requiredRefuelAfterArrivalLiters)) L",
+                                    accent: Color.dashboardBlue
+                                )
+                            }
+                            FuelCompactMetric(
+                                title: "ENDE IST",
+                                value: "\(Int(fuelActualResult.finalFuelLiters)) L",
+                                accent: fuelActualResult.hasFinalReserveShortfall
+                                    ? .red : .green
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: 145)
+        }
     }
 
     private var charterCalculationSection: some View {
@@ -1795,14 +2422,14 @@ private struct StopAirportPicker: View {
             .sorted {
                 let lhsDistance = FlightGeometry.nauticalMiles(from: $0, to: targetCoordinate)
                 let rhsDistance = FlightGeometry.nauticalMiles(from: $1, to: targetCoordinate)
-                if abs(lhsDistance - rhsDistance) > 0.1 { return lhsDistance < rhsDistance }
+                if abs(lhsDistance - rhsDistance) > 0.01 { return lhsDistance < rhsDistance }
                 return $0.icao < $1.icao
             }
     }
 
     private var suggestions: [Airport] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard term.count >= 3 else { return [] }
+        guard !term.isEmpty else { return [] }
         return Array(options.filter {
             $0.icao.localizedCaseInsensitiveContains(term)
                 || $0.name.localizedCaseInsensitiveContains(term)
@@ -1810,7 +2437,7 @@ private struct StopAirportPicker: View {
     }
 
     private var showsSuggestions: Bool {
-        queryIsFocused && query.count >= 3 && !suggestions.isEmpty
+        queryIsFocused && !query.isEmpty && !suggestions.isEmpty
     }
 
     private func choose(_ airport: Airport?) {
@@ -1837,7 +2464,14 @@ private struct StopAirportPicker: View {
                         .focused($queryIsFocused)
                         .submitLabel(.done)
                         .onSubmit {
-                            if let airport = suggestions.first { choose(airport) }
+                            let normalized = query
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                                .uppercased()
+                            if let exact = options.first(where: { $0.icao == normalized }) {
+                                choose(exact)
+                            } else if let airport = suggestions.first {
+                                choose(airport)
+                            }
                         }
 
                     Menu {
@@ -1925,6 +2559,398 @@ private struct CharterValueBox: View {
             .background(Color.dashboardBackground, in: RoundedRectangle(cornerRadius: 12))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+    }
+}
+
+private struct FuelCompactMetric: View {
+    let title: String
+    let value: String
+    var accent: Color = Color.dashboardNavy
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.system(size: 7.5, weight: .bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 15, weight: .heavy).monospacedDigit())
+                .foregroundStyle(accent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
+        .padding(.horizontal, 5)
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .background(accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct FuelCompactInput: View {
+    let title: String
+    @Binding var value: Double
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(title)
+                .font(.system(size: 7.5, weight: .bold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 2) {
+                TextField(
+                    "0",
+                    value: $value,
+                    format: .number.precision(.fractionLength(0))
+                )
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .font(.system(size: 15, weight: .heavy).monospacedDigit())
+                Text("L")
+                    .font(.system(size: 10, weight: .bold))
+            }
+        }
+        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.dashboardBlue.opacity(0.55), lineWidth: 1)
+        }
+    }
+}
+
+private struct IPadFuelPlanCalculatorView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let legs: [FuelPlanLeg]
+    let reserveMinutes: Int
+    let usableFuelLiters: Double
+    let aircraftName: String
+    @Binding var planStartingFuelLiters: Double
+    @Binding var actualStartingFuelLiters: Double
+    @Binding var actualArrivalOverrides: [Int: Double]
+    @Binding var refuelAfterLegIndices: Set<Int>
+    @State private var actualStartWasEdited = false
+
+    private var candidates: [Int] {
+        FuelPlanCalculator.refuelCandidateIndices(legs: legs)
+    }
+
+    private var template: FuelPlanResult {
+        FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: reserveMinutes,
+            usableFuelLiters: usableFuelLiters,
+            startingFuelLiters: 0,
+            refuelsByLegIndex: Dictionary(
+                uniqueKeysWithValues: refuelAfterLegIndices.map { ($0, 0) }
+            )
+        )
+    }
+
+    private var effectivePlanStart: Double {
+        planStartingFuelLiters > 0
+            ? planStartingFuelLiters
+            : template.minimumStartingFuelLiters
+    }
+
+    private var plannedRefuels: [Int: Double] {
+        var additions = Dictionary(
+            uniqueKeysWithValues: refuelAfterLegIndices.map { ($0, 0.0) }
+        )
+        for _ in 0...refuelAfterLegIndices.count {
+            let draft = FuelPlanCalculator.calculate(
+                legs: legs,
+                reserveMinutes: reserveMinutes,
+                usableFuelLiters: usableFuelLiters,
+                startingFuelLiters: effectivePlanStart,
+                refuelsByLegIndex: additions
+            )
+            for index in refuelAfterLegIndices {
+                additions[index] = draft.minimumRefuelLitersByLegIndex[index] ?? 0
+            }
+        }
+        return additions
+    }
+
+    private var plan: FuelPlanResult {
+        FuelPlanCalculator.calculate(
+            legs: legs,
+            reserveMinutes: reserveMinutes,
+            usableFuelLiters: usableFuelLiters,
+            startingFuelLiters: effectivePlanStart,
+            refuelsByLegIndex: plannedRefuels
+        )
+    }
+
+    private var actual: FuelActualResult {
+        FuelActualCalculator.calculate(
+            plan: plan,
+            actualStartingFuelLiters: actualStartingFuelLiters,
+            actualArrivalOverridesByLegIndex: actualArrivalOverrides,
+            refuelAfterLegIndices: refuelAfterLegIndices
+        )
+    }
+
+    private var actualStartBinding: Binding<Double> {
+        Binding(
+            get: { actualStartingFuelLiters },
+            set: {
+                actualStartWasEdited = true
+                actualStartingFuelLiters = floor(max(0, $0))
+            }
+        )
+    }
+
+    private func actualArrivalBinding(_ index: Int) -> Binding<Double> {
+        Binding(
+            get: {
+                if let override = actualArrivalOverrides[index] {
+                    return override
+                }
+                guard actual.rows.indices.contains(index) else { return 0 }
+                return actual.rows[index].actualArrivalLiters
+            },
+            set: { actualArrivalOverrides[index] = floor(max(0, $0)) }
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Label("TANKKALKULATOR", systemImage: "fuelpump.fill")
+                        .font(.system(size: 25, weight: .heavy))
+                        .foregroundStyle(Color.dashboardNavy)
+                    Text(
+                        "\(aircraftName) · \(Int(usableFuelLiters)) L nutzbar · Reserve \(reserveMinutes) min"
+                    )
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("IST aus Plan") {
+                        actualStartWasEdited = false
+                        actualStartingFuelLiters = effectivePlanStart
+                        actualArrivalOverrides = [:]
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Schließen") { dismiss() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.dashboardBlue)
+                }
+
+                HStack(spacing: 10) {
+                    fuelControl(
+                        title: "PLAN START",
+                        value: $planStartingFuelLiters,
+                        tint: Color.dashboardBlue
+                    )
+                    Button("Minimum") {
+                        planStartingFuelLiters = template.minimumStartingFuelLiters
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Voll") { planStartingFuelLiters = usableFuelLiters }
+                        .buttonStyle(.bordered)
+                    Divider().frame(height: 42)
+                    fuelControl(
+                        title: "IST START",
+                        value: actualStartBinding,
+                        tint: actual.hasWarning ? .red : .green
+                    )
+                    Text("Jeder IST-Wert ersetzt ab diesem Punkt die Hochrechnung; die nötige Tankmenge wird aus dem Planminimum neu berechnet.")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                VStack(spacing: 0) {
+                    tableHeader
+                    Divider()
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(plan.rows.enumerated()), id: \.element.id) {
+                                index, row in
+                                fuelRow(index: index, row: row)
+                                if candidates.contains(index) {
+                                    refuelRow(index: index, row: row)
+                                }
+                                if index < plan.rows.count - 1 { Divider() }
+                            }
+                        }
+                    }
+                }
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.black.opacity(0.10), lineWidth: 1)
+                }
+
+                HStack {
+                    Label(
+                        actual.hasWarning
+                            ? "IST-Verlauf unterschreitet Reserve, wird negativ oder überschreitet die Tankkapazität."
+                            : "IST-Verlauf erfüllt die Endreserve.",
+                        systemImage: actual.hasWarning
+                            ? "exclamationmark.triangle.fill"
+                            : "checkmark.circle.fill"
+                    )
+                    .font(.subheadline.bold())
+                    .foregroundStyle(actual.hasWarning ? .red : .green)
+                    Spacer()
+                    Text("IST ENDE  \(Int(actual.finalFuelLiters)) L")
+                        .font(.title3.bold().monospacedDigit())
+                        .foregroundStyle(Color.dashboardNavy)
+                }
+            }
+            .padding(18)
+            .background(Color.dashboardBackground.ignoresSafeArea())
+            .onAppear {
+                if planStartingFuelLiters <= 0 {
+                    planStartingFuelLiters = template.minimumStartingFuelLiters
+                }
+                if actualStartingFuelLiters <= 0 {
+                    actualStartingFuelLiters = effectivePlanStart
+                }
+            }
+            .onChange(of: planStartingFuelLiters) { _, value in
+                if !actualStartWasEdited { actualStartingFuelLiters = value }
+            }
+        }
+    }
+
+    private var tableHeader: some View {
+        HStack(spacing: 6) {
+            fuelHeading("ABSCHNITT", width: 150, alignment: .leading)
+            fuelHeading("MIN T/O", width: 82)
+            fuelHeading("MIN LDG", width: 82)
+            fuelHeading("PLAN T/O", width: 88)
+            fuelHeading("PLAN LDG", width: 88)
+            fuelHeading("PLAN TANK", width: 88)
+            fuelHeading("IST T/O", width: 92)
+            fuelHeading("IST LDG", width: 105)
+            fuelHeading("IST TANK", width: 90)
+            fuelHeading("ZEIT", width: 65)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 34)
+        .background(Color.dashboardBlue.opacity(0.08))
+    }
+
+    private func fuelRow(index: Int, row: FuelPlanRow) -> some View {
+        let actualRow = actual.rows[index]
+        return HStack(spacing: 6) {
+            Text("\(row.leg.originICAO) → \(row.leg.destinationICAO)")
+                .font(.system(size: 13, weight: .bold))
+                .frame(width: 150, alignment: .leading)
+            fuelValue(row.minimumDepartureLiters, width: 82)
+            fuelValue(row.minimumArrivalLiters, width: 82)
+            fuelValue(row.plannedDepartureLiters, width: 88, emphasized: true)
+            fuelValue(row.plannedArrivalLiters, width: 88, emphasized: true)
+            fuelValue(plannedRefuels[index] ?? 0, width: 88)
+            fuelValue(actualRow.actualDepartureLiters, width: 92, tint: .green)
+            fuelTableInput(actualArrivalBinding(index), width: 105)
+            fuelValue(
+                actualRow.requiredRefuelAfterArrivalLiters,
+                width: 90,
+                tint: Color.dashboardBlue
+            )
+            Text("\(row.leg.flightMinutes) min")
+                .font(.caption.bold().monospacedDigit())
+                .frame(width: 65)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 45)
+        .foregroundStyle(Color.dashboardNavy)
+        .background(actualRow.arrivalWasMeasured ? Color.green.opacity(0.07) : .clear)
+    }
+
+    private func refuelRow(index: Int, row: FuelPlanRow) -> some View {
+        let enabled = refuelAfterLegIndices.contains(index)
+        return HStack {
+            Button {
+                if enabled { refuelAfterLegIndices.remove(index) }
+                else { refuelAfterLegIndices.insert(index) }
+            } label: {
+                Label(
+                    enabled ? "Tankstopp aktiv" : "Tankstopp hinzufügen",
+                    systemImage: enabled ? "fuelpump.fill" : "fuelpump"
+                )
+                .font(.caption.bold())
+            }
+            .buttonStyle(.bordered)
+            .tint(enabled ? Color.dashboardBlue : .secondary)
+            Text(row.leg.destinationICAO)
+                .font(.caption.bold().monospaced())
+            if enabled {
+                Text(
+                    "Plan +\(Int(plannedRefuels[index] ?? 0)) L · IST jetzt +\(Int(actual.rows[index].requiredRefuelAfterArrivalLiters)) L"
+                )
+                .font(.caption.bold().monospacedDigit())
+                .foregroundStyle(Color.dashboardNavy)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 38)
+        .background(Color.dashboardBlue.opacity(enabled ? 0.10 : 0.035))
+    }
+
+    private func fuelControl(
+        title: String,
+        value: Binding<Double>,
+        tint: Color
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.caption2.bold()).foregroundStyle(.secondary)
+            fuelTableInput(value, width: 110)
+        }
+        .padding(8)
+        .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func fuelHeading(
+        _ title: String,
+        width: CGFloat,
+        alignment: Alignment = .center
+    ) -> some View {
+        Text(title)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(.secondary)
+            .frame(width: width, alignment: alignment)
+    }
+
+    private func fuelValue(
+        _ value: Double,
+        width: CGFloat,
+        emphasized: Bool = false,
+        tint: Color = Color.dashboardNavy
+    ) -> some View {
+        Text("\(FuelPlanCalculator.roundedLitersForDisplay(value)) L")
+            .font(.system(size: 13, weight: emphasized ? .heavy : .bold).monospacedDigit())
+            .foregroundStyle(tint)
+            .frame(width: width)
+    }
+
+    private func fuelTableInput(
+        _ value: Binding<Double>,
+        width: CGFloat
+    ) -> some View {
+        HStack(spacing: 2) {
+            TextField(
+                "0",
+                value: value,
+                format: .number.precision(.fractionLength(0))
+            )
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.trailing)
+            .font(.system(size: 13, weight: .heavy).monospacedDigit())
+            Text("L").font(.caption2.bold())
+        }
+        .padding(.horizontal, 6)
+        .frame(width: width, height: 30)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(Color.dashboardBlue.opacity(0.48), lineWidth: 1)
+        }
     }
 }
 
@@ -2042,7 +3068,6 @@ private struct EditableFlightLegCard: View {
     let arrivalWeatherSample: EDFZWeatherSample?
     let departurePerformance: RunwayPerformanceDisplay?
     let arrivalPerformance: RunwayPerformanceDisplay?
-    let onSwap: () -> Void
     let onArrivalSelected: (Airport) -> Void
 
     private var arrival: Date {
@@ -2163,6 +3188,18 @@ private struct EditableFlightLegCard: View {
                 .frame(width: 94)
                 .offset(x: -111, y: 43)
 
+                let departureWeather = DashboardWeatherPreview.snapshot(
+                    for: departureAirport,
+                    sample: departureWeatherSample
+                )
+                Image(systemName: departureWeather.symbolName)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(departureWeather.symbolColor)
+                    .font(.system(size: 25, weight: .bold))
+                    .frame(width: 48, height: 48)
+                    .offset(x: -208, y: 43)
+                    .accessibilityLabel("Abflugwetter")
+
                 Menu {
                     ForEach(altitudeOptions, id: \.self) { altitude in
                         Button {
@@ -2170,11 +3207,14 @@ private struct EditableFlightLegCard: View {
                         } label: {
                             HStack {
                                 Text(altitudeLabel(altitude))
-                                    .fontWeight(
-                                        FlightAltitudeRules.isRecommended(
-                                            altitude,
-                                            forCourseDegrees: courseDegrees
-                                        ) ? .bold : .regular
+                                    .font(
+                                        .system(
+                                            size: 13,
+                                            weight: FlightAltitudeRules.isRecommended(
+                                                altitude,
+                                                forCourseDegrees: courseDegrees
+                                            ) ? .bold : .regular
+                                        )
                                     )
                                 if selectedAltitudeFeet == altitude {
                                     Image(systemName: "checkmark")
@@ -2204,17 +3244,17 @@ private struct EditableFlightLegCard: View {
                 .offset(x: 111, y: 43)
                 .accessibilityLabel("Flughöhe auswählen")
 
-                Button(action: onSwap) {
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(Color.dashboardBlue, in: RoundedRectangle(cornerRadius: 9))
-                }
-                .buttonStyle(.plain)
-                .offset(y: -12)
-                .zIndex(4)
-                .accessibilityLabel("Abflug und Ankunft tauschen")
+                let arrivalWeather = DashboardWeatherPreview.snapshot(
+                    for: arrivalAirport,
+                    sample: arrivalWeatherSample
+                )
+                Image(systemName: arrivalWeather.symbolName)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(arrivalWeather.symbolColor)
+                    .font(.system(size: 25, weight: .bold))
+                    .frame(width: 48, height: 48)
+                    .offset(x: 208, y: 43)
+                    .accessibilityLabel("Ankunftswetter")
 
                 Text(routeWind.value)
                     .font(.system(size: 11, weight: .heavy).monospacedDigit())
@@ -2239,7 +3279,7 @@ private struct EditableFlightLegCard: View {
                         performance: arrivalPerformance
                     )
                 }
-                .frame(height: 55)
+                .frame(height: 70)
             }
         }
     }
@@ -2360,7 +3400,7 @@ private struct RunwayRecommendationPanel: View {
 
     var body: some View {
         ZStack {
-            VStack(spacing: 1) {
+            VStack(spacing: 6) {
                 ZStack {
                     Circle()
                         .fill(Color.dashboardBackground)
@@ -2368,17 +3408,17 @@ private struct RunwayRecommendationPanel: View {
                     Text("N")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.secondary)
-                        .offset(y: -37)
+                        .offset(y: -32)
                     Capsule()
                         .fill(Color.dashboardNavy.opacity(0.82))
-                        .frame(width: 72, height: 10)
+                        .frame(width: 64, height: 10)
                         .overlay {
                             Rectangle().fill(Color.white.opacity(0.85)).frame(width: 54, height: 1.5)
                         }
                         .rotationEffect(.degrees(runwayHeading - 90))
                     WindDirectionArrow()
                         .stroke(.orange, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                        .frame(width: 44, height: 66)
+                        .frame(width: 40, height: 58)
                         .rotationEffect(.degrees(weather.windDirectionDegrees))
 
                     if runwayEnds.count == 2 {
@@ -2394,14 +3434,14 @@ private struct RunwayRecommendationPanel: View {
                             .offset(runwayLabelOffset(heading: runwayHeading))
                     }
                 }
-                .frame(width: 90, height: 80)
+                .frame(width: 82, height: 70)
                 HStack(spacing: 8) {
                     Text(headwindText)
                         .foregroundStyle((recommendation?.headwind ?? 0) >= 0 ? .green : .red)
                     Text(crosswindText)
                         .foregroundStyle(.orange)
                 }
-                .font(.system(size: 13, weight: .heavy).monospacedDigit())
+                .font(.system(size: 12, weight: .heavy).monospacedDigit())
                 .frame(width: 132, alignment: .center)
             }
 
@@ -2424,7 +3464,7 @@ private struct RunwayRecommendationPanel: View {
                     .background(metarBoxFill, in: RoundedRectangle(cornerRadius: 8))
                     .overlay { RoundedRectangle(cornerRadius: 8).stroke(metarBoxBorder, lineWidth: 1.3) }
             }
-            .offset(x: mirrored ? -106 : 106, y: -9)
+            .offset(x: mirrored ? -118 : 118, y: -9)
         }
         .frame(maxWidth: .infinity, minHeight: 100, maxHeight: 100)
         .accessibilityLabel("Runway \(airport.referenceRunway), bevorzugt \(recommendation?.label ?? "unbekannt")")
@@ -2432,7 +3472,7 @@ private struct RunwayRecommendationPanel: View {
 
     private func runwayLabelOffset(heading: Double) -> CGSize {
         let radians = (heading - 90) * .pi / 180
-        return CGSize(width: cos(radians) * 41, height: sin(radians) * 41)
+        return CGSize(width: cos(radians) * 35, height: sin(radians) * 35)
     }
 
     private func shortestAngle(_ angle: Double) -> Double {
@@ -2460,8 +3500,14 @@ private struct RunwayRecommendationPanel: View {
         let roundedDirection = (weather.windDirectionDegrees / 10).rounded() * 10
         let normalizedDirection = roundedDirection == 0 && weather.windSpeedKnots > 0
             ? 360 : roundedDirection
-        let base = String(format: "%03.0f/%02.0f", normalizedDirection, weather.windSpeedKnots)
-        return weather.gustKnots.map { "\(base) G\($0)" } ?? base
+        let base = String(
+            format: "%03.0f / %02.0f",
+            normalizedDirection,
+            weather.windSpeedKnots
+        )
+        return weather.gustKnots.map {
+            base + String(format: " G%02d", $0)
+        } ?? base
     }
 
     private var windLimitColor: Color {
@@ -2752,18 +3798,22 @@ private struct FlightWeatherMetrics: View {
     }
 
     var body: some View {
-        HStack(spacing: 5) {
-            WeatherMetricGroup {
-                WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
-                WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
-                densityAltitudeMetric
-                performanceMetric(isFiftyFeet: false)
+        HStack(alignment: .top, spacing: 5) {
+            VStack(spacing: 3) {
+                WeatherMetricGroup {
+                    WeatherMetric(title: "QNH", value: "\(weather.pressureHPA)")
+                    WeatherMetric(title: "TEMP", value: "\(weather.temperatureCelsius) °C")
+                    densityAltitudeMetric
+                }
+                WeatherMetricGroup {
+                    performanceMetric(isFiftyFeet: false)
+                    performanceMetric(isFiftyFeet: true)
+                }
             }
             WeatherMetricGroup {
                 WeatherMetric(title: "WOLKEN", value: weather.clouds)
                 WeatherMetric(title: "BASIS", value: "\(weather.cloudBaseFeet) ft")
                 WeatherMetric(title: "SICHT", value: "\(weather.visibilityKilometers) km")
-                performanceMetric(isFiftyFeet: true)
             }
         }
         .frame(maxWidth: .infinity)

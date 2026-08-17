@@ -54,6 +54,11 @@ struct IPadAircraftPerformance: Hashable {
     let name: String
     let hourlyRateEUR: Double
     let usableFuelLiters: Double
+    let maximumTakeoffWeightKilograms: Double
+    let noiseLevelDBA: Double?
+    let hasIncreasedNoiseProtection: Bool
+    let preferredFuelCode: String
+    let approvedFuelCodes: Set<String>
     let fallbackCruiseKnots: Double
     let fallbackFuelLitersPerHour: Double
     let climb: IPadClimbPerformance
@@ -81,7 +86,7 @@ enum IPadAircraftPerformanceStore {
             cruise = IPadCruisePerformance(
                 powerPercent: 65,
                 tas: [104, 106, 107.5, 109, 111],
-                fuel: [35, 35, 35, 35, 35]
+                fuel: [40, 40, 40, 40, 40]
             )
         } else if isDEZHS {
             cruise = IPadCruisePerformance(
@@ -98,10 +103,17 @@ enum IPadAircraftPerformanceStore {
         }
         return IPadAircraftPerformance(
             name: name,
-            hourlyRateEUR: normalized == "DEUKS" ? 145 : 180,
-            usableFuelLiters: normalized == "DEUKS" ? 100 : 180,
+            hourlyRateEUR: isDETIK ? 191 : 149,
+            usableFuelLiters: isDETIK ? 182 : (isDEZHS ? 97 : 110),
+            maximumTakeoffWeightKilograms: isDETIK ? 1_110 : 750,
+            noiseLevelDBA: isDETIK ? nil : (isDEZHS ? 63.9 : 65.1),
+            hasIncreasedNoiseProtection: !isDETIK,
+            preferredFuelCode: isDETIK ? "AVGAS" : "MOGAS_SUPER",
+            approvedFuelCodes: isDETIK
+                ? ["AVGAS"]
+                : ["AVGAS", "UL91", "UL94", "MOGAS_SUPER"],
             fallbackCruiseKnots: isDETIK ? 110 : 105,
-            fallbackFuelLitersPerHour: isDETIK ? 35 : 25,
+            fallbackFuelLitersPerHour: isDETIK ? 40 : (isDEZHS ? 24 : 25),
             climb: climb,
             cruise: cruise
         )

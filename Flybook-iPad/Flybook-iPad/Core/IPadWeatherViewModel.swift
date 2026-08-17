@@ -21,6 +21,55 @@ final class IPadWeatherViewModel: ObservableObject {
     @Published private(set) var sourceLabel = "ICON-SEAMLESS"
     @Published private(set) var isLoading = false
 
+    /// Low-data first stage used by the in-flight NOW button. Only the two
+    /// operational endpoints are requested and published before any overview
+    /// or route-corridor downloads start.
+    func loadCriticalEndpoints(
+        departureAirport: Airport,
+        arrivalAirport: Airport,
+        departure: Date,
+        arrival: Date
+    ) async {
+        isLoading = true
+        async let departureForecast = try? EDFZWeatherService.shared.forecast(
+            plannedDate: departure,
+            airport: departureAirport.sharedReference,
+            forceRefresh: true
+        )
+        async let arrivalForecast = try? EDFZWeatherService.shared.forecast(
+            plannedDate: arrival,
+            airport: arrivalAirport.sharedReference,
+            forceRefresh: true
+        )
+        let dep = await departureForecast
+        let arr = await arrivalForecast
+        departureSample = dep?.sample(nearestTo: departure)
+        arrivalSample = arr?.sample(nearestTo: arrival)
+        if let source = dep?.source ?? arr?.source {
+            sourceLabel = Self.sourceLabel(source)
+        }
+        isLoading = false
+    }
+
+    /// Second high-priority stage: warm the same precise point-forecast cache
+    /// for real intermediate stops and nearby alternates. The returned data is
+    /// then immediately available on their airport pages.
+    func prefetchCriticalAirports(
+        _ requests: [(airport: Airport, instant: Date)]
+    ) async {
+        await withTaskGroup(of: Void.self) { group in
+            for request in requests {
+                group.addTask {
+                    _ = try? await EDFZWeatherService.shared.forecast(
+                        plannedDate: request.instant,
+                        airport: request.airport.sharedReference,
+                        forceRefresh: true
+                    )
+                }
+            }
+        }
+    }
+
     func load(
         departureAirport: Airport,
         arrivalAirport: Airport,
